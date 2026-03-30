@@ -692,9 +692,14 @@ body {
 
 <script>
 const API = (function() {
+  // Local development
   if (location.protocol === 'file:') return 'http://localhost:8000';
-  const port = location.port;
-  if (port && port !== '8000') return `${location.protocol}//${location.hostname}:8000`;
+  if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
+    const port = location.port;
+    if (port && port !== '8000') return `${location.protocol}//${location.hostname}:8000`;
+    return '';
+  }
+  // Production: Vercel rewrites /api/* to backend (same origin)
   return '';
 })();
 

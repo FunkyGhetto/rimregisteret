@@ -1,0 +1,16 @@
+data/
+*.db
+*.jsonl
+*.log
+*.frk
+*.zip
+__pycache__/
+*.pyc
+*.egg-info/
+.pytest_cache/
+.claude/
+rimordbok/
+scripts/
+tests/
+api/
+serve.py

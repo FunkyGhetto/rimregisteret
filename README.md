@@ -54,6 +54,23 @@ pytest tests/ -v
 # 303 tester
 ```
 
+## Deploy
+
+**Frontend** deployes til Vercel (statisk HTML):
+
+```bash
+vercel --prod
+```
+
+Vercel serverer `frontend/index.html` og proxyer `/api/*` til backend via rewrites i `vercel.json`. Oppdater `BACKEND-URL-PLACEHOLDER` i `vercel.json` med den faktiske backend-URLen etter backend-deploy.
+
+Custom domain:
+```bash
+vercel domains add rimregisteret.no
+```
+
+**Backend** (FastAPI + SQLite) krever en egen server med databasefilene. Se `scripts/` for å bygge databasene.
+
 ## Datakilder
 
 - [NB Uttale](https://www.nb.no/sprakbanken/ressurskatalog/oai-nb-no-sbr-56/) — fonetisk leksikon (5 dialekter)
