@@ -130,19 +130,23 @@ def hent_rim_dialekt(
     conn = _connect(db_path)
     try:
         if dialekt == "øst":
-            # Simple: just query the main table
+            # Group by LOWER(ord) to deduplicate Sol/sol and same-word POS variants
             if samme_tonelag and tonelag_val is not None:
                 cur = conn.execute(
-                    "SELECT DISTINCT ord, rimsuffiks, tonelag, stavelser, frekvens "
+                    "SELECT LOWER(ord) as ord, rimsuffiks, tonelag, "
+                    "MAX(stavelser) as stavelser, MAX(frekvens) as frekvens "
                     "FROM ord WHERE rimsuffiks = ? AND tonelag = ? "
-                    "AND LOWER(ord) != ? ORDER BY frekvens DESC LIMIT ?",
+                    "AND LOWER(ord) != ? "
+                    "GROUP BY LOWER(ord) ORDER BY frekvens DESC LIMIT ?",
                     (suffix, tonelag_val, ord_lower, maks),
                 )
             else:
                 cur = conn.execute(
-                    "SELECT DISTINCT ord, rimsuffiks, tonelag, stavelser, frekvens "
+                    "SELECT LOWER(ord) as ord, rimsuffiks, tonelag, "
+                    "MAX(stavelser) as stavelser, MAX(frekvens) as frekvens "
                     "FROM ord WHERE rimsuffiks = ? "
-                    "AND LOWER(ord) != ? ORDER BY frekvens DESC LIMIT ?",
+                    "AND LOWER(ord) != ? "
+                    "GROUP BY LOWER(ord) ORDER BY frekvens DESC LIMIT ?",
                     (suffix, ord_lower, maks),
                 )
             return [dict(r) for r in cur]
@@ -158,13 +162,15 @@ def hent_rim_dialekt(
             params_fallback.append(tonelag_val)
 
         query = f"""
-            SELECT ord, rimsuffiks, tonelag, stavelser, 0.0 as frekvens
+            SELECT LOWER(ord) as ord, rimsuffiks, tonelag, stavelser, 0.0 as frekvens
             FROM ord_dialekter
             WHERE rimsuffiks = ? AND dialekt = ? AND LOWER(ord) != ? {tonelag_clause}
+            GROUP BY LOWER(ord)
 
             UNION
 
-            SELECT o.ord, o.rimsuffiks, o.tonelag, o.stavelser, o.frekvens
+            SELECT LOWER(o.ord) as ord, o.rimsuffiks, o.tonelag,
+                   MAX(o.stavelser) as stavelser, MAX(o.frekvens) as frekvens
             FROM ord o
             WHERE o.rimsuffiks = ? AND LOWER(o.ord) != ?
             AND NOT EXISTS (
@@ -172,6 +178,7 @@ def hent_rim_dialekt(
                 WHERE d.ord = o.ord AND d.dialekt = ?
             )
             {tonelag_clause}
+            GROUP BY LOWER(o.ord)
 
             ORDER BY frekvens DESC
             LIMIT ?

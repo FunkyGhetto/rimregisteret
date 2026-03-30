@@ -368,9 +368,10 @@ def finn_nesten_rim(
         ord_lower = ord.lower()
         for cand_suffix, score in top_suffixes:
             cur2 = conn.execute(
-                "SELECT DISTINCT ord, rimsuffiks, tonelag, stavelser, frekvens "
+                "SELECT LOWER(ord) as ord, rimsuffiks, tonelag, "
+                "MAX(stavelser) as stavelser, MAX(frekvens) as frekvens "
                 "FROM ord WHERE rimsuffiks = ? AND LOWER(ord) != ? "
-                "ORDER BY frekvens DESC LIMIT 20",
+                "GROUP BY LOWER(ord) ORDER BY frekvens DESC LIMIT 20",
                 (cand_suffix, ord_lower),
             )
             # Add tonelag bonus
@@ -409,8 +410,10 @@ def finn_homofoner(
     conn = _connect(db_path)
     try:
         cur = conn.execute(
-            "SELECT DISTINCT ord, rimsuffiks, tonelag, stavelser, fonemer "
-            "FROM ord WHERE ipa_ren = ? AND ord != ?",
+            "SELECT LOWER(ord) as ord, rimsuffiks, tonelag, "
+            "MAX(stavelser) as stavelser, fonemer "
+            "FROM ord WHERE ipa_ren = ? AND LOWER(ord) != ? "
+            "GROUP BY LOWER(ord)",
             (ipa, ord.lower()),
         )
         return [dict(r) for r in cur]
@@ -450,9 +453,9 @@ def match_konsonanter(
     conn = _connect(db_path)
     try:
         cur = conn.execute(
-            "SELECT DISTINCT ord, rimsuffiks, tonelag, stavelser, fonemer "
-            "FROM ord WHERE stavelser = ? AND ord != ? "
-            "LIMIT 10000",
+            "SELECT LOWER(ord) as ord, rimsuffiks, tonelag, stavelser, fonemer "
+            "FROM ord WHERE stavelser = ? AND LOWER(ord) != ? "
+            "GROUP BY LOWER(ord) LIMIT 10000",
             (source_syl, ord.lower()),
         )
 

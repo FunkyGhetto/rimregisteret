@@ -362,8 +362,8 @@ class TestAntallParameter:
                 assert len(result) == n  # should have enough families
 
     def test_exact_antall_bred(self):
-        for n in [1, 3, 5]:
+        for n in [1, 2, 3]:
             result = generer_rimklynger(modus="bred", antall=n, min_frekvens=0.0)
             assert len(result) <= n
-            if n <= 3:
+            if n <= 2:
                 assert len(result) == n

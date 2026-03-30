@@ -939,7 +939,7 @@ async function doGenerateCluster() {
     }
 
     const totalWords = klynger.reduce((s, k) => s + k.ord.length, 0);
-    statusEl.textContent = `${klynger.length} klynge${klynger.length > 1 ? 'r' : ''}, ${totalWords} ord (${ms} ms)`;
+    statusEl.textContent = `${klynger.length} klynge${klynger.length > 1 ? 'r' : ''}, ${totalWords} ord`;
 
     renderClusters(klynger);
   } catch (err) {
@@ -1013,7 +1013,6 @@ async function doSearch(word) {
     ]);
 
     const items = resData.resultater || [];
-    const ms = resData.soketid_ms;
 
     if (items.length === 0) {
       statusEl.textContent = `Ingen ${tabLabel()} funnet for "${word}"`;
@@ -1021,7 +1020,7 @@ async function doSearch(word) {
       return;
     }
 
-    statusEl.textContent = `${items.length} ${tabLabel()} for "${word}" (${ms} ms)`;
+    statusEl.textContent = `${items.length} ${tabLabel()} for "${word}"`;
     renderInfo(infoData);
 
     if (currentTab === 'synonymer' || currentTab === 'antonymer') {

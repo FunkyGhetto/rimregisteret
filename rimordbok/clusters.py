@@ -93,9 +93,10 @@ def hent_rimfamilie(
         limit_clause = f"LIMIT {int(maks)}" if maks else ""
 
         query = (
-            f"SELECT DISTINCT ord, stavelser, tonelag, frekvens "
+            f"SELECT LOWER(ord) as ord, MAX(stavelser) as stavelser, "
+            f"tonelag, MAX(frekvens) as frekvens "
             f"FROM ord WHERE {' AND '.join(where)} "
-            f"ORDER BY {order} {limit_clause}"
+            f"GROUP BY LOWER(ord) ORDER BY {order} {limit_clause}"
         )
 
         cur = conn.execute(query, params)
