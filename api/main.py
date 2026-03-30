@@ -10,6 +10,7 @@ Swagger-dokumentasjon: http://localhost:8000/docs
 
 import logging
 import time
+from collections import defaultdict
 from typing import Optional
 
 from fastapi import FastAPI, Query, Request
@@ -59,6 +60,35 @@ app.add_middleware(
     allow_methods=["GET"],
     allow_headers=["*"],
 )
+
+
+# --- Rate limiting (in-memory, per IP, 100 req/min) ---
+
+_rate_store: dict = defaultdict(list)  # IP -> list of timestamps
+_RATE_LIMIT = 100  # requests per window
+_RATE_WINDOW = 60  # seconds
+
+
+@app.middleware("http")
+async def rate_limit(request: Request, call_next):
+    # Only rate-limit /api/ paths, skip localhost/testclient
+    if request.url.path.startswith("/api/"):
+        ip = request.client.host if request.client else "unknown"
+        if ip in ("127.0.0.1", "localhost", "testclient"):
+            return await call_next(request)
+        now = time.time()
+        # Clean old entries
+        _rate_store[ip] = [t for t in _rate_store[ip] if now - t < _RATE_WINDOW]
+        if len(_rate_store[ip]) >= _RATE_LIMIT:
+            return JSONResponse(
+                status_code=429,
+                content={
+                    "feil": "For mange forespørsler",
+                    "detaljer": f"Grense: {_RATE_LIMIT} forespørsler per {_RATE_WINDOW} sekunder.",
+                },
+            )
+        _rate_store[ip].append(now)
+    return await call_next(request)
 
 
 # --- Middleware: logging og feilhåndtering ---
