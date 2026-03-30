@@ -32,6 +32,7 @@ from rimordbok.semantics import (
     finn_antonymer,
     finn_relaterte,
 )
+from rimordbok.definitions import hent_definisjon
 from rimordbok.clusters import generer_rimklynger
 
 # Dialect enum for API validation
@@ -286,12 +287,17 @@ def api_info(
     # Synonymer (topp 10)
     synonymer = finn_synonymer(ord, maks=10)
 
+    # Definisjon fra Bokmålsordboka (cached, non-blocking)
+    defn = hent_definisjon(ord)
+
     elapsed = (time.perf_counter() - start) * 1000
 
     return {
         "ord": ord,
         "dialekt": dialekt,
         "fonetikk": info,
+        "definisjon": defn.get("definisjon"),
+        "ordklasse": defn.get("ordklasse"),
         "leksikon": [dict(e) for e in lex_entries] if lex_entries else [],
         "rim": rim,
         "synonymer": synonymer,

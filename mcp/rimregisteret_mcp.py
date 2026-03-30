@@ -166,6 +166,11 @@ async def ordinfo(ord: str, dialekt: str = "øst") -> str:
             return f"Ingen informasjon funnet for «{ord}»."
 
         lines = [f"Ordinfo for «{ord}»:"]
+
+        defn = data.get("definisjon")
+        if defn:
+            lines.append(f"  Definisjon: {defn}")
+
         lines.append(f"  IPA: /{f.get('ipa_ren', '?')}/")
         lines.append(f"  Stavelser: {f.get('stavelser', '?')}")
 

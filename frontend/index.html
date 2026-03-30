@@ -1114,16 +1114,19 @@ function tabLabel() {
 function renderInfo(data) {
   if (!data || !data.fonetikk) return;
   const f = data.fonetikk;
+  const defn = data.definisjon;
+  const ordUrl = `https://ordbokene.no/bm/${encodeURIComponent(data.ord)}`;
   const card = document.createElement('div');
   card.className = 'info-card';
   card.innerHTML = `
     <h3>${esc(data.ord)}</h3>
     <div class="ipa">/${esc(f.ipa_ren)}/</div>
+    ${defn ? `<div style="color:#ccc;font-size:0.9rem;margin:0.3rem 0">${esc(defn.length > 120 ? defn.slice(0, 117) + '...' : defn)}</div>` : ''}
     <div class="meta-row">
       <span><b>Stavelser:</b> ${f.stavelser}</span>
       ${f.tonelag != null ? `<span><b>Tonelag:</b> ${toneIcon(f.tonelag)} ${f.tonelag}</span>` : ''}
       <span><b>Rimsuffiks:</b> ${esc(f.rimsuffiks)}</span>
-      ${f.g2p ? '<span style="color:#e8920d">G2P (estimert)</span>' : '<span style="color:#4ade80">Leksikon</span>'}
+      <a href="${ordUrl}" target="_blank" rel="noopener" style="color:#888;font-size:0.85rem">Ordbøkene ↗</a>
     </div>
   `;
   resultsEl.appendChild(card);
