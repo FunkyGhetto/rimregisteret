@@ -214,7 +214,7 @@ curl "https://rimregisteret.no/api/v1/konsonanter/sol"
 ```
 GET /api/v1/info/{ord}
 ```
-Alt om et ord: IPA, stavelser, tonelag, rimsuffiks, rim, synonymer.
+Alt om et ord: definisjon (Bokmålsordboka), IPA, stavelser, tonelag, rimsuffiks, rim, synonymer.
 
 Parametere: `dialekt`
 
@@ -224,6 +224,8 @@ curl "https://rimregisteret.no/api/v1/info/barn?dialekt=vest"
 ```
 
 Respons inkluderer:
+- `definisjon`: definisjon fra Bokmålsordboka (kan være null)
+- `ordklasse`: ordklasse fra Bokmålsordboka (Substantiv, Verb, Adjektiv, etc.)
 - `fonetikk.ipa_ren`: IPA-transkripsjon
 - `fonetikk.stavelser`: antall stavelser
 - `fonetikk.tonelag`: 1 eller 2
@@ -279,8 +281,20 @@ curl "https://rimregisteret.no/api/v1/sok?q=sol&maks=10"
 
 ### Responsformat
 
-Alle endepunkter returnerer JSON:
+`/info/{ord}` returnerer:
+```json
+{
+  "ord": "sol",
+  "dialekt": "øst",
+  "definisjon": "lys- og energigivende stjerne som jorda kretser om",
+  "ordklasse": "Substantiv",
+  "fonetikk": {"ipa_ren": "suːl", "stavelser": 1, "tonelag": 1, "rimsuffiks": "uːl", "g2p": false},
+  "rim": [{"ord": "stol", ...}],
+  "synonymer": [...]
+}
+```
 
+`/rim/{ord}` returnerer:
 ```json
 {
   "ord": "sol",
@@ -355,3 +369,4 @@ Eksempel: Trenger rim på "kjærlighet"? Søk rim, men sjekk også synonymer for
 - Malmi & Takala (2016), "DopeLearning: A Computational Approach to Rap Lyrics Generation", arXiv
 - NB Uttale — Nasjonalbiblioteket, Språkbanken
 - Norwegian WordNet — Nasjonalbiblioteket, Språkbanken
+- Bokmålsordboka — Språkrådet / Universitetet i Bergen, via ordbokapi.org (definisjoner)

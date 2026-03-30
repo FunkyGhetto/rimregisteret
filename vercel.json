@@ -5,6 +5,10 @@
   "framework": null,
   "rewrites": [
     {
+      "source": "/api",
+      "destination": "/api.html"
+    },
+    {
       "source": "/api.html",
       "destination": "/api.html"
     },

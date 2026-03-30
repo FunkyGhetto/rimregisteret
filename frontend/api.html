@@ -226,10 +226,28 @@ pre .num { color: #60a5fa; }
 <div class="endpoint">
   <span class="method">GET</span>
   <span class="path">/api/v1/info/{ord}</span>
-  <div class="desc">Alt om et ord: IPA, stavelser, tonelag, rimsuffiks, rim, synonymer.</div>
+  <div class="desc">Alt om et ord: definisjon (Bokm&aring;lsordboka), IPA, stavelser, tonelag, rimsuffiks, rim, synonymer.</div>
   <div class="params">Parametere: <code>dialekt</code></div>
 </div>
 <pre>curl "<span class="url">https://rimregisteret.no/api/v1/info/sol</span>"</pre>
+
+<div class="endpoint">
+  <span class="method">GET</span>
+  <span class="path">/api/v1/relaterte/{ord}</span>
+  <div class="desc">Relaterte ord (hypernymer, hyponymer, meronymer, holonymer fra WordNet).</div>
+</div>
+
+<div class="endpoint">
+  <span class="method">GET</span>
+  <span class="path">/api/v1/konsonanter/{ord}</span>
+  <div class="desc">Konsonantmatching &mdash; ord med samme konsonantskjelett.</div>
+</div>
+
+<div class="endpoint">
+  <span class="method">GET</span>
+  <span class="path">/api/v1/rim/{ord}/dialekter</span>
+  <div class="desc">Vis hvilke dialekter et rimpar fungerer i.</div>
+</div>
 
 <h2>Rimklynger</h2>
 <p>Generer tilfeldige rimklynger for freestyle-trening.</p>
@@ -282,8 +300,26 @@ pre .num { color: #60a5fa; }
   </tbody>
 </table>
 
-<h2>Eksempel-respons</h2>
-<p><code>GET /api/v1/rim/sol?maks=3</code></p>
+<h2>Eksempel-responser</h2>
+
+<h3><code>GET /api/v1/info/sol</code></h3>
+<pre>{
+  <span class="key">"ord"</span>: <span class="str">"sol"</span>,
+  <span class="key">"dialekt"</span>: <span class="str">"&oslash;st"</span>,
+  <span class="key">"definisjon"</span>: <span class="str">"lys- og energigivende stjerne som jorda kretser om"</span>,
+  <span class="key">"ordklasse"</span>: <span class="str">"Substantiv"</span>,
+  <span class="key">"fonetikk"</span>: {
+    <span class="key">"ipa_ren"</span>: <span class="str">"su:l"</span>,
+    <span class="key">"stavelser"</span>: <span class="num">1</span>,
+    <span class="key">"tonelag"</span>: <span class="num">1</span>,
+    <span class="key">"rimsuffiks"</span>: <span class="str">"u:l"</span>,
+    <span class="key">"g2p"</span>: <span class="num">false</span>
+  },
+  <span class="key">"rim"</span>: [<span class="str">"stol"</span>, <span class="str">"alkohol"</span>, ...],
+  <span class="key">"synonymer"</span>: [...]
+}</pre>
+
+<h3><code>GET /api/v1/rim/sol?maks=3</code></h3>
 <pre>{
   <span class="key">"ord"</span>: <span class="str">"sol"</span>,
   <span class="key">"resultater"</span>: [
@@ -294,18 +330,9 @@ pre .num { color: #60a5fa; }
       <span class="key">"stavelser"</span>: <span class="num">1</span>,
       <span class="key">"frekvens"</span>: <span class="num">102.87</span>,
       <span class="key">"score"</span>: <span class="num">1.0</span>
-    },
-    {
-      <span class="key">"ord"</span>: <span class="str">"alkohol"</span>,
-      <span class="key">"rimsuffiks"</span>: <span class="str">"u:l"</span>,
-      <span class="key">"tonelag"</span>: <span class="num">null</span>,
-      <span class="key">"stavelser"</span>: <span class="num">3</span>,
-      <span class="key">"frekvens"</span>: <span class="num">41.60</span>,
-      <span class="key">"score"</span>: <span class="num">1.0</span>
     }
   ],
-  <span class="key">"antall"</span>: <span class="num">2</span>,
-  <span class="key">"soketid_ms"</span>: <span class="num">1.9</span>,
+  <span class="key">"antall"</span>: <span class="num">1</span>,
   <span class="key">"dialekt"</span>: <span class="str">"&oslash;st"</span>
 }</pre>
 
@@ -317,7 +344,8 @@ pre .num { color: #60a5fa; }
 <p>
   <a href="https://www.nb.no/sprakbanken/ressurskatalog/oai-nb-no-sbr-56/">NB Uttale</a> (fonetikk, 5 dialekter) &bull;
   <a href="https://www.nb.no/sprakbanken/ressurskatalog/oai-nb-no-sbr-27/">Norwegian WordNet</a> (semantikk) &bull;
-  <a href="https://www.nb.no/sprakbanken/ressurskatalog/oai-nb-no-sbr-32/">Spr&aring;kbanken N-gram</a> (frekvens)
+  <a href="https://www.nb.no/sprakbanken/ressurskatalog/oai-nb-no-sbr-32/">Spr&aring;kbanken N-gram</a> (frekvens) &bull;
+  <a href="https://ordbokene.no">Bokm&aring;lsordboka</a> via <a href="https://ordbokapi.org">ordbokapi.org</a> (definisjoner)
 </p>
 
 </div>
