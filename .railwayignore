@@ -1,0 +1,15 @@
+# Railway ignore — keep .db files, exclude everything else large
+data/raw/
+data/processed/
+*.jsonl
+*.frk
+*.zip
+frontend/
+__pycache__/
+*.pyc
+*.egg-info/
+.pytest_cache/
+.claude/
+.vercel/
+node_modules/
+.DS_Store

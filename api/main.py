@@ -45,10 +45,17 @@ app = FastAPI(
     version="0.1.0",
 )
 
-# CORS — tillat alle opphav for frontend-utvikling
+# CORS — tillat produksjon + localhost
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "https://rimregisteret.no",
+        "https://www.rimregisteret.no",
+        "https://rimordbok.vercel.app",
+        "http://localhost:8000",
+        "http://localhost:8080",
+        "http://localhost:3000",
+    ],
     allow_methods=["GET"],
     allow_headers=["*"],
 )

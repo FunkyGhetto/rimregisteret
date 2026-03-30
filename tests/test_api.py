@@ -381,4 +381,8 @@ class TestEdgeCases:
 
     def test_cors_header(self):
         r = client.get("/api/v1/rim/sol", headers={"Origin": "http://localhost:3000"})
-        assert r.headers.get("access-control-allow-origin") == "*"
+        assert r.headers.get("access-control-allow-origin") == "http://localhost:3000"
+
+    def test_cors_production(self):
+        r = client.get("/api/v1/rim/sol", headers={"Origin": "https://rimregisteret.no"})
+        assert r.headers.get("access-control-allow-origin") == "https://rimregisteret.no"

@@ -6,7 +6,7 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://BACKEND-URL-PLACEHOLDER/api/:path*"
+      "destination": "https://compassionate-education-production-ee1f.up.railway.app/api/:path*"
     }
   ],
   "headers": [
