@@ -1,18 +1,61 @@
-# Rimordbok
+# Rimregisteret
 
-Norsk rimordbok.
+Norsk rimordbok og freestyle-treningsverktøy.
 
-## Installasjon
+**Live:** [rimregisteret.no](https://rimregisteret.no)
+
+## Funksjoner
+
+- **Fonetisk rimfinn** med 684K ord fra NB Uttale
+- **Perfekte rim**, nesten-rim, homofoner, konsonantmatching
+- **Synonymer og antonymer** fra Norwegian WordNet
+- **Rimklynger** — tilfeldig genererte treningssett for cypher-drill (par, bred, dyp)
+- **5 dialektregioner** — østnorsk, nordnorsk, trøndersk, vestnorsk, sørvestnorsk
+- **Ordfrekvens** — sortert etter bruksfrekvens fra 1.175 milliarder ord (Språkbanken)
+
+## Kjør lokalt
 
 ```bash
-pip install -e ".[dev]"
+pip install -e .
+
+# Bygg databasene (krever rådata fra Språkbanken):
+python scripts/parse_phonetics.py
+python scripts/build_rhyme_index.py
+python scripts/build_frequencies.py
+python scripts/parse_wordnet.py
+
+# Start API:
+uvicorn api.main:app --reload
+# Frontend: http://localhost:8000
 ```
 
-## Struktur
+## API
 
-- `data/` — rådata, prosessert data, SQLite-databaser
-- `scripts/` — datapipeline-scripts
-- `rimordbok/` — kjernelogikk (fonetikk, rim-motor, semantikk, DB)
-- `api/` — FastAPI-backend
-- `frontend/` — web-frontend
-- `tests/` — pytest-tester
+| Endepunkt | Beskrivelse |
+|-----------|-------------|
+| `GET /api/v1/rim/{ord}` | Perfekte rim |
+| `GET /api/v1/nestenrim/{ord}` | Nesten-rim med scoring |
+| `GET /api/v1/synonymer/{ord}` | Synonymer |
+| `GET /api/v1/antonymer/{ord}` | Antonymer |
+| `GET /api/v1/info/{ord}` | Fonetikk + rim + synonymer |
+| `GET /api/v1/rimklynger/par` | Rimklynger: par (2-og-2) |
+| `GET /api/v1/rimklynger/bred` | Rimklynger: bred (4-og-4) |
+| `GET /api/v1/rimklynger/dyp` | Rimklynger: dyp (alle ord) |
+| `GET /api/v1/sok?q={prefix}` | Autocomplete |
+
+Alle rim-endepunkter støtter `?dialekt=øst|vest|sørvest|midt|nord`.
+
+Swagger-dokumentasjon: [/docs](http://localhost:8000/docs)
+
+## Tester
+
+```bash
+pytest tests/ -v
+# 303 tester
+```
+
+## Datakilder
+
+- [NB Uttale](https://www.nb.no/sprakbanken/ressurskatalog/oai-nb-no-sbr-56/) — fonetisk leksikon (5 dialekter)
+- [Norwegian WordNet](https://www.nb.no/sprakbanken/ressurskatalog/oai-nb-no-sbr-27/) — semantiske relasjoner
+- [Språkbanken N-gram](https://www.nb.no/sprakbanken/ressurskatalog/oai-nb-no-sbr-32/) — ordfrekvenser

@@ -1,1 +1,176 @@
-"""Synonymer, antonymer og semantiske relasjoner."""
+from __future__ import annotations
+
+"""Semantic relations: synonyms, antonyms, and related words.
+
+Combines two data sources:
+- Norwegian WordNet Bokmål (CC BY 4.0): synset-based semantic relations
+- norwegian-synonyms (CC BY-NC-SA 4.0): direct synonym lists
+  NOTE: The synonym list is licensed for academic/non-commercial use only.
+
+All lookups go through the pre-built semantics.db (built by scripts/parse_wordnet.py).
+"""
+
+import sqlite3
+from pathlib import Path
+from typing import Optional
+
+DEFAULT_DB = Path(__file__).resolve().parent.parent / "data/db/semantics.db"
+RHYME_DB = Path(__file__).resolve().parent.parent / "data/db/rimindeks.db"
+
+
+def _connect(db_path: Optional[Path] = None) -> sqlite3.Connection:
+    path = db_path or DEFAULT_DB
+    conn = sqlite3.connect(str(path))
+    conn.row_factory = sqlite3.Row
+    return conn
+
+
+def _get_frequencies_batch(words: list, rhyme_db: Optional[Path] = None) -> dict:
+    """Look up word frequencies in batch from the rhyme index DB."""
+    path = rhyme_db or RHYME_DB
+    if not path.exists() or not words:
+        return {}
+    conn = sqlite3.connect(str(path))
+    # Use a single query with IN clause for batch lookup
+    placeholders = ",".join("?" for _ in words)
+    lower_words = [w.lower() for w in words]
+    cur = conn.execute(
+        f"SELECT LOWER(ord) as word_lower, MAX(frekvens) as freq "
+        f"FROM ord WHERE LOWER(ord) IN ({placeholders}) GROUP BY LOWER(ord)",
+        lower_words,
+    )
+    result = {}
+    for row in cur:
+        result[row[0]] = row[1] if row[1] else 0.0
+    conn.close()
+    return result
+
+
+def _query_relations(
+    word: str,
+    relation: str,
+    db_path: Optional[Path] = None,
+    rhyme_db: Optional[Path] = None,
+    maks: int = 50,
+) -> list[dict]:
+    """Query word relations, sorted by frequency."""
+    conn = _connect(db_path)
+    try:
+        cur = conn.execute(
+            "SELECT DISTINCT related_word, source FROM word_relations "
+            "WHERE LOWER(word) = ? AND relation = ?",
+            (word.lower(), relation),
+        )
+        rows = [(row["related_word"], row["source"]) for row in cur]
+
+        # Batch frequency lookup
+        freq_map = _get_frequencies_batch(
+            [r[0] for r in rows], rhyme_db
+        )
+
+        results = []
+        for related, source in rows:
+            results.append({
+                "ord": related,
+                "relasjon": relation,
+                "kilde": source,
+                "frekvens": freq_map.get(related.lower(), 0.0),
+            })
+
+        # Sort by frequency descending (common words first)
+        results.sort(key=lambda r: -r["frekvens"])
+        return results[:maks]
+    finally:
+        conn.close()
+
+
+def finn_synonymer(
+    ord: str,
+    db_path: Optional[Path] = None,
+    rhyme_db: Optional[Path] = None,
+    maks: int = 50,
+) -> list[dict]:
+    """Find synonyms for a word.
+
+    Combines WordNet synset co-membership and the synonym list.
+    Results sorted by word frequency (most common first).
+
+    Returns list of dicts: ord, relasjon, kilde, frekvens.
+    """
+    return _query_relations(ord, "synonym", db_path, rhyme_db, maks)
+
+
+def finn_antonymer(
+    ord: str,
+    db_path: Optional[Path] = None,
+    rhyme_db: Optional[Path] = None,
+    maks: int = 50,
+) -> list[dict]:
+    """Find antonyms for a word.
+
+    Note: Norwegian WordNet has limited antonym coverage (~58 pairs).
+    Returns list of dicts: ord, relasjon, kilde, frekvens.
+    """
+    return _query_relations(ord, "antonym", db_path, rhyme_db, maks)
+
+
+def finn_relaterte(
+    ord: str,
+    db_path: Optional[Path] = None,
+    rhyme_db: Optional[Path] = None,
+    maks: int = 50,
+) -> list[dict]:
+    """Find related words (hypernyms + hyponyms + related).
+
+    Returns list of dicts: ord, relasjon, kilde, frekvens.
+    """
+    conn = _connect(db_path)
+    try:
+        cur = conn.execute(
+            "SELECT DISTINCT related_word, relation, source FROM word_relations "
+            "WHERE LOWER(word) = ? AND relation IN ('hypernym', 'hyponym', 'related')",
+            (ord.lower(),),
+        )
+        rows = [(row["related_word"], row["relation"], row["source"]) for row in cur]
+
+        freq_map = _get_frequencies_batch([r[0] for r in rows], rhyme_db)
+
+        results = []
+        for related, relation, source in rows:
+            results.append({
+                "ord": related,
+                "relasjon": relation,
+                "kilde": source,
+                "frekvens": freq_map.get(related.lower(), 0.0),
+            })
+
+        results.sort(key=lambda r: -r["frekvens"])
+        return results[:maks]
+    finally:
+        conn.close()
+
+
+def finn_meronymer(
+    ord: str,
+    db_path: Optional[Path] = None,
+    rhyme_db: Optional[Path] = None,
+    maks: int = 50,
+) -> list[dict]:
+    """Find meronyms (parts of the given word).
+
+    Returns list of dicts: ord, relasjon, kilde, frekvens.
+    """
+    return _query_relations(ord, "meronym", db_path, rhyme_db, maks)
+
+
+def finn_holonymer(
+    ord: str,
+    db_path: Optional[Path] = None,
+    rhyme_db: Optional[Path] = None,
+    maks: int = 50,
+) -> list[dict]:
+    """Find holonyms (wholes that the given word is part of).
+
+    Returns list of dicts: ord, relasjon, kilde, frekvens.
+    """
+    return _query_relations(ord, "holonym", db_path, rhyme_db, maks)

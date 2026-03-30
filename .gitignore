@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+
+# Data (too large for GitHub — rebuild with scripts/)
+data/db/*.db
+data/processed/*.jsonl
+data/processed/*.log
+data/raw/
+
+# Environment
+.env
+.venv/
+node_modules/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Claude Code
+.claude/

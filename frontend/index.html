@@ -1,0 +1,1174 @@
+<!DOCTYPE html>
+<html lang="nb">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rimregisteret</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  color: #e5e5e5;
+  background: #0f0f0f;
+  line-height: 1.5;
+}
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 2rem 1rem 0.8rem;
+}
+.header-left {
+  text-align: left;
+}
+.header h1 {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: #e5e5e5;
+  margin-bottom: 0.3rem;
+}
+.header p {
+  color: #888888;
+  font-size: 0.9rem;
+}
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding-top: 0.5rem;
+}
+#dialekt {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 0.4rem 0.8rem;
+  background: transparent;
+  color: #888;
+  border: 1px solid #2a2a2a;
+  border-radius: 6px;
+  outline: none;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+  -webkit-appearance: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5'%3E%3Cpath d='M0 0l4 5 4-5z' fill='%23888'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.6rem center;
+  padding-right: 1.6rem;
+}
+#dialekt:hover { color: #e8920d; border-color: #e8920d; }
+#dialekt:focus { border-color: #e8920d; color: #e8920d; }
+#dialekt option { background: #1a1a1a; color: #e5e5e5; font-weight: 400; }
+.header-btn {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 0.4rem 0.8rem;
+  background: transparent;
+  color: #888;
+  border: 1px solid #2a2a2a;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+.header-btn:hover { color: #e8920d; border-color: #e8920d; }
+.header-btn.active {
+  color: #e8920d;
+  border-color: #e8920d;
+  background: rgba(232, 146, 13, 0.1);
+}
+.search-wrap {
+  max-width: 600px;
+  margin: 1.2rem auto 0;
+  position: relative;
+}
+#search {
+  width: 100%;
+  font-family: 'Inter', sans-serif;
+  font-size: 1.2rem;
+  padding: 0.7rem 1rem;
+  background: #1a1a1a;
+  color: #e5e5e5;
+  border: 2px solid #2a2a2a;
+  border-radius: 8px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+#search::placeholder { color: #666; }
+#search:focus { border-color: #e8920d; }
+.autocomplete {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: #1a1a1a;
+  border: 1px solid #2a2a2a;
+  border-top: none;
+  border-radius: 0 0 8px 8px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+  z-index: 10;
+  display: none;
+}
+.autocomplete div {
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  color: #e5e5e5;
+}
+.autocomplete div:hover, .autocomplete div.active {
+  background: #2a2a2a;
+}
+.tabs {
+  display: flex;
+  justify-content: center;
+  gap: 0;
+  max-width: 700px;
+  margin: 1.2rem auto 0;
+  border-bottom: 2px solid #2a2a2a;
+  flex-wrap: wrap;
+}
+.tab {
+  font-family: 'Space Grotesk', sans-serif;
+  padding: 0.5rem 1.1rem;
+  cursor: pointer;
+  font-size: 0.95rem;
+  color: #888888;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  transition: color 0.15s, border-color 0.15s;
+  background: none;
+  border-top: none;
+  border-left: none;
+  border-right: none;
+}
+.tab:hover { color: #e8920d; }
+.tab.active {
+  color: #e8920d;
+  border-bottom-color: #e8920d;
+  font-weight: 600;
+}
+/* --- Cluster controls --- */
+.cluster-controls {
+  max-width: 600px;
+  margin: 1rem auto 0;
+  display: none;
+}
+.cluster-controls.visible { display: block; }
+.cluster-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.7rem;
+}
+.cluster-row label {
+  font-size: 0.8rem;
+  color: #888;
+  min-width: 50px;
+}
+.modus-pills {
+  display: flex;
+  gap: 0;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid #2a2a2a;
+}
+.modus-pill {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 0.85rem;
+  font-weight: 500;
+  padding: 0.4rem 0.9rem;
+  cursor: pointer;
+  background: #1a1a1a;
+  color: #888;
+  border: none;
+  transition: background 0.15s, color 0.15s;
+}
+.modus-pill:not(:last-child) { border-right: 1px solid #2a2a2a; }
+.modus-pill:hover { color: #e5e5e5; }
+.modus-pill.active {
+  background: #e8920d;
+  color: #0f0f0f;
+  font-weight: 700;
+}
+.modus-desc {
+  font-size: 0.75rem;
+  color: #666;
+  margin-bottom: 0.5rem;
+  font-style: italic;
+}
+.cluster-select, .cluster-number {
+  font-family: 'Inter', sans-serif;
+  font-size: 0.85rem;
+  padding: 0.35rem 0.5rem;
+  background: #1a1a1a;
+  color: #e5e5e5;
+  border: 1px solid #2a2a2a;
+  border-radius: 6px;
+  outline: none;
+}
+.cluster-select:focus, .cluster-number:focus { border-color: #e8920d; }
+.cluster-number { width: 60px; text-align: center; }
+.generate-btn {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 1rem;
+  font-weight: 700;
+  width: 100%;
+  padding: 0.7rem 1.2rem;
+  background: #e8920d;
+  color: #0f0f0f;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s;
+  margin-top: 0.2rem;
+}
+.generate-btn:hover { background: #f5a623; }
+.generate-btn:active { transform: scale(0.98); }
+/* --- Cluster result cards --- */
+.cluster-card {
+  background: #1a1a1a;
+  border: 1px solid #2a2a2a;
+  border-radius: 8px;
+  padding: 0.8rem 1.2rem;
+  margin-top: 0.6rem;
+}
+.cluster-words {
+  font-size: 1.2rem;
+  line-height: 1.8;
+}
+.cluster-words a {
+  color: #e8920d;
+  text-decoration: none;
+  cursor: pointer;
+  transition: color 0.1s;
+}
+.cluster-words a:hover { color: #f5a623; }
+.cluster-suffix {
+  font-size: 0.75rem;
+  color: #555;
+  font-style: italic;
+  margin-top: 0.25rem;
+}
+.status {
+  text-align: center;
+  padding: 1rem;
+  color: #888888;
+  font-size: 0.9rem;
+}
+.results {
+  max-width: 700px;
+  margin: 0 auto;
+  padding: 0 1rem 3rem;
+}
+.syl-group {
+  margin-top: 1.2rem;
+}
+.syl-group h3 {
+  font-size: 0.85rem;
+  color: #666666;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.4rem;
+  padding-bottom: 0.2rem;
+  border-bottom: 1px solid #2a2a2a;
+}
+.word-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem 0.6rem;
+}
+.word-item {
+  display: inline-block;
+  cursor: pointer;
+  color: #e8920d;
+  text-decoration: none;
+  padding: 0.15rem 0.3rem;
+  border-radius: 4px;
+  font-size: 0.95rem;
+  transition: background 0.1s, color 0.1s;
+}
+.word-item:hover, .word-item:focus {
+  background: #2a2a2a;
+  color: #f5a623;
+  outline: none;
+}
+.word-item .tone {
+  font-size: 0.7rem;
+  color: #666666;
+  margin-left: 0.1rem;
+}
+.word-item .score {
+  font-size: 0.7rem;
+  color: #555555;
+  margin-left: 0.15rem;
+}
+.info-card {
+  background: #1a1a1a;
+  border: 1px solid #2a2a2a;
+  border-radius: 8px;
+  padding: 1rem 1.2rem;
+  margin-top: 1rem;
+}
+.info-card h3 {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 0.9rem;
+  color: #e5e5e5;
+  margin-bottom: 0.5rem;
+}
+.info-card .ipa { font-size: 1.1rem; font-family: "Lucida Sans Unicode", "DejaVu Sans", sans-serif; color: #e8920d; }
+.info-card .detail { font-size: 0.85rem; color: #888888; margin-top: 0.3rem; }
+.meta-row {
+  display: flex;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+  margin-top: 0.5rem;
+}
+.meta-row span {
+  font-size: 0.85rem;
+  color: #888888;
+}
+.meta-row span b { color: #e5e5e5; }
+.footer {
+  text-align: center;
+  padding: 2rem 1rem;
+  color: #555555;
+  font-size: 0.8rem;
+}
+@media (max-width: 500px) {
+  .header { padding: 1.5rem 1rem 0.6rem; flex-wrap: wrap; gap: 0.3rem; }
+  .header h1 { font-size: 1.4rem; }
+  #dialekt { font-size: 0.8rem; padding: 0.3rem 0.6rem; }
+  #search { font-size: 1rem; padding: 0.6rem 0.8rem; }
+  .tab { padding: 0.4rem 0.7rem; font-size: 0.85rem; }
+  .modus-pill { padding: 0.35rem 0.6rem; font-size: 0.8rem; }
+  .cluster-row { gap: 0.4rem; }
+  .generate-btn { font-size: 0.9rem; padding: 0.6rem 1rem; }
+}
+/* --- Learn section --- */
+.learn-content {
+  max-width: 700px;
+  margin: 0 auto;
+  padding: 0 1rem 3rem;
+  display: none;
+}
+.learn-content.visible { display: block; }
+.learn-section {
+  background: #1a1a1a;
+  border: 1px solid #2a2a2a;
+  border-radius: 8px;
+  padding: 1.2rem 1.4rem;
+  margin-top: 1rem;
+}
+.learn-section h2 {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #e8920d;
+  margin-bottom: 0.6rem;
+}
+.learn-section h3 {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #e5e5e5;
+  margin: 0.8rem 0 0.3rem;
+}
+.learn-section p, .learn-section li {
+  font-size: 0.88rem;
+  color: #ccc;
+  line-height: 1.6;
+}
+.learn-section ul {
+  list-style: none;
+  padding-left: 0;
+}
+.learn-section li {
+  padding-left: 1.1rem;
+  position: relative;
+  margin-bottom: 0.25rem;
+}
+.learn-section li::before {
+  content: '\25B8';
+  position: absolute;
+  left: 0;
+  color: #e8920d;
+}
+.learn-highlight {
+  background: rgba(232, 146, 13, 0.08);
+  border-left: 3px solid #e8920d;
+  padding: 0.7rem 1rem;
+  border-radius: 0 6px 6px 0;
+  margin: 0.6rem 0;
+  font-size: 0.88rem;
+  color: #e5e5e5;
+}
+.learn-levels {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.8rem;
+  margin-top: 0.6rem;
+}
+.learn-level {
+  background: #0f0f0f;
+  border: 1px solid #2a2a2a;
+  border-radius: 6px;
+  padding: 0.8rem;
+}
+.learn-level-tag {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #e8920d;
+  margin-bottom: 0.3rem;
+}
+.learn-level p {
+  font-size: 0.8rem;
+  color: #aaa;
+  margin-bottom: 0.2rem;
+}
+.learn-level .goal {
+  font-size: 0.75rem;
+  color: #666;
+  font-style: italic;
+  margin-top: 0.3rem;
+}
+.learn-try-btn {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.3rem 0.7rem;
+  background: transparent;
+  color: #e8920d;
+  border: 1px solid #e8920d;
+  border-radius: 4px;
+  cursor: pointer;
+  margin-top: 0.4rem;
+  transition: background 0.15s, color 0.15s;
+}
+.learn-try-btn:hover {
+  background: #e8920d;
+  color: #0f0f0f;
+}
+.learn-quote {
+  padding: 0.6rem 0.8rem 0.6rem 1rem;
+  position: relative;
+  margin: 0.5rem 0;
+}
+.learn-quote::before {
+  content: '\201C';
+  font-size: 2rem;
+  color: #e8920d;
+  position: absolute;
+  left: -0.1rem;
+  top: 0.1rem;
+  line-height: 1;
+}
+.learn-quote .quote-name {
+  font-weight: 600;
+  color: #e8920d;
+  font-size: 0.85rem;
+}
+.learn-quote .quote-text {
+  font-size: 0.83rem;
+  color: #bbb;
+  margin-top: 0.15rem;
+}
+.learn-sources {
+  font-size: 0.7rem;
+  color: #555;
+  margin-top: 0.8rem;
+  border-top: 1px solid #2a2a2a;
+  padding-top: 0.5rem;
+}
+.density-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0.3rem 0;
+  font-size: 0.8rem;
+}
+.density-bar .bar-label {
+  min-width: 100px;
+  color: #aaa;
+}
+.density-bar .bar-track {
+  flex: 1;
+  height: 6px;
+  background: #2a2a2a;
+  border-radius: 3px;
+  overflow: hidden;
+}
+.density-bar .bar-fill {
+  height: 100%;
+  background: #e8920d;
+  border-radius: 3px;
+}
+.density-bar .bar-val {
+  min-width: 35px;
+  text-align: right;
+  color: #888;
+}
+@media (max-width: 600px) {
+  .learn-levels {
+    grid-template-columns: 1fr;
+  }
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <h1>Rimregisteret</h1>
+    <p>Norsk rimordbok og treningsverktøy</p>
+  </div>
+  <div class="header-right">
+    <button class="header-btn" id="laerBtn">Lær</button>
+    <select id="dialekt">
+      <option value="øst">Østnorsk</option>
+      <option value="nord">Nordnorsk</option>
+      <option value="midt">Trøndersk</option>
+      <option value="vest">Vestnorsk</option>
+      <option value="sørvest">Sørvestnorsk</option>
+    </select>
+  </div>
+</div>
+
+<div class="search-wrap">
+  <input type="text" id="search" placeholder="Skriv et ord..." autocomplete="off" autofocus>
+  <div class="autocomplete" id="autocomplete"></div>
+</div>
+
+<div class="tabs" id="tabs">
+  <button class="tab active" data-tab="rim">Rim</button>
+  <button class="tab" data-tab="nestenrim">Nesten-rim</button>
+  <button class="tab" data-tab="synonymer">Synonymer</button>
+  <button class="tab" data-tab="antonymer">Antonymer</button>
+  <button class="tab" data-tab="homofoner">Homofoner</button>
+  <button class="tab" data-tab="rimklynger">Rimklynger</button>
+</div>
+
+<div class="cluster-controls" id="clusterControls">
+  <div class="cluster-row">
+    <label>Modus</label>
+    <div class="modus-pills" id="modusPills">
+      <button class="modus-pill active" data-modus="par">Par (2-og-2)</button>
+      <button class="modus-pill" data-modus="bred">Bred (4-og-4)</button>
+      <button class="modus-pill" data-modus="dyp">Dyp</button>
+    </div>
+  </div>
+  <div class="modus-desc" id="modusDesc">Tilfeldige rimpar &mdash; tren overganger</div>
+  <div class="cluster-row">
+    <label>Stavelser</label>
+    <select class="cluster-select" id="clusterSyl">
+      <option value="">Alle</option>
+      <option value="1">1 stavelse</option>
+      <option value="2">2 stavelser</option>
+      <option value="3">3 stavelser</option>
+      <option value="4">4+ stavelser</option>
+    </select>
+    <span id="antallWrap">
+      <label>Antall</label>
+      <input type="number" class="cluster-number" id="clusterAntall" value="10" min="1" max="50">
+    </span>
+  </div>
+  <button class="generate-btn" id="generateBtn">&#x27F3; Generer nye klynger</button>
+</div>
+
+<div class="status" id="status"></div>
+<div class="results" id="results"></div>
+
+<div class="learn-content" id="learnContent">
+
+  <div class="learn-section">
+    <h2>Hvorfor rimklynger fungerer</h2>
+    <p>Freestyle-rap krever at hjernen henter rimord raskere enn du kan tenke bevisst. En fMRI-studie ved Johns Hopkins viste at erfarne freestylere deaktiverer den bevisste kontroll-delen av hjernen (dorsolateral prefrontal cortex) mens de rapper, og i stedet bruker bilateral prosessering &mdash; begge hjernehalvdeler jobber sammen.</p>
+    <div class="learn-highlight">
+      Rimklynge-trening bygger de nevrale banene som gjør rimhenting automatisk. Jo flere rimfamilier du driller, jo mindre må du tenke &mdash; ordene bare kommer.
+    </div>
+  </div>
+
+  <div class="learn-section">
+    <h2>Slik trener du</h2>
+    <div class="learn-levels">
+
+      <div class="learn-level">
+        <div class="learn-level-tag">Nybegynner</div>
+        <p>1-stavelsesord, par-klynger (2-og-2)</p>
+        <p>10 par per økt, 15 min daglig over en beat</p>
+        <div class="goal">Mål: lær rimfamilier, bygg grunnvokabular</div>
+        <button class="learn-try-btn" data-try="par,1,10">Prøv nå</button>
+      </div>
+
+      <div class="learn-level">
+        <div class="learn-level-tag">Middels</div>
+        <p>Bland 1- og 2-stavelser, brede klynger (4-og-4)</p>
+        <p>30 min daglig, tren overganger mellom klynger</p>
+        <div class="goal">Mål: flyt mellom rimfamilier uten pauser</div>
+        <button class="learn-try-btn" data-try="bred,,10">Prøv nå</button>
+      </div>
+
+      <div class="learn-level">
+        <div class="learn-level-tag">Avansert</div>
+        <p>3+ stavelser, nesten-rim, bland par og brede</p>
+        <p>Daglig freestyle, klynger som oppvarming</p>
+        <div class="goal">Mål: automatisert rimhenting, fokus på narrativ</div>
+        <button class="learn-try-btn" data-try="bred,3,10">Prøv nå</button>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="learn-section">
+    <h2>Teknikker fra proffene</h2>
+
+    <div class="learn-quote">
+      <div class="quote-name">Eminem &mdash; "Stacking ammo"</div>
+      <div class="quote-text">Skriv ord stavelse for stavelse, linje opp rimende stavelser visuelt. Bygg opp et arsenal av multi-stavelsesrim du kan dra frem under battle.</div>
+    </div>
+
+    <div class="learn-quote">
+      <div class="quote-name">Juice WRLD &mdash; Freehand</div>
+      <div class="quote-text">Aldri skriv, bare freestyle. Volum er nøkkelen: 5&ndash;10 økter daglig. Ha 3&ndash;4 fallback-temaer du kan falle tilbake på når du går tom.</div>
+    </div>
+
+    <div class="learn-quote">
+      <div class="quote-name">Battle-rappere &mdash; Klynge-drill</div>
+      <div class="quote-text">10 rimklynger à 4 ord, drill over beat. Aldri bruk samme sett to dager på rad &mdash; tving hjernen til å koble nye baner.</div>
+    </div>
+  </div>
+
+  <div class="learn-section">
+    <h2>Rimdensitet</h2>
+    <p>Rimdensitet er andelen stavelser i en tekst som rimer med en annen stavelse. Høyere densitet = mer komplekst rimarbeid.</p>
+    <div style="margin-top:0.6rem">
+      <div class="density-bar">
+        <span class="bar-label">MF DOOM</span>
+        <span class="bar-track"><span class="bar-fill" style="width:86%"></span></span>
+        <span class="bar-val">~43%</span>
+      </div>
+      <div class="density-bar">
+        <span class="bar-label">Eminem</span>
+        <span class="bar-track"><span class="bar-fill" style="width:76%"></span></span>
+        <span class="bar-val">~38%</span>
+      </div>
+      <div class="density-bar">
+        <span class="bar-label">Gjennomsnitt</span>
+        <span class="bar-track"><span class="bar-fill" style="width:55%"></span></span>
+        <span class="bar-val">~27%</span>
+      </div>
+    </div>
+    <p style="margin-top:0.5rem;font-size:0.8rem;color:#888">Tren med brede klynger for å øke rimdensiteten din &mdash; jo flere rimord du har i hodet, jo lettere er det å stable dem tett.</p>
+  </div>
+
+  <div class="learn-section">
+    <h2>Norsk-spesifikke tips</h2>
+    <ul>
+      <li><b>Bøyningsformer utvider rimfamilier:</b> hus/mus &rarr; huset/muset &rarr; husene/musene. Tre for én.</li>
+      <li><b>Tonelag:</b> I skrift spiller det ingen rolle, men i freestyle merkes forskjellen. "bønder" (tonelag 1) og "bønner" (tonelag 2) rimer visuelt, men høres litt annerledes ut.</li>
+      <li><b>Retroflekser:</b> "barn"/"garn" rimer perfekt i østnorsk (begge har /ɑːɳ/), men i vestnorsk uttales r-en separat. Bruk dialektvelgeren for å sjekke.</li>
+      <li><b>Norsk har færre enstavelsesord enn engelsk.</b> Kompenser ved å bruke flerstavelsesrim og nesten-rim &mdash; det er ofte mer imponerende uansett.</li>
+    </ul>
+  </div>
+
+  <div class="learn-sources">
+    Kilder: Liu et al. (2012), "Neural Correlates of Lyrical Improvisation", Scientific Reports &bull;
+    Eminem (2014), "The Way I Am" &bull;
+    Malmi &amp; Takala (2016), "DopeLearning: A Computational Approach to Rap Lyrics Generation", arXiv &bull;
+    Hirjee &amp; Brown (2010), "Using automated rhyme detection to characterize rhyming style in rap music", Empirical Musicology Review
+  </div>
+
+</div>
+
+<div class="footer">Rimregisteret &mdash; Data fra NB Uttale, Norwegian WordNet og Sprakbanken N-gram.</div>
+
+<script>
+const API = (function() {
+  if (location.protocol === 'file:') return 'http://localhost:8000';
+  const port = location.port;
+  if (port && port !== '8000') return `${location.protocol}//${location.hostname}:8000`;
+  return '';
+})();
+
+const searchEl = document.getElementById('search');
+const acEl = document.getElementById('autocomplete');
+const tabsEl = document.getElementById('tabs');
+const statusEl = document.getElementById('status');
+const resultsEl = document.getElementById('results');
+const clusterControls = document.getElementById('clusterControls');
+const modusPills = document.getElementById('modusPills');
+const modusDesc = document.getElementById('modusDesc');
+const clusterSyl = document.getElementById('clusterSyl');
+const clusterAntall = document.getElementById('clusterAntall');
+const antallWrap = document.getElementById('antallWrap');
+const generateBtn = document.getElementById('generateBtn');
+const dialektSelect = document.getElementById('dialekt');
+const learnContent = document.getElementById('learnContent');
+const laerBtn = document.getElementById('laerBtn');
+const searchWrap = document.querySelector('.search-wrap');
+
+let currentTab = 'rim';
+let currentModus = 'par';
+let currentDialekt = 'øst';
+let learnActive = false;
+let debounceTimer = null;
+let acIndex = -1;
+let acItems = [];
+
+const MODUS_DESCS = {
+  par: 'Tilfeldige rimpar \u2014 tren overganger',
+  bred: '4 ord per klynge \u2014 tren bredde',
+  dyp: '\u00c9n rimfamilie, alle ord \u2014 tren dybde',
+};
+
+// --- URL state ---
+function readURL() {
+  const params = new URLSearchParams(location.search);
+  const d = params.get('dialekt');
+  if (d && ['øst','nord','midt','vest','sørvest'].includes(d)) {
+    currentDialekt = d;
+    dialektSelect.value = d;
+  }
+  const path = location.pathname.replace(/^\//, '');
+  if (path && path !== 'index.html') {
+    searchEl.value = decodeURIComponent(path);
+    doSearch(searchEl.value);
+  }
+}
+
+function pushURL(word) {
+  const url = '/' + encodeURIComponent(word) + dialektURLParam();
+  if (location.pathname + location.search !== '/' + encodeURIComponent(word) + dialektURLParam()) {
+    history.pushState(null, '', url);
+  }
+  document.title = word + ' \u2014 Rimregisteret';
+}
+
+function dialektURLParam() {
+  return currentDialekt !== 'øst' ? `?dialekt=${encodeURIComponent(currentDialekt)}` : '';
+}
+
+window.addEventListener('popstate', readURL);
+
+// --- Tab switching ---
+function updateTabUI() {
+  const isCluster = currentTab === 'rimklynger';
+  clusterControls.classList.toggle('visible', isCluster && !learnActive);
+  learnContent.classList.toggle('visible', learnActive);
+  laerBtn.classList.toggle('active', learnActive);
+  searchWrap.style.display = learnActive ? 'none' : '';
+  statusEl.style.display = learnActive ? 'none' : '';
+  resultsEl.style.display = learnActive ? 'none' : '';
+  searchEl.placeholder = isCluster ? 'Velg et ord (valgfritt)...' : 'Skriv et ord...';
+}
+
+tabsEl.addEventListener('click', e => {
+  const tab = e.target.closest('.tab');
+  if (!tab) return;
+  tabsEl.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  tab.classList.add('active');
+  currentTab = tab.dataset.tab;
+  learnActive = false;
+  updateTabUI();
+  if (currentTab === 'rimklynger') {
+    statusEl.textContent = '';
+    resultsEl.innerHTML = '';
+  } else {
+    const word = searchEl.value.trim();
+    if (word) doSearch(word);
+  }
+});
+
+// --- Modus pills ---
+modusPills.addEventListener('click', e => {
+  const pill = e.target.closest('.modus-pill');
+  if (!pill) return;
+  modusPills.querySelectorAll('.modus-pill').forEach(p => p.classList.remove('active'));
+  pill.classList.add('active');
+  currentModus = pill.dataset.modus;
+  modusDesc.innerHTML = MODUS_DESCS[currentModus];
+  antallWrap.style.display = currentModus === 'dyp' ? 'none' : '';
+});
+
+// --- Lær button ---
+laerBtn.addEventListener('click', () => {
+  learnActive = !learnActive;
+  updateTabUI();
+});
+
+// --- Dialect selector ---
+dialektSelect.addEventListener('change', () => {
+  currentDialekt = dialektSelect.value;
+  const word = searchEl.value.trim();
+  if (currentTab === 'rimklynger' || learnActive) {
+    // Don't auto-regenerate
+  } else if (word) {
+    doSearch(word);
+  }
+});
+
+// --- Generate button ---
+generateBtn.addEventListener('click', () => doGenerateCluster());
+
+// --- "Prøv nå" buttons in learn section ---
+function switchToClusterTab(modus, stavelser, antall) {
+  // Switch to Rimklynger tab, close learn
+  learnActive = false;
+  tabsEl.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  tabsEl.querySelector('[data-tab="rimklynger"]').classList.add('active');
+  currentTab = 'rimklynger';
+  updateTabUI();
+  // Set modus
+  modusPills.querySelectorAll('.modus-pill').forEach(p => p.classList.remove('active'));
+  const pill = modusPills.querySelector(`[data-modus="${modus}"]`);
+  if (pill) pill.classList.add('active');
+  currentModus = modus;
+  modusDesc.innerHTML = MODUS_DESCS[modus];
+  antallWrap.style.display = modus === 'dyp' ? 'none' : '';
+  // Set filters
+  clusterSyl.value = stavelser || '';
+  clusterAntall.value = antall || 10;
+  searchEl.value = '';
+  // Auto-generate
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+  doGenerateCluster();
+}
+document.getElementById('learnContent').addEventListener('click', e => {
+  const btn = e.target.closest('.learn-try-btn');
+  if (!btn) return;
+  const [modus, stavelser, antall] = btn.dataset.try.split(',');
+  switchToClusterTab(modus, stavelser, parseInt(antall) || 10);
+});
+
+// --- Autocomplete ---
+searchEl.addEventListener('input', () => {
+  clearTimeout(debounceTimer);
+  const q = searchEl.value.trim();
+  if (q.length < 1) { hideAC(); return; }
+  debounceTimer = setTimeout(() => fetchAC(q), 200);
+});
+
+searchEl.addEventListener('keydown', e => {
+  if (acEl.style.display === 'block') {
+    if (e.key === 'ArrowDown') { e.preventDefault(); moveAC(1); return; }
+    if (e.key === 'ArrowUp') { e.preventDefault(); moveAC(-1); return; }
+    if (e.key === 'Enter' && acIndex >= 0) {
+      e.preventDefault();
+      selectAC(acItems[acIndex]);
+      return;
+    }
+    if (e.key === 'Escape') { hideAC(); return; }
+  }
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    hideAC();
+    if (currentTab === 'rimklynger') {
+      doGenerateCluster();
+    } else {
+      const word = searchEl.value.trim();
+      if (word) doSearch(word);
+    }
+  }
+});
+
+document.addEventListener('click', e => {
+  if (!acEl.contains(e.target) && e.target !== searchEl) hideAC();
+});
+
+async function fetchAC(q) {
+  try {
+    const r = await fetch(`${API}/api/v1/sok?q=${encodeURIComponent(q)}&maks=8`);
+    const data = await r.json();
+    acItems = data.resultater || [];
+    if (acItems.length === 0) { hideAC(); return; }
+    acIndex = -1;
+    acEl.innerHTML = acItems.map(w =>
+      `<div data-word="${esc(w)}">${esc(w)}</div>`
+    ).join('');
+    acEl.style.display = 'block';
+    acEl.querySelectorAll('div').forEach(div => {
+      div.addEventListener('click', () => selectAC(div.dataset.word));
+    });
+  } catch { hideAC(); }
+}
+
+function moveAC(dir) {
+  const divs = acEl.querySelectorAll('div');
+  if (!divs.length) return;
+  acIndex = Math.max(-1, Math.min(divs.length - 1, acIndex + dir));
+  divs.forEach((d, i) => d.classList.toggle('active', i === acIndex));
+  if (acIndex >= 0) searchEl.value = acItems[acIndex];
+}
+
+function selectAC(word) {
+  searchEl.value = word;
+  hideAC();
+  if (currentTab === 'rimklynger') {
+    // Don't auto-generate, just fill the field
+  } else {
+    doSearch(word);
+  }
+}
+
+function hideAC() {
+  acEl.style.display = 'none';
+  acIndex = -1;
+}
+
+// --- Cluster generation ---
+async function doGenerateCluster() {
+  statusEl.textContent = 'Genererer...';
+  resultsEl.innerHTML = '';
+  generateBtn.disabled = true;
+  generateBtn.textContent = 'Genererer...';
+
+  const word = searchEl.value.trim();
+  const syl = clusterSyl.value;
+  const antall = parseInt(clusterAntall.value) || 10;
+
+  let url = `${API}/api/v1/rimklynger/${currentModus}?min_frekvens=1.0&dialekt=${encodeURIComponent(currentDialekt)}`;
+  if (word) url += `&ord=${encodeURIComponent(word)}`;
+  if (syl) url += `&stavelser=${syl}`;
+  if (currentModus !== 'dyp') url += `&antall=${antall}`;
+
+  try {
+    const r = await fetch(url);
+    const data = await r.json();
+
+    generateBtn.disabled = false;
+    generateBtn.textContent = '\u27F3 Generer nye klynger';
+
+    const klynger = data.klynger || [];
+    const ms = data.soketid_ms;
+
+    if (klynger.length === 0) {
+      statusEl.textContent = word
+        ? `Ingen rimklynger funnet for "${word}"`
+        : 'Ingen rimklynger funnet med disse filtrene';
+      return;
+    }
+
+    const totalWords = klynger.reduce((s, k) => s + k.ord.length, 0);
+    statusEl.textContent = `${klynger.length} klynge${klynger.length > 1 ? 'r' : ''}, ${totalWords} ord (${ms} ms)`;
+
+    renderClusters(klynger);
+  } catch (err) {
+    generateBtn.disabled = false;
+    generateBtn.textContent = '\u27F3 Generer nye klynger';
+    statusEl.textContent = 'Feil: Kunne ikke koble til API-et.';
+    console.error(err);
+  }
+}
+
+function renderClusters(klynger) {
+  for (const klynge of klynger) {
+    const card = document.createElement('div');
+    card.className = 'cluster-card';
+
+    const wordsDiv = document.createElement('div');
+    wordsDiv.className = 'cluster-words';
+
+    const separator = currentModus === 'par' ? ' / ' : currentModus === 'bred' ? ', ' : ' \u00b7 ';
+
+    klynge.ord.forEach((w, i) => {
+      if (i > 0) {
+        const sep = document.createElement('span');
+        sep.style.color = '#555';
+        sep.textContent = separator;
+        wordsDiv.appendChild(sep);
+      }
+      const a = document.createElement('a');
+      a.textContent = w;
+      a.addEventListener('click', e => {
+        e.preventDefault();
+        // Switch to Rim tab and search
+        tabsEl.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        tabsEl.querySelector('[data-tab="rim"]').classList.add('active');
+        currentTab = 'rim';
+        updateTabUI();
+        searchEl.value = w;
+        doSearch(w);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      });
+      wordsDiv.appendChild(a);
+    });
+
+    card.appendChild(wordsDiv);
+
+    const suffixDiv = document.createElement('div');
+    suffixDiv.className = 'cluster-suffix';
+    suffixDiv.textContent = '/' + klynge.rimsuffiks + '/';
+    card.appendChild(suffixDiv);
+
+    resultsEl.appendChild(card);
+  }
+}
+
+// --- Standard search ---
+async function doSearch(word) {
+  pushURL(word);
+  statusEl.textContent = 'Laster...';
+  resultsEl.innerHTML = '';
+
+  const endpoint = {
+    rim: 'rim', nestenrim: 'nestenrim', synonymer: 'synonymer',
+    antonymer: 'antonymer', homofoner: 'homofoner'
+  }[currentTab] || 'rim';
+
+  try {
+    const dParam = `&dialekt=${encodeURIComponent(currentDialekt)}`;
+    const [resData, infoData] = await Promise.all([
+      fetch(`${API}/api/v1/${endpoint}/${encodeURIComponent(word)}?maks=500${dParam}`).then(r => r.json()),
+      fetch(`${API}/api/v1/info/${encodeURIComponent(word)}?x=1${dParam}`).then(r => r.json()),
+    ]);
+
+    const items = resData.resultater || [];
+    const ms = resData.soketid_ms;
+
+    if (items.length === 0) {
+      statusEl.textContent = `Ingen ${tabLabel()} funnet for "${word}"`;
+      renderInfo(infoData);
+      return;
+    }
+
+    statusEl.textContent = `${items.length} ${tabLabel()} for "${word}" (${ms} ms)`;
+    renderInfo(infoData);
+
+    if (currentTab === 'synonymer' || currentTab === 'antonymer') {
+      renderFlat(items);
+    } else {
+      renderGrouped(items);
+    }
+  } catch (err) {
+    statusEl.textContent = 'Feil: Kunne ikke koble til API-et. Kjorer det?';
+    console.error(err);
+  }
+}
+
+function tabLabel() {
+  return { rim: 'rim', nestenrim: 'nesten-rim', synonymer: 'synonymer',
+           antonymer: 'antonymer', homofoner: 'homofoner' }[currentTab] || 'resultater';
+}
+
+// --- Rendering ---
+function renderInfo(data) {
+  if (!data || !data.fonetikk) return;
+  const f = data.fonetikk;
+  const card = document.createElement('div');
+  card.className = 'info-card';
+  card.innerHTML = `
+    <h3>${esc(data.ord)}</h3>
+    <div class="ipa">/${esc(f.ipa_ren)}/</div>
+    <div class="meta-row">
+      <span><b>Stavelser:</b> ${f.stavelser}</span>
+      ${f.tonelag != null ? `<span><b>Tonelag:</b> ${toneIcon(f.tonelag)} ${f.tonelag}</span>` : ''}
+      <span><b>Rimsuffiks:</b> ${esc(f.rimsuffiks)}</span>
+      ${f.g2p ? '<span style="color:#e8920d">G2P (estimert)</span>' : '<span style="color:#4ade80">Leksikon</span>'}
+    </div>
+  `;
+  resultsEl.appendChild(card);
+}
+
+function renderGrouped(items) {
+  const groups = {};
+  for (const item of items) {
+    const syl = item.stavelser ?? '?';
+    if (!groups[syl]) groups[syl] = [];
+    groups[syl].push(item);
+  }
+
+  const sortedKeys = Object.keys(groups).sort((a, b) => Number(a) - Number(b));
+  for (const syl of sortedKeys) {
+    const g = document.createElement('div');
+    g.className = 'syl-group';
+    g.innerHTML = `<h3>${syl} stavelse${syl === '1' ? '' : 'r'}</h3>`;
+    const list = document.createElement('div');
+    list.className = 'word-list';
+    for (const item of groups[syl]) {
+      list.appendChild(makeWordEl(item));
+    }
+    g.appendChild(list);
+    resultsEl.appendChild(g);
+  }
+}
+
+function renderFlat(items) {
+  const list = document.createElement('div');
+  list.className = 'word-list';
+  list.style.marginTop = '1rem';
+  for (const item of items) {
+    const el = document.createElement('a');
+    el.className = 'word-item';
+    el.href = '#';
+    el.tabIndex = 0;
+    el.textContent = item.ord;
+    if (item.kilde) {
+      const src = document.createElement('span');
+      src.className = 'score';
+      src.textContent = item.kilde === 'wordnet' ? 'WN' : '';
+      el.appendChild(src);
+    }
+    el.addEventListener('click', e => { e.preventDefault(); searchWord(item.ord); });
+    el.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); searchWord(item.ord); }});
+    list.appendChild(el);
+  }
+  resultsEl.appendChild(list);
+}
+
+function makeWordEl(item) {
+  const el = document.createElement('a');
+  el.className = 'word-item';
+  el.href = '#';
+  el.tabIndex = 0;
+  el.textContent = item.ord;
+
+  if (item.tonelag != null) {
+    const tone = document.createElement('span');
+    tone.className = 'tone';
+    tone.textContent = toneIcon(item.tonelag);
+    el.appendChild(tone);
+  }
+  if (item.score != null && item.score < 1.0) {
+    const sc = document.createElement('span');
+    sc.className = 'score';
+    sc.textContent = item.score.toFixed(1);
+    el.appendChild(sc);
+  }
+  el.addEventListener('click', e => { e.preventDefault(); searchWord(item.ord); });
+  el.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); searchWord(item.ord); }});
+  return el;
+}
+
+function searchWord(word) {
+  searchEl.value = word;
+  hideAC();
+  doSearch(word);
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function toneIcon(t) {
+  if (t === 1) return '\u2197';
+  if (t === 2) return '\u2197\u2198';
+  return '';
+}
+
+function esc(s) {
+  if (!s) return '';
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+// Init
+readURL();
+</script>
+</body>
+</html>
