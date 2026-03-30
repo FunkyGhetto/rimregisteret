@@ -9,170 +9,116 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;700&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-body {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-  color: #e5e5e5;
-  background: #0f0f0f;
-  line-height: 1.6;
-}
+body { font-family: 'Inter', sans-serif; color: #e5e5e5; background: #0f0f0f; line-height: 1.6; }
 a { color: #e8920d; text-decoration: none; }
 a:hover { color: #f5a623; }
-.page {
-  max-width: 800px;
-  margin: 0 auto;
-  padding: 2rem 1rem 4rem;
-}
-.back {
-  font-size: 0.85rem;
-  color: #888;
-  margin-bottom: 1.5rem;
-  display: inline-block;
-}
+code { font-family: 'JetBrains Mono', monospace; font-size: 0.85em; background: #1a1a1a; padding: 0.1em 0.35em; border-radius: 3px; }
+
+/* Layout */
+.layout { display: flex; max-width: 1100px; margin: 0 auto; }
+.sidebar { width: 220px; position: sticky; top: 0; height: 100vh; overflow-y: auto; padding: 1.5rem 0 2rem 1rem; flex-shrink: 0; border-right: 1px solid #1a1a1a; }
+.sidebar h3 { font-family: 'Space Grotesk', sans-serif; font-size: 0.75rem; color: #555; text-transform: uppercase; letter-spacing: 0.05em; margin: 1rem 0 0.3rem; }
+.sidebar a { display: block; font-size: 0.8rem; color: #888; padding: 0.15rem 0; }
+.sidebar a:hover { color: #e8920d; }
+.sidebar .s-method { font-family: 'JetBrains Mono', monospace; font-size: 0.65rem; color: #e8920d; margin-right: 0.3rem; }
+.main { flex: 1; min-width: 0; padding: 2rem 1.5rem 4rem; }
+
+/* Typography */
+h1 { font-family: 'Space Grotesk', sans-serif; font-size: 2rem; font-weight: 700; margin-bottom: 0.3rem; }
+.subtitle { color: #888; font-size: 0.95rem; margin-bottom: 1.5rem; }
+h2 { font-family: 'Space Grotesk', sans-serif; font-size: 1.3rem; font-weight: 700; color: #e8920d; margin: 2.5rem 0 0.8rem; padding-top: 1rem; border-top: 1px solid #1a1a1a; }
+h2:first-of-type { border-top: none; margin-top: 1.5rem; }
+h3 { font-family: 'Space Grotesk', sans-serif; font-size: 1rem; font-weight: 600; color: #e5e5e5; margin: 1.5rem 0 0.4rem; }
+p { margin-bottom: 0.7rem; color: #ccc; font-size: 0.9rem; }
+
+/* Endpoint card */
+.ep { background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 8px; padding: 1.2rem; margin: 1rem 0; }
+.ep-head { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; }
+.ep-method { font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; font-weight: 700; background: #e8920d; color: #0f0f0f; padding: 0.15rem 0.5rem; border-radius: 4px; }
+.ep-path { font-family: 'JetBrains Mono', monospace; font-size: 0.9rem; color: #e5e5e5; }
+.ep-desc { font-size: 0.88rem; color: #aaa; margin-bottom: 0.6rem; }
+
+/* Tables */
+table { width: 100%; border-collapse: collapse; font-size: 0.82rem; margin: 0.5rem 0; }
+th { text-align: left; color: #666; font-weight: 500; padding: 0.35rem 0.6rem; border-bottom: 1px solid #2a2a2a; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em; }
+td { padding: 0.35rem 0.6rem; border-bottom: 1px solid #151515; color: #ccc; }
+tr:nth-child(even) td { background: rgba(255,255,255,0.02); }
+td:first-child { font-family: 'JetBrains Mono', monospace; color: #e8920d; font-size: 0.8rem; white-space: nowrap; }
+td:nth-child(2) { color: #888; white-space: nowrap; }
+.tbl-label { font-size: 0.72rem; color: #555; text-transform: uppercase; letter-spacing: 0.04em; margin: 0.6rem 0 0.2rem; }
+
+/* Code blocks */
+pre { background: #111; border: 1px solid #2a2a2a; border-radius: 6px; padding: 0.7rem 1rem; overflow-x: auto; font-family: 'JetBrains Mono', monospace; font-size: 0.78rem; line-height: 1.5; margin: 0.5rem 0; color: #ccc; position: relative; }
+pre .u { color: #e8920d; }
+pre .k { color: #e8920d; }
+pre .s { color: #4ade80; }
+pre .n { color: #60a5fa; }
+pre .nl { color: #888; }
+
+/* Note/highlight */
+.note { background: rgba(232,146,13,0.08); border-left: 3px solid #e8920d; padding: 0.6rem 1rem; border-radius: 0 6px 6px 0; margin: 0.8rem 0; font-size: 0.85rem; color: #ccc; }
+.base-url { font-family: 'JetBrains Mono', monospace; font-size: 0.9rem; color: #e8920d; background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 8px; padding: 0.8rem 1rem; margin: 0.8rem 0; }
+
+/* Quick start */
+.qs { display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem; margin: 0.8rem 0; }
+.qs-card { background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 8px; padding: 0.8rem 1rem; }
+.qs-card h4 { font-family: 'Space Grotesk', sans-serif; font-size: 0.85rem; color: #e5e5e5; margin-bottom: 0.3rem; }
+.qs-card pre { margin: 0.3rem 0 0; font-size: 0.72rem; }
+
+/* Klynge visual */
+.kv { display: flex; gap: 0.8rem; margin: 0.6rem 0; flex-wrap: wrap; }
+.kv-card { background: #111; border: 1px solid #2a2a2a; border-radius: 6px; padding: 0.5rem 0.8rem; font-size: 0.85rem; }
+.kv-card .kv-words { color: #e8920d; }
+.kv-card .kv-label { font-size: 0.7rem; color: #555; margin-top: 0.15rem; }
+
+.footer { text-align: center; padding: 2rem 1rem; color: #555; font-size: 0.8rem; }
+.back { font-size: 0.85rem; color: #888; margin-bottom: 1rem; display: inline-block; }
 .back:hover { color: #e8920d; }
-h1 {
-  font-family: 'Space Grotesk', sans-serif;
-  font-size: 2rem;
-  font-weight: 700;
-  color: #e5e5e5;
-  margin-bottom: 0.3rem;
-}
-.subtitle {
-  color: #888;
-  font-size: 1rem;
-  margin-bottom: 2rem;
-}
-h2 {
-  font-family: 'Space Grotesk', sans-serif;
-  font-size: 1.2rem;
-  font-weight: 700;
-  color: #e8920d;
-  margin: 2.5rem 0 0.8rem;
-  padding-bottom: 0.4rem;
-  border-bottom: 1px solid #2a2a2a;
-}
-h3 {
-  font-family: 'Space Grotesk', sans-serif;
-  font-size: 1rem;
-  font-weight: 600;
-  color: #e5e5e5;
-  margin: 1.5rem 0 0.4rem;
-}
-p { margin-bottom: 0.8rem; color: #ccc; font-size: 0.92rem; }
-.base-url {
-  background: #1a1a1a;
-  border: 1px solid #2a2a2a;
-  border-radius: 8px;
-  padding: 1rem 1.2rem;
-  margin: 1rem 0;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 0.9rem;
-  color: #e8920d;
-}
-.endpoint {
-  background: #1a1a1a;
-  border: 1px solid #2a2a2a;
-  border-radius: 8px;
-  padding: 1rem 1.2rem;
-  margin: 0.8rem 0;
-}
-.endpoint .method {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: #0f0f0f;
-  background: #e8920d;
-  padding: 0.15rem 0.5rem;
-  border-radius: 4px;
-  margin-right: 0.5rem;
-}
-.endpoint .path {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 0.9rem;
-  color: #e5e5e5;
-}
-.endpoint .desc {
-  font-size: 0.85rem;
-  color: #888;
-  margin-top: 0.4rem;
-}
-.endpoint .params {
-  margin-top: 0.5rem;
-  font-size: 0.82rem;
-  color: #888;
-}
-.endpoint .params code {
-  color: #e8920d;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 0.8rem;
-}
-pre {
-  background: #111;
-  border: 1px solid #2a2a2a;
-  border-radius: 6px;
-  padding: 0.8rem 1rem;
-  overflow-x: auto;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 0.8rem;
-  line-height: 1.5;
-  margin: 0.6rem 0;
-  color: #ccc;
-}
-pre .url { color: #e8920d; }
-pre .key { color: #e8920d; }
-pre .str { color: #4ade80; }
-pre .num { color: #60a5fa; }
-.param-table {
-  width: 100%;
-  border-collapse: collapse;
-  margin: 0.8rem 0;
-  font-size: 0.85rem;
-}
-.param-table th {
-  text-align: left;
-  color: #888;
-  font-weight: 500;
-  padding: 0.4rem 0.8rem;
-  border-bottom: 1px solid #2a2a2a;
-  font-size: 0.8rem;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-}
-.param-table td {
-  padding: 0.4rem 0.8rem;
-  border-bottom: 1px solid #1a1a1a;
-  color: #ccc;
-}
-.param-table td:first-child {
-  font-family: 'JetBrains Mono', monospace;
-  color: #e8920d;
-  font-size: 0.82rem;
-}
-.note {
-  background: rgba(232, 146, 13, 0.08);
-  border-left: 3px solid #e8920d;
-  padding: 0.7rem 1rem;
-  border-radius: 0 6px 6px 0;
-  margin: 1rem 0;
-  font-size: 0.85rem;
-  color: #ccc;
-}
-.footer {
-  text-align: center;
-  padding: 2rem 1rem;
-  color: #555;
-  font-size: 0.8rem;
-}
-@media (max-width: 500px) {
+
+@media (max-width: 768px) {
+  .sidebar { display: none; }
+  .layout { display: block; }
+  .main { padding: 1.5rem 1rem 3rem; }
+  .qs { grid-template-columns: 1fr; }
   h1 { font-size: 1.5rem; }
-  pre { font-size: 0.72rem; }
 }
 </style>
 </head>
 <body>
-<div class="page">
+<div class="layout">
+
+<nav class="sidebar">
+  <a href="/" class="back">&larr; Rimregisteret</a>
+  <h3>Oversikt</h3>
+  <a href="#quick-start">Quick Start</a>
+  <a href="#params">Felles parametere</a>
+  <h3>Rim</h3>
+  <a href="#rim"><span class="s-method">GET</span>/rim/{ord}</a>
+  <a href="#nestenrim"><span class="s-method">GET</span>/nestenrim/{ord}</a>
+  <h3>Semantikk</h3>
+  <a href="#synonymer"><span class="s-method">GET</span>/synonymer/{ord}</a>
+  <a href="#antonymer"><span class="s-method">GET</span>/antonymer/{ord}</a>
+  <a href="#relaterte"><span class="s-method">GET</span>/relaterte/{ord}</a>
+  <h3>Fonetikk</h3>
+  <a href="#info"><span class="s-method">GET</span>/info/{ord}</a>
+  <a href="#homofoner"><span class="s-method">GET</span>/homofoner/{ord}</a>
+  <a href="#konsonanter"><span class="s-method">GET</span>/konsonanter/{ord}</a>
+  <h3>Dialekter</h3>
+  <a href="#dialekter"><span class="s-method">GET</span>/rim/{ord}/dialekter</a>
+  <h3>Rimklynger</h3>
+  <a href="#klynger-par"><span class="s-method">GET</span>/rimklynger/par</a>
+  <a href="#klynger-bred"><span class="s-method">GET</span>/rimklynger/bred</a>
+  <a href="#klynger-dyp"><span class="s-method">GET</span>/rimklynger/dyp</a>
+  <h3>S&oslash;k</h3>
+  <a href="#sok"><span class="s-method">GET</span>/sok</a>
+  <h3>Annet</h3>
+  <a href="#swagger">Swagger / ReDoc</a>
+  <a href="#datakilder">Datakilder</a>
+</nav>
+
+<div class="main">
 
 <a href="/" class="back">&larr; Tilbake til Rimregisteret</a>
-
 <h1>Rimregisteret API</h1>
 <p class="subtitle">Gratis norsk rim-API med 684 000 ord, fonetikk, definisjoner, synonymer, dialekter og rimklynger.</p>
 
@@ -180,185 +126,417 @@ pre .num { color: #60a5fa; }
 
 <div class="note">
   Gratis uten API-n&oslash;kkel. Grense: 100 foresp&oslash;rsler per minutt per IP.
-  Trenger du mer? <a href="mailto:radiomanen@gmail.com">Ta kontakt</a>.
+  Alle endepunkter returnerer JSON. <a href="#swagger">Swagger UI</a> for interaktiv testing.
 </div>
 
-<h2>Rim</h2>
+<!-- ═══════════════ QUICK START ═══════════════ -->
 
-<div class="endpoint">
-  <span class="method">GET</span>
-  <span class="path">/api/v1/rim/{ord}</span>
-  <div class="desc">Finn perfekte rim &mdash; ord med identisk fonetisk rimsuffiks. Resultatene er sortert etter bruksfrekvens (vanligste f&oslash;rst) og inkluderer ordets rimsuffiks, stavelser, tonelag og frekvens per million ord.</div>
-  <div class="params">Parametere: <code>maks</code> antall resultater, <code>stavelser</code> filtrer p&aring; stavelsestall, <code>tonelag</code> filtrer p&aring; 1 eller 2, <code>samme_tonelag</code> kun matching tonelag, <code>dialekt</code> region</div>
+<h2 id="quick-start">Quick Start</h2>
+
+<div class="qs">
+  <div class="qs-card">
+    <h4>Finn rim for et ord</h4>
+    <pre>curl "<span class="u">https://rimregisteret.no/api/v1/rim/sol?maks=5</span>"</pre>
+  </div>
+  <div class="qs-card">
+    <h4>Hent all info om et ord</h4>
+    <pre>curl "<span class="u">https://rimregisteret.no/api/v1/info/sol</span>"</pre>
+  </div>
+  <div class="qs-card">
+    <h4>Generer treningsklynger</h4>
+    <pre>curl "<span class="u">https://rimregisteret.no/api/v1/rimklynger/par?antall=10</span>"</pre>
+  </div>
+  <div class="qs-card">
+    <h4>Sjekk rim i alle dialekter</h4>
+    <pre>curl "<span class="u">https://rimregisteret.no/api/v1/rim/barn/dialekter</span>"</pre>
+  </div>
 </div>
-<pre>curl "<span class="url">https://rimregisteret.no/api/v1/rim/sol?maks=5</span>"</pre>
 
-<div class="endpoint">
-  <span class="method">GET</span>
-  <span class="path">/api/v1/nestenrim/{ord}</span>
-  <div class="desc">Finn nesten-rim (slant rhymes) basert p&aring; fonem-ekvivalensklasser. Hvert resultat inkluderer en likhetsscore fra 0 til 1 som m&aring;ler hvor n&aelig;rt rimforholdet er. Scorer vokal-likhet (+0.6) og konsonant-likhet (+0.3) i rimsuffiksen.</div>
-  <div class="params">Parametere: <code>terskel</code> minimum score (0.0&ndash;1.0), <code>maks</code>, <code>stavelser</code>, <code>tonelag</code>, <code>dialekt</code></div>
-</div>
-<pre>curl "<span class="url">https://rimregisteret.no/api/v1/nestenrim/dag?terskel=0.6&amp;maks=10</span>"</pre>
+<!-- ═══════════════ FELLES PARAMETERE ═══════════════ -->
 
-<h2>Semantikk</h2>
+<h2 id="params">Felles parametere</h2>
+<p>Disse parameterne brukes p&aring; tvers av flere endepunkter. Ikke alle gjelder overalt &mdash; se hvert endepunkt for hvilke som er tilgjengelige.</p>
 
-<div class="endpoint">
-  <span class="method">GET</span>
-  <span class="path">/api/v1/synonymer/{ord}</span>
-  <div class="desc">Finn synonymer fra Norwegian WordNet og norsk synonymordbok. Hvert resultat inkluderer ordets relasjon, kilde (wordnet eller synonymer), og bruksfrekvens. Sortert etter frekvens.</div>
-  <div class="params">Parametere: <code>maks</code> antall resultater</div>
-</div>
-<pre>curl "<span class="url">https://rimregisteret.no/api/v1/synonymer/glad?maks=10</span>"</pre>
-
-<div class="endpoint">
-  <span class="method">GET</span>
-  <span class="path">/api/v1/antonymer/{ord}</span>
-  <div class="desc">Finn antonymer (motsetningsord) fra Norwegian WordNet. Norsk WordNet har begrenset antonym-dekning (~166 par), s&aring; mange ord returnerer tom liste.</div>
-  <div class="params">Parametere: <code>maks</code> antall resultater</div>
-</div>
-<pre>curl "<span class="url">https://rimregisteret.no/api/v1/antonymer/billig</span>"</pre>
-
-<div class="endpoint">
-  <span class="method">GET</span>
-  <span class="path">/api/v1/relaterte/{ord}</span>
-  <div class="desc">Relaterte ord via WordNet-relasjoner: hypernymer (overordnet begrep), hyponymer (underordnet), meronymer (del av) og holonymer (helhet). Hvert resultat har en <code>relasjon</code>-type.</div>
-  <div class="params">Parametere: <code>maks</code> antall resultater</div>
-</div>
-<pre>curl "<span class="url">https://rimregisteret.no/api/v1/relaterte/hund?maks=10</span>"</pre>
-
-<h2>Fonetikk og ordinfo</h2>
-
-<div class="endpoint">
-  <span class="method">GET</span>
-  <span class="path">/api/v1/info/{ord}</span>
-  <div class="desc">Samler all informasjon om et ord i &eacute;n respons. Returnerer definisjon fra Bokm&aring;lsordboka, ordklasse, IPA-transkripsjon, stavelsestall, tonelag (1 eller 2), fonetisk rimsuffiks, om ordet er fra leksikon eller G2P-estimert, topp 10 rim, og topp 10 synonymer. For ukjente ord brukes regelbasert G2P (markert med <code>g2p: true</code>).</div>
-  <div class="params">Parametere: <code>dialekt</code> region for fonetikk og rim</div>
-</div>
-<pre>curl "<span class="url">https://rimregisteret.no/api/v1/info/sol</span>"</pre>
-
-<div class="endpoint">
-  <span class="method">GET</span>
-  <span class="path">/api/v1/homofoner/{ord}</span>
-  <div class="desc">Finn homofoner &mdash; ord med identisk IPA-transkripsjon men ulik stavem&aring;te. Returnerer ordets rimsuffiks, tonelag, stavelser og fonemer.</div>
-</div>
-<pre>curl "<span class="url">https://rimregisteret.no/api/v1/homofoner/sol</span>"</pre>
-
-<div class="endpoint">
-  <span class="method">GET</span>
-  <span class="path">/api/v1/konsonanter/{ord}</span>
-  <div class="desc">Finn ord med samme konsonantskjelett &mdash; alle vokaler fjernes, og konsonantsekvensen sammenlignes. Nyttig for allitterasjon og konsonans. Filtrerer p&aring; samme stavelsestall.</div>
-  <div class="params">Parametere: <code>maks</code> antall resultater</div>
-</div>
-<pre>curl "<span class="url">https://rimregisteret.no/api/v1/konsonanter/sol?maks=10</span>"</pre>
-
-<h2>Dialekter</h2>
-<p>Rimregisteret st&oslash;tter 5 norske dialektregioner: &oslash;stnorsk, nordnorsk, tr&oslash;ndersk, vestnorsk og s&oslash;rvestnorsk. &Oslash;st/nord/midt har retroflekser (barn = /b&aring;:&ncedil;/), vest/s&oslash;rvest beholder r+konsonant (barn = /b&aring;:rn/). Dette p&aring;virker hvilke ord som rimer.</p>
-
-<div class="endpoint">
-  <span class="method">GET</span>
-  <span class="path">/api/v1/rim/{ord}/dialekter</span>
-  <div class="desc">Sammenlign rim p&aring; tvers av alle 5 dialekter. Returnerer ordets rimsuffiks per dialekt og en liste over rimord med hvilke dialekter hvert rimpar fungerer i. Nyttig for &aring; sjekke om et rim fungerer p&aring; landsdekkende niv&aring;.</div>
-  <div class="params">Parametere: <code>maks</code> antall rimord</div>
-</div>
-<pre>curl "<span class="url">https://rimregisteret.no/api/v1/rim/barn/dialekter?maks=10</span>"</pre>
-
-<h2>Rimklynger</h2>
-<p>Generer tilfeldige rimklynger for freestyle-trening. Tre moduser for ulike treningsbehov. Alle returnerer klynger med rimsuffiks og ordliste. Send <code>ord</code> for &aring; l&aring;se alle klynger til &eacute;n rimfamilie.</p>
-
-<div class="endpoint">
-  <span class="method">GET</span>
-  <span class="path">/api/v1/rimklynger/par</span>
-  <div class="desc">Par-modus: genererer rimpar (2 ord) fra tilfeldige rimfamilier. Hvert par kommer fra en unik familie. Trener raske overganger mellom rimfamilier. Med <code>ord</code>: alle par er fra det ordets rimfamilie.</div>
-  <div class="params">Parametere: <code>antall</code> klynger (default 10), <code>stavelser</code>, <code>min_frekvens</code> per million, <code>ord</code> startord, <code>dialekt</code></div>
-</div>
-<pre>curl "<span class="url">https://rimregisteret.no/api/v1/rimklynger/par?antall=10&amp;stavelser=1</span>"</pre>
-
-<div class="endpoint">
-  <span class="method">GET</span>
-  <span class="path">/api/v1/rimklynger/bred</span>
-  <div class="desc">Bred-modus: genererer klynger med 4 ord fra tilfeldige rimfamilier. Trener bredde &mdash; evnen til &aring; finne mange rim innenfor &eacute;n familie. Med <code>ord</code>: alle klynger er fra det ordets rimfamilie.</div>
-  <div class="params">Parametere: <code>antall</code> klynger, <code>stavelser</code>, <code>min_frekvens</code>, <code>ord</code>, <code>dialekt</code></div>
-</div>
-<pre>curl "<span class="url">https://rimregisteret.no/api/v1/rimklynger/bred?antall=5&amp;ord=sol</span>"</pre>
-
-<div class="endpoint">
-  <span class="method">GET</span>
-  <span class="path">/api/v1/rimklynger/dyp</span>
-  <div class="desc">Dyp-modus: returnerer &eacute;n klynge med alle kvalifiserte ord fra en rimfamilie, sortert etter bruksfrekvens (vanligste f&oslash;rst). Uten <code>ord</code>: velger en tilfeldig stor rimfamilie. Med <code>ord</code>: bruker det ordets rimfamilie. Ignorerer <code>antall</code>.</div>
-  <div class="params">Parametere: <code>stavelser</code>, <code>min_frekvens</code> per million, <code>ord</code> startord, <code>dialekt</code></div>
-</div>
-<pre>curl "<span class="url">https://rimregisteret.no/api/v1/rimklynger/dyp?ord=natt&amp;min_frekvens=1</span>"</pre>
-
-<h2>S&oslash;k</h2>
-
-<div class="endpoint">
-  <span class="method">GET</span>
-  <span class="path">/api/v1/sok?q={prefiks}</span>
-  <div class="desc">Autocomplete &mdash; finn ord som starter med et prefiks.</div>
-  <div class="params">Parametere: <code>q</code> (p&aring;krevd), <code>maks</code></div>
-</div>
-<pre>curl "<span class="url">https://rimregisteret.no/api/v1/sok?q=sol&amp;maks=5</span>"</pre>
-
-<h2>Felles parametere</h2>
-
-<table class="param-table">
-  <thead>
-    <tr><th>Parameter</th><th>Type</th><th>Beskrivelse</th></tr>
-  </thead>
+<table>
+  <thead><tr><th>Parameter</th><th>Type</th><th>Default</th><th>Gjelder</th><th>Beskrivelse</th></tr></thead>
   <tbody>
-    <tr><td>dialekt</td><td>string</td><td>&oslash;st | nord | midt | vest | s&oslash;rvest (default: &oslash;st)</td></tr>
-    <tr><td>maks</td><td>int</td><td>Maks antall resultater (default: 100, max: 1000)</td></tr>
-    <tr><td>stavelser</td><td>int</td><td>Filtrer p&aring; antall stavelser</td></tr>
-    <tr><td>tonelag</td><td>int</td><td>Filtrer p&aring; tonelag: 1 eller 2</td></tr>
-    <tr><td>samme_tonelag</td><td>bool</td><td>Kun rim med samme tonelag som s&oslash;keordet</td></tr>
-    <tr><td>terskel</td><td>float</td><td>Minimum likhetsscore for nesten-rim (0.0&ndash;1.0)</td></tr>
-    <tr><td>ord</td><td>string</td><td>Startord for rimklynger (valgfritt)</td></tr>
-    <tr><td>min_frekvens</td><td>float</td><td>Minimum ordfrekvens per million (rimklynger)</td></tr>
+    <tr><td>dialekt</td><td>string</td><td>"&oslash;st"</td><td>rim, nestenrim, info, klynger</td><td>Dialektregion: &oslash;st, nord, midt, vest, s&oslash;rvest</td></tr>
+    <tr><td>maks</td><td>int</td><td>100</td><td>rim, nestenrim, synonymer, antonymer, relaterte, konsonanter, sok</td><td>Maks antall resultater (1&ndash;1000)</td></tr>
+    <tr><td>stavelser</td><td>int</td><td>&mdash;</td><td>rim, nestenrim, klynger</td><td>Filtrer p&aring; antall stavelser</td></tr>
+    <tr><td>tonelag</td><td>int</td><td>&mdash;</td><td>rim, nestenrim</td><td>Filtrer p&aring; tonelag: 1 eller 2</td></tr>
+    <tr><td>samme_tonelag</td><td>bool</td><td>false</td><td>rim</td><td>Kun rim med samme tonelag som s&oslash;keordet</td></tr>
+    <tr><td>terskel</td><td>float</td><td>0.5</td><td>nestenrim</td><td>Minimum likhetsscore (0.0&ndash;1.0)</td></tr>
+    <tr><td>ord</td><td>string</td><td>&mdash;</td><td>klynger</td><td>L&aring;s alle klynger til dette ordets rimfamilie</td></tr>
+    <tr><td>min_frekvens</td><td>float</td><td>1.0</td><td>klynger</td><td>Minimum bruksfrekvens per million ord</td></tr>
+    <tr><td>antall</td><td>int</td><td>10</td><td>klynger (par, bred)</td><td>Antall klynger &aring; generere</td></tr>
+    <tr><td>q</td><td>string</td><td>&mdash;</td><td>sok</td><td>S&oslash;keprefiks (p&aring;krevd)</td></tr>
   </tbody>
 </table>
 
-<h2>Eksempel-responser</h2>
+<!-- ═══════════════ RIM ═══════════════ -->
 
-<h3><code>GET /api/v1/info/sol</code></h3>
-<pre>{
-  <span class="key">"ord"</span>: <span class="str">"sol"</span>,
-  <span class="key">"dialekt"</span>: <span class="str">"&oslash;st"</span>,
-  <span class="key">"definisjon"</span>: <span class="str">"lys- og energigivende stjerne som jorda kretser om"</span>,
-  <span class="key">"ordklasse"</span>: <span class="str">"Substantiv"</span>,
-  <span class="key">"fonetikk"</span>: {
-    <span class="key">"ipa_ren"</span>: <span class="str">"su:l"</span>,
-    <span class="key">"stavelser"</span>: <span class="num">1</span>,
-    <span class="key">"tonelag"</span>: <span class="num">1</span>,
-    <span class="key">"rimsuffiks"</span>: <span class="str">"u:l"</span>,
-    <span class="key">"g2p"</span>: <span class="num">false</span>
-  },
-  <span class="key">"rim"</span>: [<span class="str">"stol"</span>, <span class="str">"alkohol"</span>, ...],
-  <span class="key">"synonymer"</span>: [...]
-}</pre>
+<h2>Rim</h2>
 
-<h3><code>GET /api/v1/rim/sol?maks=3</code></h3>
+<div class="ep" id="rim">
+  <div class="ep-head"><span class="ep-method">GET</span><span class="ep-path">/api/v1/rim/{ord}</span></div>
+  <div class="ep-desc">Finn perfekte rim &mdash; ord med identisk fonetisk rimsuffiks, sortert etter bruksfrekvens.</div>
+
+  <div class="tbl-label">Parametere</div>
+  <table>
+    <thead><tr><th>Parameter</th><th>Type</th><th>Default</th><th>Beskrivelse</th></tr></thead>
+    <tbody>
+      <tr><td>maks</td><td>int</td><td>100</td><td>Maks antall resultater</td></tr>
+      <tr><td>stavelser</td><td>int</td><td>&mdash;</td><td>Filtrer p&aring; stavelsestall</td></tr>
+      <tr><td>tonelag</td><td>int</td><td>&mdash;</td><td>Filtrer p&aring; tonelag (1 eller 2)</td></tr>
+      <tr><td>samme_tonelag</td><td>bool</td><td>false</td><td>Kun rim med samme tonelag som s&oslash;keordet</td></tr>
+      <tr><td>dialekt</td><td>string</td><td>"&oslash;st"</td><td>Dialektregion</td></tr>
+    </tbody>
+  </table>
+
+  <div class="tbl-label">Respons-felter (per resultat)</div>
+  <table>
+    <thead><tr><th>Felt</th><th>Type</th><th>Beskrivelse</th></tr></thead>
+    <tbody>
+      <tr><td>ord</td><td>string</td><td>Rimordet</td></tr>
+      <tr><td>rimsuffiks</td><td>string</td><td>IPA-suffiks fra siste betonede vokal (f.eks. "u&lsaquo;l")</td></tr>
+      <tr><td>tonelag</td><td>int|null</td><td>Tonelag: 1 eller 2, null hvis ukjent</td></tr>
+      <tr><td>stavelser</td><td>int</td><td>Antall stavelser</td></tr>
+      <tr><td>frekvens</td><td>float</td><td>Bruksfrekvens per million ord (Spr&aring;kbanken N-gram, 1.175 mrd ord)</td></tr>
+      <tr><td>score</td><td>float</td><td>Alltid 1.0 for perfekte rim</td></tr>
+    </tbody>
+  </table>
+
+  <div class="tbl-label">Wrapper-felter</div>
+  <table>
+    <thead><tr><th>Felt</th><th>Type</th><th>Beskrivelse</th></tr></thead>
+    <tbody>
+      <tr><td>ord</td><td>string</td><td>S&oslash;keordet</td></tr>
+      <tr><td>resultater</td><td>array</td><td>Liste av rimord</td></tr>
+      <tr><td>antall</td><td>int</td><td>Antall resultater</td></tr>
+      <tr><td>soketid_ms</td><td>float</td><td>Responstid i millisekunder</td></tr>
+      <tr><td>dialekt</td><td>string</td><td>Brukt dialektregion</td></tr>
+    </tbody>
+  </table>
+</div>
+<pre>curl "<span class="u">https://rimregisteret.no/api/v1/rim/sol?maks=3</span>"</pre>
 <pre>{
-  <span class="key">"ord"</span>: <span class="str">"sol"</span>,
-  <span class="key">"resultater"</span>: [
-    {
-      <span class="key">"ord"</span>: <span class="str">"ol"</span>,
-      <span class="key">"rimsuffiks"</span>: <span class="str">"u:l"</span>,
-      <span class="key">"tonelag"</span>: <span class="num">1</span>,
-      <span class="key">"stavelser"</span>: <span class="num">1</span>,
-      <span class="key">"frekvens"</span>: <span class="num">102.87</span>,
-      <span class="key">"score"</span>: <span class="num">1.0</span>
-    }
+  <span class="k">"ord"</span>: <span class="s">"sol"</span>,
+  <span class="k">"resultater"</span>: [
+    {<span class="k">"ord"</span>: <span class="s">"ol"</span>, <span class="k">"rimsuffiks"</span>: <span class="s">"u&#720;l"</span>, <span class="k">"tonelag"</span>: <span class="n">1</span>, <span class="k">"stavelser"</span>: <span class="n">1</span>, <span class="k">"frekvens"</span>: <span class="n">102.87</span>, <span class="k">"score"</span>: <span class="n">1.0</span>},
+    {<span class="k">"ord"</span>: <span class="s">"alkohol"</span>, <span class="k">"rimsuffiks"</span>: <span class="s">"u&#720;l"</span>, <span class="k">"tonelag"</span>: <span class="nl">null</span>, <span class="k">"stavelser"</span>: <span class="n">3</span>, <span class="k">"frekvens"</span>: <span class="n">41.60</span>, <span class="k">"score"</span>: <span class="n">1.0</span>},
+    {<span class="k">"ord"</span>: <span class="s">"domstol"</span>, <span class="k">"rimsuffiks"</span>: <span class="s">"u&#720;l"</span>, <span class="k">"tonelag"</span>: <span class="n">1</span>, <span class="k">"stavelser"</span>: <span class="n">2</span>, <span class="k">"frekvens"</span>: <span class="n">16.44</span>, <span class="k">"score"</span>: <span class="n">1.0</span>}
   ],
-  <span class="key">"antall"</span>: <span class="num">1</span>,
-  <span class="key">"dialekt"</span>: <span class="str">"&oslash;st"</span>
+  <span class="k">"antall"</span>: <span class="n">3</span>, <span class="k">"soketid_ms"</span>: <span class="n">2.7</span>, <span class="k">"dialekt"</span>: <span class="s">"&oslash;st"</span>
 }</pre>
 
-<h2>Swagger</h2>
-<p>Interaktiv dokumentasjon med &laquo;Try it out&raquo;-funksjon:</p>
+<!-- nestenrim -->
+<div class="ep" id="nestenrim">
+  <div class="ep-head"><span class="ep-method">GET</span><span class="ep-path">/api/v1/nestenrim/{ord}</span></div>
+  <div class="ep-desc">Finn nesten-rim (slant rhymes). Scorer vokal-likhet (+0.6) og konsonant-likhet (+0.3) i rimsuffiksen. Score over 1.0 mulig ved tonelag-bonus (+0.1).</div>
+
+  <div class="tbl-label">Parametere</div>
+  <table>
+    <thead><tr><th>Parameter</th><th>Type</th><th>Default</th><th>Beskrivelse</th></tr></thead>
+    <tbody>
+      <tr><td>terskel</td><td>float</td><td>0.5</td><td>Minimum likhetsscore (0.0&ndash;1.0)</td></tr>
+      <tr><td>maks</td><td>int</td><td>100</td><td>Maks antall resultater</td></tr>
+      <tr><td>stavelser</td><td>int</td><td>&mdash;</td><td>Filtrer p&aring; stavelsestall</td></tr>
+      <tr><td>tonelag</td><td>int</td><td>&mdash;</td><td>Filtrer p&aring; tonelag</td></tr>
+      <tr><td>dialekt</td><td>string</td><td>"&oslash;st"</td><td>Dialektregion</td></tr>
+    </tbody>
+  </table>
+
+  <div class="tbl-label">Respons-felter (per resultat)</div>
+  <table>
+    <thead><tr><th>Felt</th><th>Type</th><th>Beskrivelse</th></tr></thead>
+    <tbody>
+      <tr><td>ord</td><td>string</td><td>Nesten-rimordet</td></tr>
+      <tr><td>rimsuffiks</td><td>string</td><td>IPA-suffiks</td></tr>
+      <tr><td>tonelag</td><td>int|null</td><td>Tonelag</td></tr>
+      <tr><td>stavelser</td><td>int</td><td>Antall stavelser</td></tr>
+      <tr><td>frekvens</td><td>float</td><td>Bruksfrekvens per million</td></tr>
+      <tr><td>score</td><td>float</td><td>Likhetsscore 0.0&ndash;1.1 (h&oslash;yere = n&aelig;rmere perfekt rim)</td></tr>
+    </tbody>
+  </table>
+</div>
+<pre>curl "<span class="u">https://rimregisteret.no/api/v1/nestenrim/dag?terskel=0.6&amp;maks=3</span>"</pre>
+
+<!-- ═══════════════ SEMANTIKK ═══════════════ -->
+
+<h2>Semantikk</h2>
+
+<div class="ep" id="synonymer">
+  <div class="ep-head"><span class="ep-method">GET</span><span class="ep-path">/api/v1/synonymer/{ord}</span></div>
+  <div class="ep-desc">Synonymer fra Norwegian WordNet og norsk synonymordbok. Sortert etter bruksfrekvens.</div>
+
+  <div class="tbl-label">Parametere</div>
+  <table><thead><tr><th>Parameter</th><th>Type</th><th>Default</th><th>Beskrivelse</th></tr></thead>
+    <tbody><tr><td>maks</td><td>int</td><td>50</td><td>Maks antall resultater</td></tr></tbody>
+  </table>
+
+  <div class="tbl-label">Respons-felter (per resultat)</div>
+  <table><thead><tr><th>Felt</th><th>Type</th><th>Beskrivelse</th></tr></thead>
+    <tbody>
+      <tr><td>ord</td><td>string</td><td>Synonymet</td></tr>
+      <tr><td>relasjon</td><td>string</td><td>Alltid "synonym"</td></tr>
+      <tr><td>kilde</td><td>string</td><td>"wordnet" eller "synonymlist"</td></tr>
+      <tr><td>frekvens</td><td>float</td><td>Bruksfrekvens per million</td></tr>
+    </tbody>
+  </table>
+</div>
+<pre>curl "<span class="u">https://rimregisteret.no/api/v1/synonymer/glad?maks=5</span>"</pre>
+
+<div class="ep" id="antonymer">
+  <div class="ep-head"><span class="ep-method">GET</span><span class="ep-path">/api/v1/antonymer/{ord}</span></div>
+  <div class="ep-desc">Antonymer (motsetningsord) fra Norwegian WordNet. Begrenset dekning (~166 par) &mdash; mange ord returnerer tom liste.</div>
+
+  <div class="tbl-label">Respons-felter</div>
+  <table><thead><tr><th>Felt</th><th>Type</th><th>Beskrivelse</th></tr></thead>
+    <tbody>
+      <tr><td>ord</td><td>string</td><td>Antonymet</td></tr>
+      <tr><td>relasjon</td><td>string</td><td>Alltid "antonym"</td></tr>
+      <tr><td>kilde</td><td>string</td><td>Alltid "wordnet"</td></tr>
+      <tr><td>frekvens</td><td>float</td><td>Bruksfrekvens per million</td></tr>
+    </tbody>
+  </table>
+</div>
+<pre>curl "<span class="u">https://rimregisteret.no/api/v1/antonymer/billig</span>"</pre>
+
+<div class="ep" id="relaterte">
+  <div class="ep-head"><span class="ep-method">GET</span><span class="ep-path">/api/v1/relaterte/{ord}</span></div>
+  <div class="ep-desc">Relaterte ord via WordNet: hypernymer (overordnet), hyponymer (underordnet), meronymer (del av), holonymer (helhet).</div>
+
+  <div class="tbl-label">Respons-felter</div>
+  <table><thead><tr><th>Felt</th><th>Type</th><th>Beskrivelse</th></tr></thead>
+    <tbody>
+      <tr><td>ord</td><td>string</td><td>Det relaterte ordet</td></tr>
+      <tr><td>relasjon</td><td>string</td><td>"hypernym", "hyponym", "meronym" eller "holonym"</td></tr>
+      <tr><td>kilde</td><td>string</td><td>Alltid "wordnet"</td></tr>
+      <tr><td>frekvens</td><td>float</td><td>Bruksfrekvens per million</td></tr>
+    </tbody>
+  </table>
+</div>
+<pre>curl "<span class="u">https://rimregisteret.no/api/v1/relaterte/hund?maks=5</span>"</pre>
+
+<!-- ═══════════════ FONETIKK ═══════════════ -->
+
+<h2>Fonetikk og ordinfo</h2>
+
+<div class="ep" id="info">
+  <div class="ep-head"><span class="ep-method">GET</span><span class="ep-path">/api/v1/info/{ord}</span></div>
+  <div class="ep-desc">Alt om et ord i &eacute;n respons: definisjon, fonetikk, rim og synonymer. For ukjente ord brukes regelbasert G2P.</div>
+
+  <div class="tbl-label">Parametere</div>
+  <table><thead><tr><th>Parameter</th><th>Type</th><th>Default</th><th>Beskrivelse</th></tr></thead>
+    <tbody><tr><td>dialekt</td><td>string</td><td>"&oslash;st"</td><td>Dialektregion for fonetikk og rim</td></tr></tbody>
+  </table>
+
+  <div class="tbl-label">Respons-felter</div>
+  <table><thead><tr><th>Felt</th><th>Type</th><th>Beskrivelse</th></tr></thead>
+    <tbody>
+      <tr><td>ord</td><td>string</td><td>S&oslash;keordet</td></tr>
+      <tr><td>dialekt</td><td>string</td><td>Brukt dialektregion</td></tr>
+      <tr><td>definisjon</td><td>string|null</td><td>Definisjon fra Bokm&aring;lsordboka (null hvis ikke funnet)</td></tr>
+      <tr><td>ordklasse</td><td>string|null</td><td>Ordklasse: Substantiv, Verb, Adjektiv, etc.</td></tr>
+      <tr><td>fonetikk.ipa_ren</td><td>string</td><td>IPA-transkripsjon uten stressmerker</td></tr>
+      <tr><td>fonetikk.stavelser</td><td>int</td><td>Antall stavelser</td></tr>
+      <tr><td>fonetikk.tonelag</td><td>int|null</td><td>Tonelag: 1 (enkel stigning) eller 2 (stigning + fall)</td></tr>
+      <tr><td>fonetikk.rimsuffiks</td><td>string</td><td>Fonetisk suffiks fra siste betonede vokal</td></tr>
+      <tr><td>fonetikk.g2p</td><td>bool</td><td>true = regelbasert estimat, false = fra NB Uttale-leksikon</td></tr>
+      <tr><td>fonetikk.fonemer</td><td>string</td><td>Fonemer med stavelsesseparator (.)</td></tr>
+      <tr><td>leksikon</td><td>array</td><td>Alle leksikonoppf&oslash;ringer (kan ha flere ordklasser)</td></tr>
+      <tr><td>rim</td><td>array</td><td>Topp 10 perfekte rim (samme format som /rim)</td></tr>
+      <tr><td>synonymer</td><td>array</td><td>Topp 10 synonymer (samme format som /synonymer)</td></tr>
+      <tr><td>soketid_ms</td><td>float</td><td>Responstid</td></tr>
+    </tbody>
+  </table>
+</div>
+<pre>curl "<span class="u">https://rimregisteret.no/api/v1/info/sol</span>"</pre>
+<pre>{
+  <span class="k">"ord"</span>: <span class="s">"sol"</span>, <span class="k">"dialekt"</span>: <span class="s">"&oslash;st"</span>,
+  <span class="k">"definisjon"</span>: <span class="s">"lys- og energigivende stjerne som jorda kretser om"</span>,
+  <span class="k">"ordklasse"</span>: <span class="s">"Substantiv"</span>,
+  <span class="k">"fonetikk"</span>: {
+    <span class="k">"ipa_ren"</span>: <span class="s">"su&#720;l"</span>, <span class="k">"stavelser"</span>: <span class="n">1</span>, <span class="k">"tonelag"</span>: <span class="n">1</span>,
+    <span class="k">"rimsuffiks"</span>: <span class="s">"u&#720;l"</span>, <span class="k">"g2p"</span>: <span class="n">false</span>, <span class="k">"fonemer"</span>: <span class="s">"su&#720;l"</span>
+  },
+  <span class="k">"rim"</span>: [{<span class="k">"ord"</span>: <span class="s">"ol"</span>, <span class="k">"frekvens"</span>: <span class="n">102.87</span>, ...}, ...],
+  <span class="k">"synonymer"</span>: [{<span class="k">"ord"</span>: <span class="s">"l&oslash;sning"</span>, <span class="k">"kilde"</span>: <span class="s">"synonymlist"</span>, ...}, ...],
+  <span class="k">"soketid_ms"</span>: <span class="n">288.2</span>
+}</pre>
+
+<div class="ep" id="homofoner">
+  <div class="ep-head"><span class="ep-method">GET</span><span class="ep-path">/api/v1/homofoner/{ord}</span></div>
+  <div class="ep-desc">Ord med identisk IPA-transkripsjon men ulik stavem&aring;te.</div>
+
+  <div class="tbl-label">Respons-felter</div>
+  <table><thead><tr><th>Felt</th><th>Type</th><th>Beskrivelse</th></tr></thead>
+    <tbody>
+      <tr><td>ord</td><td>string</td><td>Homofonen</td></tr>
+      <tr><td>rimsuffiks</td><td>string</td><td>IPA-suffiks</td></tr>
+      <tr><td>tonelag</td><td>int|null</td><td>Tonelag</td></tr>
+      <tr><td>stavelser</td><td>int</td><td>Antall stavelser</td></tr>
+      <tr><td>fonemer</td><td>string</td><td>Fullstendig fonemsekvens</td></tr>
+    </tbody>
+  </table>
+</div>
+<pre>curl "<span class="u">https://rimregisteret.no/api/v1/homofoner/sol</span>"</pre>
+
+<div class="ep" id="konsonanter">
+  <div class="ep-head"><span class="ep-method">GET</span><span class="ep-path">/api/v1/konsonanter/{ord}</span></div>
+  <div class="ep-desc">Ord med samme konsonantskjelett (alle vokaler fjernet). Filtrerer p&aring; samme stavelsestall.</div>
+
+  <div class="tbl-label">Respons-felter</div>
+  <table><thead><tr><th>Felt</th><th>Type</th><th>Beskrivelse</th></tr></thead>
+    <tbody>
+      <tr><td>ord</td><td>string</td><td>Ordet</td></tr>
+      <tr><td>rimsuffiks</td><td>string</td><td>IPA-suffiks</td></tr>
+      <tr><td>tonelag</td><td>int|null</td><td>Tonelag</td></tr>
+      <tr><td>stavelser</td><td>int</td><td>Antall stavelser</td></tr>
+    </tbody>
+  </table>
+</div>
+<pre>curl "<span class="u">https://rimregisteret.no/api/v1/konsonanter/sol?maks=5</span>"</pre>
+
+<!-- ═══════════════ DIALEKTER ═══════════════ -->
+
+<h2>Dialekter</h2>
+<p>&Oslash;st/nord/midt har retroflekser (barn = /b&#593;&#720;&#627;/). Vest/s&oslash;rvest beholder r+konsonant (barn = /b&#593;&#720;rn/). Dette gir ulike rimsuffikser og p&aring;virker hvilke ord som rimer.</p>
+
+<div class="ep" id="dialekter">
+  <div class="ep-head"><span class="ep-method">GET</span><span class="ep-path">/api/v1/rim/{ord}/dialekter</span></div>
+  <div class="ep-desc">Sammenlign rim p&aring; tvers av alle 5 dialekter. Viser ordets rimsuffiks per region og hvilke dialekter hvert rimpar fungerer i.</div>
+
+  <div class="tbl-label">Respons-felter</div>
+  <table><thead><tr><th>Felt</th><th>Type</th><th>Beskrivelse</th></tr></thead>
+    <tbody>
+      <tr><td>ord</td><td>string</td><td>S&oslash;keordet</td></tr>
+      <tr><td>dialektsuffikser</td><td>object</td><td>Rimsuffiks per dialekt: {"&oslash;st": "&#593;&#720;&#627;", "vest": "&#593;&#720;rn", ...}</td></tr>
+      <tr><td>rimpar[].ord</td><td>string</td><td>Rimordet</td></tr>
+      <tr><td>rimpar[].dialekter</td><td>array</td><td>Liste av dialekter der rimparet fungerer</td></tr>
+      <tr><td>soketid_ms</td><td>float</td><td>Responstid</td></tr>
+    </tbody>
+  </table>
+</div>
+<pre>curl "<span class="u">https://rimregisteret.no/api/v1/rim/barn/dialekter?maks=5</span>"</pre>
+
+<!-- ═══════════════ RIMKLYNGER ═══════════════ -->
+
+<h2>Rimklynger</h2>
+<p>Generer tilfeldige rimklynger for freestyle-trening. Tre moduser:</p>
+
+<div class="kv">
+  <div class="kv-card">
+    <div class="kv-words">natt / bratt</div>
+    <div class="kv-label">Par &mdash; 2 ord, ulike familier</div>
+  </div>
+  <div class="kv-card">
+    <div class="kv-words">natt, bratt, skatt, matt</div>
+    <div class="kv-label">Bred &mdash; 4 ord, ulike familier</div>
+  </div>
+  <div class="kv-card">
+    <div class="kv-words">at &middot; tatt &middot; fortsatt &middot; hatt &middot; satt &middot; natt &middot; ...</div>
+    <div class="kv-label">Dyp &mdash; alle ord, &eacute;n familie</div>
+  </div>
+</div>
+
+<div class="note">Send <code>ord</code> for &aring; l&aring;se alle klynger til &eacute;n rimfamilie. Uten <code>ord</code>: tilfeldig valg av rimfamilier.</div>
+
+<div class="tbl-label">Felles respons-felter (alle tre moduser)</div>
+<table><thead><tr><th>Felt</th><th>Type</th><th>Beskrivelse</th></tr></thead>
+  <tbody>
+    <tr><td>modus</td><td>string</td><td>"par", "bred" eller "dyp"</td></tr>
+    <tr><td>klynger</td><td>array</td><td>Liste av klynger</td></tr>
+    <tr><td>klynger[].rimsuffiks</td><td>string</td><td>IPA-suffiks for denne klyngen</td></tr>
+    <tr><td>klynger[].stavelser</td><td>int|null</td><td>Stavelsestall (null hvis blandet)</td></tr>
+    <tr><td>klynger[].ord</td><td>array</td><td>Ordliste i klyngen</td></tr>
+    <tr><td>antall</td><td>int</td><td>Antall klynger</td></tr>
+    <tr><td>filter</td><td>object</td><td>Brukte filtre: stavelser, min_frekvens, dialekt, ord</td></tr>
+    <tr><td>soketid_ms</td><td>float</td><td>Responstid</td></tr>
+  </tbody>
+</table>
+
+<div class="ep" id="klynger-par">
+  <div class="ep-head"><span class="ep-method">GET</span><span class="ep-path">/api/v1/rimklynger/par</span></div>
+  <div class="ep-desc">2 ord per klynge. Uten <code>ord</code>: hvert par fra en unik rimfamilie. Med <code>ord</code>: alle par fra det ordets familie.</div>
+
+  <div class="tbl-label">Parametere</div>
+  <table><thead><tr><th>Parameter</th><th>Type</th><th>Default</th><th>Beskrivelse</th></tr></thead>
+    <tbody>
+      <tr><td>antall</td><td>int</td><td>10</td><td>Antall klynger (1&ndash;50)</td></tr>
+      <tr><td>stavelser</td><td>int</td><td>&mdash;</td><td>Filtrer p&aring; stavelsestall</td></tr>
+      <tr><td>min_frekvens</td><td>float</td><td>1.0</td><td>Minimum bruksfrekvens per million</td></tr>
+      <tr><td>ord</td><td>string</td><td>&mdash;</td><td>L&aring;s til dette ordets rimfamilie</td></tr>
+      <tr><td>dialekt</td><td>string</td><td>"&oslash;st"</td><td>Dialektregion</td></tr>
+    </tbody>
+  </table>
+</div>
+<pre>curl "<span class="u">https://rimregisteret.no/api/v1/rimklynger/par?antall=5&amp;stavelser=1</span>"</pre>
+
+<div class="ep" id="klynger-bred">
+  <div class="ep-head"><span class="ep-method">GET</span><span class="ep-path">/api/v1/rimklynger/bred</span></div>
+  <div class="ep-desc">4 ord per klynge. Samme parametere som par.</div>
+</div>
+<pre>curl "<span class="u">https://rimregisteret.no/api/v1/rimklynger/bred?antall=5&amp;ord=sol</span>"</pre>
+
+<div class="ep" id="klynger-dyp">
+  <div class="ep-head"><span class="ep-method">GET</span><span class="ep-path">/api/v1/rimklynger/dyp</span></div>
+  <div class="ep-desc">Alle kvalifiserte ord fra &eacute;n rimfamilie, sortert etter frekvens. Returnerer alltid 1 klynge. <code>antall</code> ignoreres.</div>
+
+  <div class="tbl-label">Parametere</div>
+  <table><thead><tr><th>Parameter</th><th>Type</th><th>Default</th><th>Beskrivelse</th></tr></thead>
+    <tbody>
+      <tr><td>ord</td><td>string</td><td>&mdash;</td><td>Startord. Uten: tilfeldig stor rimfamilie</td></tr>
+      <tr><td>stavelser</td><td>int</td><td>&mdash;</td><td>Filtrer p&aring; stavelsestall</td></tr>
+      <tr><td>min_frekvens</td><td>float</td><td>1.0</td><td>Minimum bruksfrekvens per million</td></tr>
+      <tr><td>dialekt</td><td>string</td><td>"&oslash;st"</td><td>Dialektregion</td></tr>
+    </tbody>
+  </table>
+</div>
+<pre>curl "<span class="u">https://rimregisteret.no/api/v1/rimklynger/dyp?ord=natt&amp;min_frekvens=5</span>"</pre>
+
+<!-- ═══════════════ SØK ═══════════════ -->
+
+<h2>S&oslash;k</h2>
+
+<div class="ep" id="sok">
+  <div class="ep-head"><span class="ep-method">GET</span><span class="ep-path">/api/v1/sok</span></div>
+  <div class="ep-desc">Autocomplete &mdash; finn ord som starter med et prefiks.</div>
+
+  <div class="tbl-label">Parametere</div>
+  <table><thead><tr><th>Parameter</th><th>Type</th><th>Default</th><th>Beskrivelse</th></tr></thead>
+    <tbody>
+      <tr><td>q</td><td>string</td><td>&mdash;</td><td>S&oslash;keprefiks (p&aring;krevd, min 1 tegn)</td></tr>
+      <tr><td>maks</td><td>int</td><td>20</td><td>Maks antall resultater (1&ndash;100)</td></tr>
+    </tbody>
+  </table>
+
+  <div class="tbl-label">Respons-felter</div>
+  <table><thead><tr><th>Felt</th><th>Type</th><th>Beskrivelse</th></tr></thead>
+    <tbody>
+      <tr><td>prefiks</td><td>string</td><td>S&oslash;keprefikset</td></tr>
+      <tr><td>resultater</td><td>array&lt;string&gt;</td><td>Liste av matchende ord</td></tr>
+      <tr><td>antall</td><td>int</td><td>Antall resultater</td></tr>
+      <tr><td>soketid_ms</td><td>float</td><td>Responstid</td></tr>
+    </tbody>
+  </table>
+</div>
+<pre>curl "<span class="u">https://rimregisteret.no/api/v1/sok?q=sol&amp;maks=5</span>"</pre>
+<pre>{
+  <span class="k">"prefiks"</span>: <span class="s">"sol"</span>,
+  <span class="k">"resultater"</span>: [<span class="s">"sol"</span>, <span class="s">"sola"</span>, <span class="s">"solaktiviteten"</span>, <span class="s">"solar"</span>, <span class="s">"solare"</span>],
+  <span class="k">"antall"</span>: <span class="n">5</span>, <span class="k">"soketid_ms"</span>: <span class="n">0.4</span>
+}</pre>
+
+<!-- ═══════════════ SWAGGER ═══════════════ -->
+
+<h2 id="swagger">Swagger / ReDoc</h2>
+<p>Interaktiv dokumentasjon med &laquo;Try it out&raquo;:</p>
 <p><a href="/docs">/docs</a> (Swagger UI) &bull; <a href="/redoc">/redoc</a> (ReDoc)</p>
 
-<h2>Datakilder</h2>
+<!-- ═══════════════ DATAKILDER ═══════════════ -->
+
+<h2 id="datakilder">Datakilder</h2>
 <p>
   <a href="https://www.nb.no/sprakbanken/ressurskatalog/oai-nb-no-sbr-56/">NB Uttale</a> (fonetikk, 5 dialekter) &bull;
   <a href="https://www.nb.no/sprakbanken/ressurskatalog/oai-nb-no-sbr-27/">Norwegian WordNet</a> (semantikk) &bull;
@@ -366,7 +544,8 @@ pre .num { color: #60a5fa; }
   <a href="https://ordbokene.no">Bokm&aring;lsordboka</a> via <a href="https://ordbokapi.org">ordbokapi.org</a> (definisjoner)
 </p>
 
-</div>
+</div><!-- .main -->
+</div><!-- .layout -->
 
 <div class="footer">Rimregisteret &mdash; <a href="https://github.com/FunkyGhetto/rimregisteret">GitHub</a></div>
 
