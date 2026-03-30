@@ -83,25 +83,32 @@ body {
   outline: none;
   transition: border-color 0.15s;
 }
-#search { padding-left: 2.8rem; }
+#search { padding-left: 2.6rem; }
 #search::placeholder { color: #666; }
 #search:focus { border-color: #e8920d; }
 .dice-btn {
   position: absolute;
-  left: 0.6rem;
+  left: 0.7rem;
   top: 50%;
   transform: translateY(-50%);
   background: none;
   border: none;
-  font-size: 1.2rem;
   cursor: pointer;
-  color: #555;
-  padding: 0.2rem;
+  padding: 0;
   z-index: 2;
-  transition: color 0.15s;
-  line-height: 1;
+  display: flex;
+  align-items: center;
 }
-.dice-btn:hover { color: #e8920d; }
+.dice-btn svg {
+  width: 18px;
+  height: 18px;
+  color: #555;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 1.5;
+  transition: color 0.15s;
+}
+.dice-btn:hover svg { color: #e8920d; }
 .autocomplete {
   position: absolute;
   top: 100%;
@@ -544,7 +551,7 @@ body {
 </div>
 
 <div class="search-wrap">
-  <button class="dice-btn" id="diceBtn" title="Tilfeldig ord">&#x1F3B2;</button>
+  <button class="dice-btn" id="diceBtn" title="Tilfeldig ord"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1" fill="currentColor" stroke="none"/><circle cx="15.5" cy="8.5" r="1" fill="currentColor" stroke="none"/><circle cx="8.5" cy="15.5" r="1" fill="currentColor" stroke="none"/><circle cx="15.5" cy="15.5" r="1" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1" fill="currentColor" stroke="none"/></svg></button>
   <input type="text" id="search" placeholder="Skriv et ord..." autocomplete="off" autofocus>
   <div class="autocomplete" id="autocomplete"></div>
 </div>
