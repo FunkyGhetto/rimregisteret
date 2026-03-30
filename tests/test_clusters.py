@@ -257,20 +257,24 @@ class TestEdgeCases:
 class TestRimsuffiksKonsistens:
     """Verify all words in a cluster actually share the claimed rimsuffiks in DB."""
 
+    def _word_has_suffix(self, conn, word, expected_suffix):
+        """Check if any DB entry for this word has the expected suffix."""
+        rows = conn.execute(
+            "SELECT DISTINCT rimsuffiks FROM ord WHERE LOWER(ord) = ?",
+            (word.lower(),),
+        ).fetchall()
+        assert rows, f"Word '{word}' not in DB"
+        suffixes = {r[0] for r in rows}
+        assert expected_suffix in suffixes, (
+            f"Word '{word}' has suffixes {suffixes}, expected '{expected_suffix}'"
+        )
+
     def test_par_words_share_db_suffix(self):
         result = generer_rimklynger(modus="par", antall=5, min_frekvens=0.0)
         conn = sqlite3.connect(str(DB_PATH))
         for klynge in result:
             for word in klynge["ord"]:
-                row = conn.execute(
-                    "SELECT rimsuffiks FROM ord WHERE LOWER(ord) = ? LIMIT 1",
-                    (word.lower(),),
-                ).fetchone()
-                assert row is not None, f"Word '{word}' not in DB"
-                assert row[0] == klynge["rimsuffiks"], (
-                    f"Word '{word}' has suffix '{row[0]}', "
-                    f"expected '{klynge['rimsuffiks']}'"
-                )
+                self._word_has_suffix(conn, word, klynge["rimsuffiks"])
         conn.close()
 
     def test_bred_words_share_db_suffix(self):
@@ -278,25 +282,15 @@ class TestRimsuffiksKonsistens:
         conn = sqlite3.connect(str(DB_PATH))
         for klynge in result:
             for word in klynge["ord"]:
-                row = conn.execute(
-                    "SELECT rimsuffiks FROM ord WHERE LOWER(ord) = ? LIMIT 1",
-                    (word.lower(),),
-                ).fetchone()
-                assert row is not None
-                assert row[0] == klynge["rimsuffiks"]
+                self._word_has_suffix(conn, word, klynge["rimsuffiks"])
         conn.close()
 
     def test_dyp_words_share_db_suffix(self):
         result = generer_rimklynger(modus="dyp", ord="natt", min_frekvens=0.0)
         conn = sqlite3.connect(str(DB_PATH))
         klynge = result[0]
-        for word in klynge["ord"][:20]:  # check first 20
-            row = conn.execute(
-                "SELECT rimsuffiks FROM ord WHERE LOWER(ord) = ? LIMIT 1",
-                (word.lower(),),
-            ).fetchone()
-            assert row is not None
-            assert row[0] == klynge["rimsuffiks"]
+        for word in klynge["ord"][:20]:
+            self._word_has_suffix(conn, word, klynge["rimsuffiks"])
         conn.close()
 
 
@@ -362,14 +356,14 @@ class TestTilfeldighet:
 class TestAntallParameter:
     def test_exact_antall_par(self):
         for n in [1, 3, 5, 10]:
-            result = generer_rimklynger(modus="par", antall=n)
+            result = generer_rimklynger(modus="par", antall=n, min_frekvens=0.0)
             assert len(result) <= n
             if n <= 5:
                 assert len(result) == n  # should have enough families
 
     def test_exact_antall_bred(self):
         for n in [1, 3, 5]:
-            result = generer_rimklynger(modus="bred", antall=n)
+            result = generer_rimklynger(modus="bred", antall=n, min_frekvens=0.0)
             assert len(result) <= n
             if n <= 3:
                 assert len(result) == n

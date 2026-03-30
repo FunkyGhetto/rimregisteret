@@ -65,27 +65,10 @@ body {
 #dialekt:hover { color: #e8920d; border-color: #e8920d; }
 #dialekt:focus { border-color: #e8920d; color: #e8920d; }
 #dialekt option { background: #1a1a1a; color: #e5e5e5; font-weight: 400; }
-.header-btn {
-  font-family: 'Space Grotesk', sans-serif;
-  font-size: 0.85rem;
-  font-weight: 600;
-  padding: 0.4rem 0.8rem;
-  background: transparent;
-  color: #888;
-  border: 1px solid #2a2a2a;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: color 0.15s, border-color 0.15s;
-}
-.header-btn:hover { color: #e8920d; border-color: #e8920d; }
-.header-btn.active {
-  color: #e8920d;
-  border-color: #e8920d;
-  background: rgba(232, 146, 13, 0.1);
-}
 .search-wrap {
-  max-width: 600px;
+  max-width: 800px;
   margin: 1.2rem auto 0;
+  padding: 0 1rem;
   position: relative;
 }
 #search {
@@ -127,8 +110,9 @@ body {
   display: flex;
   justify-content: center;
   gap: 0;
-  max-width: 700px;
+  max-width: 800px;
   margin: 1.2rem auto 0;
+  padding: 0 1rem;
   border-bottom: 2px solid #2a2a2a;
   flex-wrap: wrap;
 }
@@ -154,8 +138,9 @@ body {
 }
 /* --- Cluster controls --- */
 .cluster-controls {
-  max-width: 600px;
+  max-width: 800px;
   margin: 1rem auto 0;
+  padding: 0 1rem;
   display: none;
 }
 .cluster-controls.visible { display: block; }
@@ -262,7 +247,7 @@ body {
   font-size: 0.9rem;
 }
 .results {
-  max-width: 700px;
+  max-width: 800px;
   margin: 0 auto;
   padding: 0 1rem 3rem;
 }
@@ -352,7 +337,7 @@ body {
 }
 /* --- Learn section --- */
 .learn-content {
-  max-width: 700px;
+  max-width: 800px;
   margin: 0 auto;
   padding: 0 1rem 3rem;
   display: none;
@@ -531,7 +516,6 @@ body {
     <p>Norsk rimordbok og treningsverktøy</p>
   </div>
   <div class="header-right">
-    <button class="header-btn" id="laerBtn">Lær</button>
     <select id="dialekt">
       <option value="øst">Østnorsk</option>
       <option value="nord">Nordnorsk</option>
@@ -554,6 +538,7 @@ body {
   <button class="tab" data-tab="antonymer">Antonymer</button>
   <button class="tab" data-tab="homofoner">Homofoner</button>
   <button class="tab" data-tab="rimklynger">Rimklynger</button>
+  <button class="tab" data-tab="laer">Lær</button>
 </div>
 
 <div class="cluster-controls" id="clusterControls">
@@ -717,13 +702,11 @@ const antallWrap = document.getElementById('antallWrap');
 const generateBtn = document.getElementById('generateBtn');
 const dialektSelect = document.getElementById('dialekt');
 const learnContent = document.getElementById('learnContent');
-const laerBtn = document.getElementById('laerBtn');
 const searchWrap = document.querySelector('.search-wrap');
 
 let currentTab = 'rim';
 let currentModus = 'par';
 let currentDialekt = 'øst';
-let learnActive = false;
 let debounceTimer = null;
 let acIndex = -1;
 let acItems = [];
@@ -766,12 +749,12 @@ window.addEventListener('popstate', readURL);
 // --- Tab switching ---
 function updateTabUI() {
   const isCluster = currentTab === 'rimklynger';
-  clusterControls.classList.toggle('visible', isCluster && !learnActive);
-  learnContent.classList.toggle('visible', learnActive);
-  laerBtn.classList.toggle('active', learnActive);
-  searchWrap.style.display = learnActive ? 'none' : '';
-  statusEl.style.display = learnActive ? 'none' : '';
-  resultsEl.style.display = learnActive ? 'none' : '';
+  const isLearn = currentTab === 'laer';
+  clusterControls.classList.toggle('visible', isCluster);
+  learnContent.classList.toggle('visible', isLearn);
+  searchWrap.style.display = isLearn ? 'none' : '';
+  statusEl.style.display = isLearn ? 'none' : '';
+  resultsEl.style.display = isLearn ? 'none' : '';
   searchEl.placeholder = isCluster ? 'Velg et ord (valgfritt)...' : 'Skriv et ord...';
 }
 
@@ -781,9 +764,8 @@ tabsEl.addEventListener('click', e => {
   tabsEl.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   tab.classList.add('active');
   currentTab = tab.dataset.tab;
-  learnActive = false;
   updateTabUI();
-  if (currentTab === 'rimklynger') {
+  if (currentTab === 'rimklynger' || currentTab === 'laer') {
     statusEl.textContent = '';
     resultsEl.innerHTML = '';
   } else {
@@ -803,18 +785,14 @@ modusPills.addEventListener('click', e => {
   antallWrap.style.display = currentModus === 'dyp' ? 'none' : '';
 });
 
-// --- Lær button ---
-laerBtn.addEventListener('click', () => {
-  learnActive = !learnActive;
-  updateTabUI();
-});
-
 // --- Dialect selector ---
 dialektSelect.addEventListener('change', () => {
   currentDialekt = dialektSelect.value;
   const word = searchEl.value.trim();
-  if (currentTab === 'rimklynger' || learnActive) {
-    // Don't auto-regenerate
+  if (currentTab === 'laer') {
+    // No search needed on learn tab
+  } else if (currentTab === 'rimklynger') {
+    // Don't auto-regenerate clusters, user clicks Generate
   } else if (word) {
     doSearch(word);
   }
@@ -825,8 +803,7 @@ generateBtn.addEventListener('click', () => doGenerateCluster());
 
 // --- "Prøv nå" buttons in learn section ---
 function switchToClusterTab(modus, stavelser, antall) {
-  // Switch to Rimklynger tab, close learn
-  learnActive = false;
+  // Switch to Rimklynger tab
   tabsEl.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   tabsEl.querySelector('[data-tab="rimklynger"]').classList.add('active');
   currentTab = 'rimklynger';
