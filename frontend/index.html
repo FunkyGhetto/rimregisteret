@@ -83,8 +83,25 @@ body {
   outline: none;
   transition: border-color 0.15s;
 }
+#search { padding-left: 2.8rem; }
 #search::placeholder { color: #666; }
 #search:focus { border-color: #e8920d; }
+.dice-btn {
+  position: absolute;
+  left: 0.6rem;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  font-size: 1.2rem;
+  cursor: pointer;
+  color: #555;
+  padding: 0.2rem;
+  z-index: 2;
+  transition: color 0.15s;
+  line-height: 1;
+}
+.dice-btn:hover { color: #e8920d; }
 .autocomplete {
   position: absolute;
   top: 100%;
@@ -512,7 +529,7 @@ body {
 
 <div class="header">
   <div class="header-left">
-    <h1>Rimregisteret</h1>
+    <h1><a href="/" id="logoLink" style="color:inherit;text-decoration:none">Rimregisteret</a></h1>
     <p>Norsk rimordbok og treningsverktøy</p>
   </div>
   <div class="header-right">
@@ -527,6 +544,7 @@ body {
 </div>
 
 <div class="search-wrap">
+  <button class="dice-btn" id="diceBtn" title="Tilfeldig ord">&#x1F3B2;</button>
   <input type="text" id="search" placeholder="Skriv et ord..." autocomplete="off" autofocus>
   <div class="autocomplete" id="autocomplete"></div>
 </div>
@@ -688,6 +706,8 @@ const API = (function() {
   return '';
 })();
 
+const logoLink = document.getElementById('logoLink');
+const diceBtn = document.getElementById('diceBtn');
 const searchEl = document.getElementById('search');
 const acEl = document.getElementById('autocomplete');
 const tabsEl = document.getElementById('tabs');
@@ -795,6 +815,51 @@ dialektSelect.addEventListener('change', () => {
     // Don't auto-regenerate clusters, user clicks Generate
   } else if (word) {
     doSearch(word);
+  }
+});
+
+// --- Logo: reset to home ---
+logoLink.addEventListener('click', e => {
+  e.preventDefault();
+  searchEl.value = '';
+  statusEl.textContent = '';
+  resultsEl.innerHTML = '';
+  // Switch to Rim tab
+  tabsEl.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  tabsEl.querySelector('[data-tab="rim"]').classList.add('active');
+  currentTab = 'rim';
+  updateTabUI();
+  history.pushState(null, '', '/');
+  document.title = 'Rimregisteret';
+});
+
+// --- Dice: random word ---
+diceBtn.addEventListener('click', async () => {
+  try {
+    // Pick a random 2-letter prefix and get autocomplete results
+    const prefixes = 'abcdefghijklmnoprstuvwåæø';
+    const prefix = prefixes[Math.floor(Math.random() * prefixes.length)];
+    const r = await fetch(`${API}/api/v1/sok?q=${prefix}&maks=20`);
+    const data = await r.json();
+    const words = data.resultater || [];
+    if (words.length > 0) {
+      const word = words[Math.floor(Math.random() * words.length)];
+      searchEl.value = word;
+      if (currentTab === 'rimklynger') {
+        doGenerateCluster();
+      } else if (currentTab === 'laer') {
+        // Switch to Rim tab first
+        tabsEl.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        tabsEl.querySelector('[data-tab="rim"]').classList.add('active');
+        currentTab = 'rim';
+        updateTabUI();
+        doSearch(word);
+      } else {
+        doSearch(word);
+      }
+    }
+  } catch (err) {
+    console.error('Dice error:', err);
   }
 });
 
