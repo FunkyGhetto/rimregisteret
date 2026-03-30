@@ -1,0 +1,1 @@
+"""Rimordbok — norsk rimordbok."""

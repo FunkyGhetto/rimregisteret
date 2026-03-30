@@ -1,0 +1,1 @@
+"""Database-tilgang for rimordbok."""
