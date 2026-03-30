@@ -206,22 +206,28 @@ pre .num { color: #60a5fa; }
 <div class="endpoint">
   <span class="method">GET</span>
   <span class="path">/api/v1/synonymer/{ord}</span>
-  <div class="desc">Synonymer fra Norwegian WordNet.</div>
+  <div class="desc">Synonymer fra Norwegian WordNet og norsk synonymordbok.</div>
+  <div class="params">Parametere: <code>maks</code></div>
 </div>
+<pre>curl "<span class="url">https://rimregisteret.no/api/v1/synonymer/glad?maks=10</span>"</pre>
 
 <div class="endpoint">
   <span class="method">GET</span>
   <span class="path">/api/v1/antonymer/{ord}</span>
-  <div class="desc">Antonymer (motsetningsord).</div>
+  <div class="desc">Antonymer (motsetningsord) fra Norwegian WordNet.</div>
+  <div class="params">Parametere: <code>maks</code></div>
 </div>
-
-<h2>Fonetikk</h2>
+<pre>curl "<span class="url">https://rimregisteret.no/api/v1/antonymer/billig</span>"</pre>
 
 <div class="endpoint">
   <span class="method">GET</span>
-  <span class="path">/api/v1/homofoner/{ord}</span>
-  <div class="desc">Ord med identisk uttale, ulik stavem&aring;te.</div>
+  <span class="path">/api/v1/relaterte/{ord}</span>
+  <div class="desc">Relaterte ord &mdash; hypernymer, hyponymer, meronymer og holonymer fra WordNet.</div>
+  <div class="params">Parametere: <code>maks</code></div>
 </div>
+<pre>curl "<span class="url">https://rimregisteret.no/api/v1/relaterte/hund?maks=10</span>"</pre>
+
+<h2>Fonetikk og ordinfo</h2>
 
 <div class="endpoint">
   <span class="method">GET</span>
@@ -233,42 +239,53 @@ pre .num { color: #60a5fa; }
 
 <div class="endpoint">
   <span class="method">GET</span>
-  <span class="path">/api/v1/relaterte/{ord}</span>
-  <div class="desc">Relaterte ord (hypernymer, hyponymer, meronymer, holonymer fra WordNet).</div>
+  <span class="path">/api/v1/homofoner/{ord}</span>
+  <div class="desc">Ord med identisk uttale men ulik stavem&aring;te.</div>
 </div>
+<pre>curl "<span class="url">https://rimregisteret.no/api/v1/homofoner/sol</span>"</pre>
 
 <div class="endpoint">
   <span class="method">GET</span>
   <span class="path">/api/v1/konsonanter/{ord}</span>
-  <div class="desc">Konsonantmatching &mdash; ord med samme konsonantskjelett.</div>
+  <div class="desc">Konsonantmatching &mdash; ord med samme konsonantskjelett (vokaler fjernet).</div>
+  <div class="params">Parametere: <code>maks</code></div>
 </div>
+<pre>curl "<span class="url">https://rimregisteret.no/api/v1/konsonanter/sol?maks=10</span>"</pre>
+
+<h2>Dialekter</h2>
 
 <div class="endpoint">
   <span class="method">GET</span>
   <span class="path">/api/v1/rim/{ord}/dialekter</span>
-  <div class="desc">Vis hvilke dialekter et rimpar fungerer i.</div>
+  <div class="desc">Vis hvilke av de 5 dialektregionene et rimpar fungerer i.</div>
+  <div class="params">Parametere: <code>maks</code></div>
 </div>
+<pre>curl "<span class="url">https://rimregisteret.no/api/v1/rim/barn/dialekter?maks=10</span>"</pre>
 
 <h2>Rimklynger</h2>
-<p>Generer tilfeldige rimklynger for freestyle-trening.</p>
+<p>Generer tilfeldige rimklynger for freestyle-trening. Tre moduser for ulike treningsbehov.</p>
 
 <div class="endpoint">
   <span class="method">GET</span>
   <span class="path">/api/v1/rimklynger/par</span>
-  <div class="desc">Par-modus: 2 ord per klynge fra tilfeldige rimfamilier.</div>
+  <div class="desc">Par-modus: 2 ord per klynge fra tilfeldige rimfamilier. Trener raske overganger.</div>
   <div class="params">Parametere: <code>antall</code>, <code>stavelser</code>, <code>min_frekvens</code>, <code>ord</code>, <code>dialekt</code></div>
 </div>
+<pre>curl "<span class="url">https://rimregisteret.no/api/v1/rimklynger/par?antall=10&amp;stavelser=1</span>"</pre>
 
 <div class="endpoint">
   <span class="method">GET</span>
   <span class="path">/api/v1/rimklynger/bred</span>
-  <div class="desc">Bred-modus: 4 ord per klynge.</div>
+  <div class="desc">Bred-modus: 4 ord per klynge. Trener bredde innenfor rimfamilier.</div>
+  <div class="params">Parametere: <code>antall</code>, <code>stavelser</code>, <code>min_frekvens</code>, <code>ord</code>, <code>dialekt</code></div>
 </div>
+<pre>curl "<span class="url">https://rimregisteret.no/api/v1/rimklynger/bred?antall=5&amp;ord=sol</span>"</pre>
 
 <div class="endpoint">
   <span class="method">GET</span>
   <span class="path">/api/v1/rimklynger/dyp</span>
-  <div class="desc">Dyp-modus: alle ord fra &eacute;n rimfamilie.</div>
+  <div class="desc">Dyp-modus: alle ord fra &eacute;n rimfamilie, sortert etter frekvens. Trener total dybde.</div>
+  <div class="params">Parametere: <code>stavelser</code>, <code>min_frekvens</code>, <code>ord</code>, <code>dialekt</code></div>
 </div>
 <pre>curl "<span class="url">https://rimregisteret.no/api/v1/rimklynger/dyp?ord=natt&amp;min_frekvens=1</span>"</pre>
 
