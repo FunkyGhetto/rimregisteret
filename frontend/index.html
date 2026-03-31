@@ -1210,12 +1210,6 @@ function makeWordEl(item) {
     tone.textContent = toneIcon(item.tonelag);
     el.appendChild(tone);
   }
-  if (item.score != null && item.score < 1.0) {
-    const sc = document.createElement('span');
-    sc.className = 'score';
-    sc.textContent = item.score.toFixed(1);
-    el.appendChild(sc);
-  }
   el.addEventListener('click', e => { e.preventDefault(); searchWord(item.ord); });
   el.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); searchWord(item.ord); }});
   return el;
