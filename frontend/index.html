@@ -379,38 +379,57 @@ body {
   color: #555;
   font-style: italic;
 }
-.landing-grid {
+/* Seksjon 1: plain text columns */
+.landing-facts {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 0.8rem;
-  margin-top: 1.2rem;
+  gap: 2rem;
+  margin-top: 1.5rem;
 }
-.landing-card {
-  background: #1a1a1a;
-  border: 1px solid #2a2a2a;
-  border-radius: 6px;
-  padding: 0.8rem;
-}
-.landing-card h4 {
+.landing-fact h4 {
   font-family: 'Space Grotesk', sans-serif;
   font-size: 0.8rem;
   font-weight: 700;
   color: #e8920d;
-  margin-bottom: 0.3rem;
+  margin-bottom: 0.4rem;
 }
-.landing-card p {
+.landing-fact p {
   font-size: 0.8rem;
-  color: #aaa;
+  color: #888;
+  line-height: 1.6;
+  margin: 0;
+}
+/* Seksjon 2: action links */
+.landing-actions {
+  display: flex;
+  justify-content: center;
+  gap: 2rem;
+  margin-top: 2.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #1a1a1a;
+}
+.landing-action {
+  font-size: 0.85rem;
+  color: #555;
+}
+.landing-action h4 {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #e5e5e5;
+  margin-bottom: 0.2rem;
+}
+.landing-action p {
+  font-size: 0.78rem;
+  color: #555;
   line-height: 1.5;
   margin: 0;
 }
-.landing-card a {
-  font-size: 0.8rem;
-  color: #888;
-}
-.landing-card a:hover { color: #e8920d; }
+.landing-action a { color: #888; }
+.landing-action a:hover { color: #e8920d; }
 @media (max-width: 600px) {
-  .landing-grid { grid-template-columns: 1fr; }
+  .landing-facts { grid-template-columns: 1fr; gap: 1rem; }
+  .landing-actions { flex-direction: column; align-items: center; gap: 1rem; }
 }
 @media (max-width: 500px) {
   .header { padding: 1.5rem 1rem 0.6rem; flex-wrap: wrap; gap: 0.3rem; }
@@ -666,31 +685,31 @@ body {
     <div class="landing-hint">Skriv inn et ord og se hva du finner.</div>
   </div>
 
-  <div class="landing-grid">
-    <div class="landing-card">
+  <div class="landing-facts">
+    <div class="landing-fact">
       <h4>Fonetisk, ikke visuell</h4>
       <p>Rimregisteret bruker faktisk uttale, ikke stavem&aring;te. &laquo;Sol&raquo; og &laquo;stol&raquo; rimer fordi de h&oslash;res like ut &mdash; ikke fordi de ser like ut.</p>
     </div>
-    <div class="landing-card">
+    <div class="landing-fact">
       <h4>Fem dialekter</h4>
       <p>&laquo;Barn&raquo; og &laquo;garn&raquo; rimer perfekt i &oslash;stnorsk. I vestnorsk gj&oslash;r de ikke det &mdash; r-en uttales separat. Bytt dialekt og h&oslash;r forskjellen.</p>
     </div>
-    <div class="landing-card">
+    <div class="landing-fact">
       <h4>Sortert etter bruk</h4>
       <p>Vanlige ord kommer f&oslash;rst. &laquo;Stol&raquo; f&oslash;r &laquo;parasol&raquo;, &laquo;natt&raquo; f&oslash;r &laquo;thermostat&raquo;. Basert p&aring; over en milliard ord fra Spr&aring;kbanken.</p>
     </div>
   </div>
 
-  <div class="landing-grid">
-    <div class="landing-card">
+  <div class="landing-actions">
+    <div class="landing-action">
       <h4>Skriv tekst</h4>
       <p>Finn rim, nesten-rim og synonymer. Kombiner dem for &aring; finne ord du ikke visste du lette etter.</p>
     </div>
-    <div class="landing-card">
+    <div class="landing-action">
       <h4>Tren freestyle</h4>
       <p>Generer tilfeldige rimklynger i ulike vanskelighetsgrader. Drill rimfamilier over en beat.</p>
     </div>
-    <div class="landing-card">
+    <div class="landing-action">
       <h4>Bygg med API-et</h4>
       <p>Gratis API uten n&oslash;kkel. 684 000 ord med fonetikk, rim og semantikk.<br><a href="/api">&rarr; API-dokumentasjon</a></p>
     </div>
