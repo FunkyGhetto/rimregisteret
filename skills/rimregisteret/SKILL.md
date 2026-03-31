@@ -457,4 +457,5 @@ Eksempel: `/arsenal/kjærlighet` gir rim på "kjærlighet" + synonymer som "lide
 - Malmi & Takala (2016), "DopeLearning: A Computational Approach to Rap Lyrics Generation", arXiv
 - NB Uttale — Nasjonalbiblioteket, Språkbanken
 - Norwegian WordNet — Nasjonalbiblioteket, Språkbanken
-- Bokmålsordboka — Språkrådet / Universitetet i Bergen, via ordbokapi.org (definisjoner)
+- Bokmålsordboka — Språkrådet / Universitetet i Bergen, via ordbokapi.org (definisjoner, synonymer, antonymer)
+- Synonymordboka.no — kryssordsynonymer og antonymer (bredest dekning)

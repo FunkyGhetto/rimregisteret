@@ -287,7 +287,7 @@ pre .nl { color: #888; }
 
 <div class="ep" id="synonymer">
   <div class="ep-head"><span class="ep-method">GET</span><span class="ep-path">/api/v1/synonymer/{ord}</span></div>
-  <div class="ep-desc">Synonymer fra Norwegian WordNet og norsk synonymordbok. Sortert etter bruksfrekvens.</div>
+  <div class="ep-desc">Synonymer fra fire kilder: Norwegian WordNet, norsk synonymordbok, Bokm&aring;lsordboka og Synonymordboka. Sortert etter bruksfrekvens.</div>
 
   <div class="tbl-label">Parametere</div>
   <table><thead><tr><th>Parameter</th><th>Type</th><th>Default</th><th>Beskrivelse</th></tr></thead>
@@ -299,7 +299,7 @@ pre .nl { color: #888; }
     <tbody>
       <tr><td>ord</td><td>string</td><td>Synonymet</td></tr>
       <tr><td>relasjon</td><td>string</td><td>Alltid "synonym"</td></tr>
-      <tr><td>kilde</td><td>string</td><td>"wordnet" eller "synonymlist"</td></tr>
+      <tr><td>kilde</td><td>string</td><td>"wordnet", "synonymlist" eller "bokmaalsordboka"</td></tr>
       <tr><td>frekvens</td><td>float</td><td>Bruksfrekvens per million</td></tr>
     </tbody>
   </table>
@@ -308,14 +308,14 @@ pre .nl { color: #888; }
 
 <div class="ep" id="antonymer">
   <div class="ep-head"><span class="ep-method">GET</span><span class="ep-path">/api/v1/antonymer/{ord}</span></div>
-  <div class="ep-desc">Antonymer (motsetningsord) fra Norwegian WordNet. Begrenset dekning (~166 par) &mdash; mange ord returnerer tom liste.</div>
+  <div class="ep-desc">Antonymer (motsetningsord) fra Norwegian WordNet, Bokm&aring;lsordboka og Synonymordboka.</div>
 
   <div class="tbl-label">Respons-felter</div>
   <table><thead><tr><th>Felt</th><th>Type</th><th>Beskrivelse</th></tr></thead>
     <tbody>
       <tr><td>ord</td><td>string</td><td>Antonymet</td></tr>
       <tr><td>relasjon</td><td>string</td><td>Alltid "antonym"</td></tr>
-      <tr><td>kilde</td><td>string</td><td>Alltid "wordnet"</td></tr>
+      <tr><td>kilde</td><td>string</td><td>"wordnet" eller "bokmaalsordboka"</td></tr>
       <tr><td>frekvens</td><td>float</td><td>Bruksfrekvens per million</td></tr>
     </tbody>
   </table>
@@ -674,7 +674,8 @@ pre .nl { color: #888; }
   <a href="https://www.nb.no/sprakbanken/ressurskatalog/oai-nb-no-sbr-56/">NB Uttale</a> (fonetikk, 5 dialekter) &bull;
   <a href="https://www.nb.no/sprakbanken/ressurskatalog/oai-nb-no-sbr-27/">Norwegian WordNet</a> (semantikk) &bull;
   <a href="https://www.nb.no/sprakbanken/ressurskatalog/oai-nb-no-sbr-32/">Spr&aring;kbanken N-gram</a> (frekvens) &bull;
-  <a href="https://ordbokene.no">Bokm&aring;lsordboka</a> via <a href="https://ordbokapi.org">ordbokapi.org</a> (definisjoner)
+  <a href="https://ordbokene.no">Bokm&aring;lsordboka</a> via <a href="https://ordbokapi.org">ordbokapi.org</a> (definisjoner, synonymer, antonymer) &bull;
+  <a href="https://www.synonymordboka.no">Synonymordboka</a> (synonymer, antonymer)
 </p>
 
 </div><!-- .main -->

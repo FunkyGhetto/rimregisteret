@@ -156,10 +156,13 @@ def _pick_best_definition(articles: list) -> tuple[Optional[str], Optional[str],
     return None, ordklasse, all_synonymer, all_antonymer
 
 
-def _hent_synonymordboka(word: str) -> list[str]:
-    """Fetch synonyms from synonymordboka.no (crossword synonym database)."""
+def _hent_synonymordboka(word: str) -> tuple[list[str], list[str]]:
+    """Fetch synonyms and antonyms from synonymordboka.no.
+
+    Returns (synonymer, antonymer).
+    """
     if not _HAS_HTTPX:
-        return []
+        return [], []
     try:
         with httpx.Client(timeout=_TIMEOUT) as client:
             r = client.get(
@@ -167,18 +170,26 @@ def _hent_synonymordboka(word: str) -> list[str]:
                 follow_redirects=True,
             )
             if r.status_code != 200:
-                return []
-            match = re.search(r'Synonymer til \w+\s*(.*?)Loading', r.text, re.DOTALL)
-            if not match:
-                return []
-            words = re.findall(r'>([^<]+)<', match.group(1))
-            return [w.strip() for w in words
-                    if w.strip() and len(w.strip()) > 1
-                    and w.strip().lower() != word.lower()
-                    and not w.strip().startswith("Vis")
-                    and not w.strip().startswith("Legg")]
+                return [], []
+
+            html = r.text
+            skip = {"Vis", "mer", "Legg", "til", "synonym", "Loading"}
+
+            def _extract(pattern: str) -> list[str]:
+                match = re.search(pattern, html, re.DOTALL)
+                if not match:
+                    return []
+                words = re.findall(r'>([^<]+)<', match.group(1))
+                return [w.strip() for w in words
+                        if w.strip() and len(w.strip()) > 1
+                        and w.strip().lower() != word.lower()
+                        and w.strip() not in skip]
+
+            syns = _extract(r'Synonymer til \w+\s*(.*?)(?:Antonym|Loading)')
+            ants = _extract(r'Antonymene til \w+\s*(.*?)Loading')
+            return syns, ants
     except Exception:
-        return []
+        return [], []
 
 
 def hent_definisjon(
@@ -220,9 +231,10 @@ def hent_definisjon(
         articles = word_data.get("articles", [])
         definisjon, ordklasse, synonymer, antonymer = _pick_best_definition(articles)
 
-        # Merge with synonymordboka.no (crossword synonyms — much broader)
-        kryssord_syns = _hent_synonymordboka(ord)
+        # Merge with synonymordboka.no (crossword DB — much broader)
+        kryssord_syns, kryssord_ants = _hent_synonymordboka(ord)
         synonymer = synonymer + kryssord_syns
+        antonymer = antonymer + kryssord_ants
 
         # Deduplicate and remove self
         seen = set()
@@ -233,7 +245,14 @@ def hent_definisjon(
                 seen.add(low)
                 deduped.append(s)
         synonymer = deduped
-        antonymer = list(dict.fromkeys(a for a in antonymer if a.lower() != ord.lower()))
+        seen_a = set()
+        deduped_a = []
+        for a in antonymer:
+            low = a.lower()
+            if low != ord.lower() and low not in seen_a:
+                seen_a.add(low)
+                deduped_a.append(a)
+        antonymer = deduped_a
 
         _set_cached(ord, definisjon, ordklasse, synonymer, antonymer, db_path)
         return {"definisjon": definisjon, "ordklasse": ordklasse,
