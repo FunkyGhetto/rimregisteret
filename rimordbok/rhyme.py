@@ -397,6 +397,7 @@ def finn_homofoner(
 ) -> list[dict]:
     """Find homophones — words with identical phoneme sequence but different spelling.
 
+    Uses prebuilt homofoner table (fast O(1) lookup) with fallback to live query.
     Returns list of dicts: ord, rimsuffiks, tonelag, stavelser, fonemer.
     """
     info = _get_word_info(ord, db_path=db_path)
@@ -406,6 +407,37 @@ def finn_homofoner(
     ipa = info.get("ipa_ren")
     if not ipa:
         return []
+
+    # Try prebuilt homofoner table first (in semantics.db)
+    sem_db = Path(__file__).resolve().parent.parent / "data/db/semantics.db"
+    if sem_db.exists():
+        try:
+            import sqlite3
+            sconn = sqlite3.connect(str(sem_db))
+            sconn.row_factory = sqlite3.Row
+            cur = sconn.execute(
+                "SELECT ord FROM homofoner WHERE ipa = ? AND ord != ?",
+                (ipa, ord.lower()),
+            )
+            hom_words = [r["ord"] for r in cur]
+            sconn.close()
+            if hom_words:
+                # Enrich with phonetic data from rimindeks
+                conn = _connect(db_path)
+                try:
+                    placeholders = ",".join("?" for _ in hom_words)
+                    cur2 = conn.execute(
+                        f"SELECT LOWER(ord) as ord, rimsuffiks, tonelag, "
+                        f"MAX(stavelser) as stavelser, fonemer "
+                        f"FROM ord WHERE LOWER(ord) IN ({placeholders}) "
+                        f"GROUP BY LOWER(ord)",
+                        hom_words,
+                    )
+                    return [dict(r) for r in cur2]
+                finally:
+                    conn.close()
+        except Exception:
+            pass  # Fall through to live query
 
     conn = _connect(db_path)
     try:
