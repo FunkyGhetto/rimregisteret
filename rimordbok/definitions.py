@@ -20,8 +20,11 @@ from typing import Optional
 try:
     import httpx
     _HAS_HTTPX = True
+    # Persistent client for connection reuse
+    _HTTP_CLIENT = httpx.Client(timeout=2.0)
 except ImportError:
     _HAS_HTTPX = False
+    _HTTP_CLIENT = None
 
 GRAPHQL_URL = "https://api.ordbokapi.org/graphql"
 CACHE_DB = Path(__file__).resolve().parent.parent / "data/db/definisjoner.db"
@@ -164,30 +167,29 @@ def _hent_synonymordboka(word: str) -> tuple[list[str], list[str]]:
     if not _HAS_HTTPX:
         return [], []
     try:
-        with httpx.Client(timeout=_TIMEOUT) as client:
-            r = client.get(
-                f"https://www.synonymordboka.no/no/?q={word.lower()}",
-                follow_redirects=True,
-            )
-            if r.status_code != 200:
-                return [], []
+        r = _HTTP_CLIENT.get(
+            f"https://www.synonymordboka.no/no/?q={word.lower()}",
+            follow_redirects=True,
+        )
+        if r.status_code != 200:
+            return [], []
 
-            html = r.text
-            skip = {"Vis", "mer", "Legg", "til", "synonym", "Loading"}
+        html = r.text
+        skip = {"Vis", "mer", "Legg", "til", "synonym", "Loading"}
 
-            def _extract(pattern: str) -> list[str]:
-                match = re.search(pattern, html, re.DOTALL)
-                if not match:
-                    return []
-                words = re.findall(r'>([^<]+)<', match.group(1))
-                return [w.strip() for w in words
-                        if w.strip() and len(w.strip()) > 1
-                        and w.strip().lower() != word.lower()
-                        and w.strip() not in skip]
+        def _extract(pattern: str) -> list[str]:
+            match = re.search(pattern, html, re.DOTALL)
+            if not match:
+                return []
+            words = re.findall(r'>([^<]+)<', match.group(1))
+            return [w.strip() for w in words
+                    if w.strip() and len(w.strip()) > 1
+                    and w.strip().lower() != word.lower()
+                    and w.strip() not in skip]
 
-            syns = _extract(r'Synonymer til \w+\s*(.*?)(?:Antonym|Loading)')
-            ants = _extract(r'Antonymene til \w+\s*(.*?)Loading')
-            return syns, ants
+        syns = _extract(r'Synonymer til \w+\s*(.*?)(?:Antonym|Loading)')
+        ants = _extract(r'Antonymene til \w+\s*(.*?)Loading')
+        return syns, ants
     except Exception:
         return [], []
 
@@ -215,13 +217,12 @@ def hent_definisjon(
 
     # Fetch from API
     try:
-        with httpx.Client(timeout=_TIMEOUT) as client:
-            r = client.post(
-                GRAPHQL_URL,
-                json={"query": QUERY, "variables": {"word": ord.lower()}},
-            )
-            r.raise_for_status()
-            data = r.json()
+        r = _HTTP_CLIENT.post(
+            GRAPHQL_URL,
+            json={"query": QUERY, "variables": {"word": ord.lower()}},
+        )
+        r.raise_for_status()
+        data = r.json()
 
         word_data = data.get("data", {}).get("word")
         if not word_data:

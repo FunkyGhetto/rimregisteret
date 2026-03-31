@@ -11,6 +11,7 @@ All lookups go through the pre-built semantics.db (built by scripts/parse_wordne
 """
 
 import sqlite3
+from functools import lru_cache
 from pathlib import Path
 from typing import Optional
 
@@ -42,7 +43,7 @@ def _get_frequencies_batch(words: list, rhyme_db: Optional[Path] = None) -> dict
     result = {}
     for row in cur:
         result[row[0]] = row[1] if row[1] else 0.0
-    conn.close()
+    pass
     return result
 
 
@@ -81,7 +82,7 @@ def _query_relations(
         results.sort(key=lambda r: -r["frekvens"])
         return results[:maks]
     finally:
-        conn.close()
+        pass
 
 
 def _bokmaalsordboka_fallback(ord: str, relation: str, rhyme_db: Optional[Path] = None) -> list[dict]:
@@ -185,7 +186,7 @@ def finn_relaterte(
         results.sort(key=lambda r: -r["frekvens"])
         return results[:maks]
     finally:
-        conn.close()
+        pass
 
 
 def finn_meronymer(

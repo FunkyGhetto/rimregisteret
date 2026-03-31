@@ -388,7 +388,7 @@ def finn_nesten_rim(
         results.sort(key=lambda r: (-r["score"], r["ord"]))
         return results[:maks]
     finally:
-        conn.close()
+        pass
 
 
 def finn_homofoner(
@@ -412,15 +412,12 @@ def finn_homofoner(
     sem_db = Path(__file__).resolve().parent.parent / "data/db/semantics.db"
     if sem_db.exists():
         try:
-            import sqlite3
-            sconn = sqlite3.connect(str(sem_db))
-            sconn.row_factory = sqlite3.Row
+            sconn = _connect(sem_db)
             cur = sconn.execute(
                 "SELECT ord FROM homofoner WHERE ipa = ? AND ord != ?",
                 (ipa, ord.lower()),
             )
             hom_words = [r["ord"] for r in cur]
-            sconn.close()
             if hom_words:
                 # Enrich with phonetic data from rimindeks
                 conn = _connect(db_path)
@@ -435,7 +432,7 @@ def finn_homofoner(
                     )
                     return [dict(r) for r in cur2]
                 finally:
-                    conn.close()
+                    pass
         except Exception:
             pass  # Fall through to live query
 
@@ -450,7 +447,7 @@ def finn_homofoner(
         )
         return [dict(r) for r in cur]
     finally:
-        conn.close()
+        pass
 
 
 def match_konsonanter(
@@ -503,4 +500,4 @@ def match_konsonanter(
         results.sort(key=lambda r: r["ord"])
         return results[:maks]
     finally:
-        conn.close()
+        pass

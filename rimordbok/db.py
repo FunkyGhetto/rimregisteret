@@ -9,6 +9,8 @@ for words that differ from østnorsk, falling back to `ord` for the rest.
 """
 
 import sqlite3
+import threading
+from functools import lru_cache
 from pathlib import Path
 from typing import Optional
 
@@ -16,11 +18,28 @@ DEFAULT_DB = Path(__file__).resolve().parent.parent / "data/db/rimindeks.db"
 
 GYLDIGE_DIALEKTER = {"øst", "nord", "midt", "vest", "sørvest"}
 
+# Thread-local persistent connections with WAL + tuning
+_local = threading.local()
+
 
 def _connect(db_path: Optional[Path] = None) -> sqlite3.Connection:
-    path = db_path or DEFAULT_DB
-    conn = sqlite3.connect(str(path))
+    path = str(db_path or DEFAULT_DB)
+    cache_key = f"conn_{path}"
+    conn = getattr(_local, cache_key, None)
+    if conn is not None:
+        try:
+            conn.execute("SELECT 1")
+            return conn
+        except sqlite3.ProgrammingError:
+            pass  # Connection closed, recreate
+    conn = sqlite3.connect(path, check_same_thread=False)
     conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA journal_mode=WAL")
+    conn.execute("PRAGMA cache_size=-64000")
+    conn.execute("PRAGMA mmap_size=268435456")
+    conn.execute("PRAGMA temp_store=MEMORY")
+    conn.execute("PRAGMA synchronous=NORMAL")
+    setattr(_local, cache_key, conn)
     return conn
 
 
@@ -65,7 +84,7 @@ def hent_rim(
 
         return [dict(r) for r in cur]
     finally:
-        conn.close()
+        pass  # Connection reused via thread-local pool
 
 
 def hent_fonetikk(ord: str, db_path: Optional[Path] = None) -> list[dict]:
@@ -79,7 +98,7 @@ def hent_fonetikk(ord: str, db_path: Optional[Path] = None) -> list[dict]:
         )
         return [dict(r) for r in cur]
     finally:
-        conn.close()
+        pass  # Connection reused via thread-local pool
 
 
 def hent_fonetikk_dialekt(
@@ -109,7 +128,7 @@ def hent_fonetikk_dialekt(
         ).fetchone()
         return dict(row) if row else None
     finally:
-        conn.close()
+        pass  # Connection reused via thread-local pool
 
 
 def hent_rim_dialekt(
@@ -187,7 +206,7 @@ def hent_rim_dialekt(
         cur = conn.execute(query, params)
         return [dict(r) for r in cur]
     finally:
-        conn.close()
+        pass  # Connection reused via thread-local pool
 
 
 def sok_ord(
@@ -202,4 +221,4 @@ def sok_ord(
         )
         return [r["ord"] for r in cur]
     finally:
-        conn.close()
+        pass  # Connection reused via thread-local pool

@@ -56,7 +56,7 @@ def hent_kvalifiserte_suffikser(
         cur = conn.execute(query, params)
         return [row["rimsuffiks"] for row in cur]
     finally:
-        conn.close()
+        pass
 
 
 def hent_rimfamilie(
@@ -102,7 +102,7 @@ def hent_rimfamilie(
         cur = conn.execute(query, params)
         return [dict(row) for row in cur]
     finally:
-        conn.close()
+        pass
 
 
 def generer_rimklynger(
@@ -171,7 +171,7 @@ def _klynger_med_ord(
             (startord.lower(),),
         ).fetchone()
     finally:
-        conn.close()
+        pass
 
     if row is None:
         return []

@@ -15,6 +15,7 @@ from typing import Optional
 
 from fastapi import FastAPI, Query, Request, Body
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -47,6 +48,9 @@ app = FastAPI(
     description="Rimregisteret — norsk rimordbok med fonetikk, semantikk og ordfrekvens.",
     version="0.1.0",
 )
+
+# GZip compression for large responses
+app.add_middleware(GZipMiddleware, minimum_size=500)
 
 # CORS — tillat produksjon + localhost
 app.add_middleware(

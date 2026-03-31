@@ -7,27 +7,34 @@ Falls back to rule-based G2P for unknown words.
 Supports dialect-specific lookups via the `dialekt` parameter.
 """
 
+from functools import lru_cache
 from pathlib import Path
 from typing import Optional
 
 from rimordbok.db import hent_fonetikk, hent_fonetikk_dialekt
 from rimordbok.g2p import transkriber_med_stavelser
 
+# Cached version for default db_path (most common case)
+@lru_cache(maxsize=4096)
+def _slaa_opp_cached(ord: str, dialekt: str) -> dict:
+    return _slaa_opp_impl(ord, None, dialekt)
+
 
 def slaa_opp(
     ord: str, db_path: Optional[Path] = None, dialekt: str = "øst",
 ) -> dict:
-    """Look up phonetic information for a word.
+    """Look up phonetic information for a word."""
+    if db_path is None:
+        return _slaa_opp_cached(ord, dialekt)
+    return _slaa_opp_impl(ord, db_path, dialekt)
 
-    Returns a dict with keys:
-        fonemer, stress, tonelag, stavelser, ipa_ren, rimsuffiks, g2p (bool)
 
-    For non-øst dialects, checks ord_dialekter first, then falls back to øst.
-    """
+def _slaa_opp_impl(
+    ord: str, db_path: Optional[Path], dialekt: str,
+) -> dict:
     if dialekt != "øst":
         return _slaa_opp_dialekt(ord, dialekt, db_path)
 
-    # Try lexicon first (østnorsk)
     results = hent_fonetikk(ord, db_path=db_path)
     if results:
         r = results[0]
