@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Rimregisteret</title>
+<title>Rimregisteret — Norges største rimordbok</title>
+<meta name="description" content="Norges største rimordbok. 684 000 norske ord med uttale, rim, nesten-rim, synonymer og støtte for fem dialekter. Gratis og uten registrering.">
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
@@ -891,7 +892,13 @@ function pushURL(word) {
   if (location.pathname + location.search !== '/' + encodeURIComponent(word) + dialektURLParam()) {
     history.pushState(null, '', url);
   }
-  document.title = word + ' \u2014 Rimregisteret';
+}
+
+function updateSEO(word, count) {
+  document.title = `Hva rimer på ${word}? ${count} rim — Rimregisteret`;
+  let meta = document.querySelector('meta[name="description"]');
+  if (!meta) { meta = document.createElement('meta'); meta.name = 'description'; document.head.appendChild(meta); }
+  meta.content = `Finn ${count} rim og nesten-rim for «${word}». Norges største rimordbok med 684 000 ord, fonetikk og fem dialekter.`;
 }
 
 function dialektURLParam() {
@@ -967,7 +974,7 @@ logoLink.addEventListener('click', e => {
   updateTabUI();
   landingEl.style.display = '';
   history.pushState(null, '', '/');
-  document.title = 'Rimregisteret';
+  document.title = 'Rimregisteret — Norges st\u00f8rste rimordbok';
 });
 
 // --- Dice: random word ---
@@ -1240,6 +1247,7 @@ async function doSearch(word) {
     }
 
     statusEl.textContent = `${items.length} ${tabLabel()} for "${word}"`;
+    updateSEO(word, items.length);
     renderInfo(infoData);
 
     if (currentTab === 'synonymer') {

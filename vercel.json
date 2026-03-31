@@ -13,6 +13,10 @@
       "destination": "/api.html"
     },
     {
+      "source": "/sitemap.xml",
+      "destination": "https://compassionate-education-production-ee1f.up.railway.app/api/v1/sitemap.xml"
+    },
+    {
       "source": "/api/:path*",
       "destination": "https://compassionate-education-production-ee1f.up.railway.app/api/:path*"
     },

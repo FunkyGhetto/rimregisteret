@@ -658,6 +658,49 @@ def api_tilfeldig():
     return {"ord": word, "soketid_ms": round(elapsed, 1)}
 
 
+# --- Sitemap ---
+
+_sitemap_cache = {"xml": None, "ts": 0}
+
+
+@app.get("/api/v1/sitemap.xml", summary="XML Sitemap", include_in_schema=False)
+def api_sitemap():
+    """Generate sitemap with top 5000 words by frequency."""
+    import time as _time
+
+    # Cache for 24 hours
+    now = _time.time()
+    if _sitemap_cache["xml"] and now - _sitemap_cache["ts"] < 86400:
+        from fastapi.responses import Response
+        return Response(content=_sitemap_cache["xml"], media_type="application/xml")
+
+    from rimordbok.db import _connect
+    conn = _connect()
+    cur = conn.execute(
+        "SELECT LOWER(ord) as ord FROM ord "
+        "WHERE frekvens > 1 AND length(ord) BETWEEN 2 AND 20 "
+        "AND ord NOT LIKE '%-%' AND ord NOT LIKE '% %' "
+        "GROUP BY LOWER(ord) ORDER BY MAX(frekvens) DESC LIMIT 5000"
+    )
+    words = [row["ord"] for row in cur]
+
+    lines = ['<?xml version="1.0" encoding="UTF-8"?>']
+    lines.append('<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">')
+    lines.append('  <url><loc>https://www.rimregisteret.no/</loc><priority>1.0</priority></url>')
+    lines.append('  <url><loc>https://www.rimregisteret.no/api</loc><priority>0.8</priority></url>')
+    for w in words:
+        from urllib.parse import quote
+        lines.append(f'  <url><loc>https://www.rimregisteret.no/{quote(w)}</loc></url>')
+    lines.append('</urlset>')
+
+    xml = "\n".join(lines)
+    _sitemap_cache["xml"] = xml
+    _sitemap_cache["ts"] = now
+
+    from fastapi.responses import Response
+    return Response(content=xml, media_type="application/xml")
+
+
 import pathlib as _pathlib
 
 _FRONTEND_DIR = _pathlib.Path(__file__).resolve().parent.parent / "frontend"
