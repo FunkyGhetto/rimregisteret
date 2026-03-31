@@ -348,6 +348,66 @@ body {
   color: #555555;
   font-size: 0.8rem;
 }
+/* --- Landing content --- */
+.landing {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 0 1rem 2rem;
+}
+.landing-intro {
+  text-align: center;
+  padding: 1.5rem 0 0.5rem;
+}
+.landing-intro h2 {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #e8920d;
+  margin-bottom: 0.4rem;
+}
+.landing-intro p {
+  font-size: 0.9rem;
+  color: #ccc;
+  margin-bottom: 0.3rem;
+}
+.landing-intro .landing-hint {
+  font-size: 0.8rem;
+  color: #555;
+  font-style: italic;
+}
+.landing-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.8rem;
+  margin-top: 1.2rem;
+}
+.landing-card {
+  background: #1a1a1a;
+  border: 1px solid #2a2a2a;
+  border-radius: 6px;
+  padding: 0.8rem;
+}
+.landing-card h4 {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #e8920d;
+  margin-bottom: 0.3rem;
+}
+.landing-card p {
+  font-size: 0.8rem;
+  color: #aaa;
+  line-height: 1.5;
+  margin: 0;
+}
+.landing-card a {
+  font-size: 0.8rem;
+  color: #888;
+}
+.landing-card a:hover { color: #e8920d; }
+@media (max-width: 600px) {
+  .landing-grid { grid-template-columns: 1fr; }
+}
 @media (max-width: 500px) {
   .header { padding: 1.5rem 1rem 0.6rem; flex-wrap: wrap; gap: 0.3rem; }
   .header h1 { font-size: 1.4rem; }
@@ -595,6 +655,44 @@ body {
 <div class="status" id="status"></div>
 <div class="results" id="results"></div>
 
+<div class="landing" id="landing">
+  <div class="landing-intro">
+    <h2>Norges st&oslash;rste rimordbok</h2>
+    <p>684 000 norske ord med uttale, rim, synonymer og st&oslash;tte for fem dialekter.<br>Bygget p&aring; data fra Nasjonalbiblioteket.</p>
+    <div class="landing-hint">Skriv inn et ord og se hva du finner.</div>
+  </div>
+
+  <div class="landing-grid">
+    <div class="landing-card">
+      <h4>Fonetisk, ikke visuell</h4>
+      <p>Rimregisteret bruker faktisk uttale, ikke stavem&aring;te. &laquo;Sol&raquo; og &laquo;stol&raquo; rimer fordi de h&oslash;res like ut &mdash; ikke fordi de ser like ut.</p>
+    </div>
+    <div class="landing-card">
+      <h4>Fem dialekter</h4>
+      <p>&laquo;Barn&raquo; og &laquo;garn&raquo; rimer perfekt i &oslash;stnorsk. I vestnorsk gj&oslash;r de ikke det &mdash; r-en uttales separat. Bytt dialekt og h&oslash;r forskjellen.</p>
+    </div>
+    <div class="landing-card">
+      <h4>Sortert etter bruk</h4>
+      <p>Vanlige ord kommer f&oslash;rst. &laquo;Stol&raquo; f&oslash;r &laquo;parasol&raquo;, &laquo;natt&raquo; f&oslash;r &laquo;thermostat&raquo;. Basert p&aring; over en milliard ord fra Spr&aring;kbanken.</p>
+    </div>
+  </div>
+
+  <div class="landing-grid">
+    <div class="landing-card">
+      <h4>Skriv tekst</h4>
+      <p>Finn rim, nesten-rim og synonymer. Kombiner dem for &aring; finne ord du ikke visste du lette etter.</p>
+    </div>
+    <div class="landing-card">
+      <h4>Tren freestyle</h4>
+      <p>Generer tilfeldige rimklynger i ulike vanskelighetsgrader. Drill rimfamilier over en beat.</p>
+    </div>
+    <div class="landing-card">
+      <h4>Bygg med API-et</h4>
+      <p>Gratis API uten n&oslash;kkel. 684 000 ord med fonetikk, rim og semantikk.<br><a href="/api">&rarr; API-dokumentasjon</a></p>
+    </div>
+  </div>
+</div>
+
 <div class="learn-content" id="learnContent">
 
   <div class="learn-section">
@@ -728,6 +826,7 @@ const antallWrap = document.getElementById('antallWrap');
 const generateBtn = document.getElementById('generateBtn');
 const dialektSelect = document.getElementById('dialekt');
 const learnContent = document.getElementById('learnContent');
+const landingEl = document.getElementById('landing');
 const searchWrap = document.querySelector('.search-wrap');
 
 let currentTab = 'rim';
@@ -781,6 +880,7 @@ function updateTabUI() {
   searchWrap.style.display = isLearn ? 'none' : '';
   statusEl.style.display = isLearn ? 'none' : '';
   resultsEl.style.display = isLearn ? 'none' : '';
+  landingEl.style.display = isLearn ? 'none' : '';
   searchEl.placeholder = isCluster ? 'Velg et ord (valgfritt)...' : 'Skriv et ord...';
 }
 
@@ -835,6 +935,7 @@ logoLink.addEventListener('click', e => {
   tabsEl.querySelector('[data-tab="rim"]').classList.add('active');
   currentTab = 'rim';
   updateTabUI();
+  landingEl.style.display = '';
   history.pushState(null, '', '/');
   document.title = 'Rimregisteret';
 });
@@ -981,6 +1082,7 @@ function hideAC() {
 async function doGenerateCluster() {
   clearTimeout(debounceTimer);
   hideAC();
+  landingEl.style.display = 'none';
   statusEl.textContent = 'Genererer...';
   resultsEl.innerHTML = '';
   generateBtn.disabled = true;
@@ -1072,6 +1174,7 @@ function renderClusters(klynger) {
 async function doSearch(word) {
   clearTimeout(debounceTimer);
   hideAC();
+  landingEl.style.display = 'none';
   pushURL(word);
   statusEl.textContent = 'Laster...';
   resultsEl.innerHTML = '';
