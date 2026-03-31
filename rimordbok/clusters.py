@@ -178,31 +178,42 @@ def _klynger_med_ord(
 
     suffiks = row["rimsuffiks"]
 
-    if modus == "dyp":
-        familie = hent_rimfamilie(
-            suffiks,
-            min_frekvens=min_frekvens,
-            stavelser=stavelser,
-            dialekt=dialekt,
-            tilfeldig=False,
-            db_path=db_path,
+    # Try exact suffix, then merge with length-normalized suffix
+    # e.g. /ɑːŋ.kə/ + /ɑŋ.kə/ -> "tanke" + "banke", "blanke", etc.
+    def _get_familie(tilfeldig: bool, min_size: int = 2, maks=None):
+        fam = hent_rimfamilie(
+            suffiks, min_frekvens=min_frekvens, stavelser=stavelser,
+            dialekt=dialekt, tilfeldig=tilfeldig, db_path=db_path, maks=maks,
         )
+        # Try merging with vowel-length variant if family is too small
+        normalized = suffiks.replace("\u02D0", "")
+        if normalized != suffiks and len(fam) < min_size:
+            extra = hent_rimfamilie(
+                normalized, min_frekvens=min_frekvens, stavelser=stavelser,
+                dialekt=dialekt, tilfeldig=tilfeldig, db_path=db_path,
+            )
+            if extra:
+                seen = {w["ord"] for w in fam}
+                for w in extra:
+                    if w["ord"] not in seen:
+                        fam.append(w)
+                        seen.add(w["ord"])
+                return fam, normalized
+        if fam:
+            return fam, suffiks
+        return [], suffiks
+
+    if modus == "dyp":
+        familie, used_suffiks = _get_familie(tilfeldig=False, min_size=2)
         return [{
-            "rimsuffiks": suffiks,
+            "rimsuffiks": used_suffiks,
             "stavelser": stavelser,
             "ord": [w["ord"] for w in familie],
         }]
 
     # par or bred
     cluster_size = _CLUSTER_SIZE[modus]
-    familie = hent_rimfamilie(
-        suffiks,
-        min_frekvens=min_frekvens,
-        stavelser=stavelser,
-        dialekt=dialekt,
-        tilfeldig=True,
-        db_path=db_path,
-    )
+    familie, used_suffiks = _get_familie(tilfeldig=True, min_size=cluster_size)
 
     ord_liste = [w["ord"] for w in familie]
     if len(ord_liste) < cluster_size:
@@ -218,7 +229,7 @@ def _klynger_med_ord(
         if end > len(ord_liste):
             break
         klynger.append({
-            "rimsuffiks": suffiks,
+            "rimsuffiks": used_suffiks,
             "stavelser": stavelser,
             "ord": ord_liste[start:end],
         })
