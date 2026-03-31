@@ -133,7 +133,7 @@ pre .nl { color: #888; }
 <h1>Rimregisteret API</h1>
 <p class="subtitle">Gratis norsk rim-API med 684 000 ord, fonetikk, definisjoner, synonymer, dialekter og rimklynger.</p>
 
-<div class="base-url">https://rimregisteret.no/api/v1/</div>
+<div class="base-url">https://www.rimregisteret.no/api/v1/</div>
 
 <div class="note">
   Gratis uten API-n&oslash;kkel. Grense: 100 foresp&oslash;rsler per minutt per IP.
@@ -147,19 +147,19 @@ pre .nl { color: #888; }
 <div class="qs">
   <div class="qs-card">
     <h4>Finn rim for et ord</h4>
-    <pre>curl "<span class="u">https://rimregisteret.no/api/v1/rim/sol?maks=5</span>"</pre>
+    <pre>curl "<span class="u">https://www.rimregisteret.no/api/v1/rim/sol?maks=5</span>"</pre>
   </div>
   <div class="qs-card">
     <h4>Hent all info om et ord</h4>
-    <pre>curl "<span class="u">https://rimregisteret.no/api/v1/info/sol</span>"</pre>
+    <pre>curl "<span class="u">https://www.rimregisteret.no/api/v1/info/sol</span>"</pre>
   </div>
   <div class="qs-card">
     <h4>Generer treningsklynger</h4>
-    <pre>curl "<span class="u">https://rimregisteret.no/api/v1/rimklynger/par?antall=10</span>"</pre>
+    <pre>curl "<span class="u">https://www.rimregisteret.no/api/v1/rimklynger/par?antall=10</span>"</pre>
   </div>
   <div class="qs-card">
     <h4>Sjekk rim i alle dialekter</h4>
-    <pre>curl "<span class="u">https://rimregisteret.no/api/v1/rim/barn/dialekter</span>"</pre>
+    <pre>curl "<span class="u">https://www.rimregisteret.no/api/v1/rim/barn/dialekter</span>"</pre>
   </div>
 </div>
 
@@ -229,7 +229,7 @@ pre .nl { color: #888; }
     </tbody>
   </table>
 </div>
-<pre>curl "<span class="u">https://rimregisteret.no/api/v1/rim/sol?maks=3</span>"</pre>
+<pre>curl "<span class="u">https://www.rimregisteret.no/api/v1/rim/sol?maks=3</span>"</pre>
 <pre>{
   <span class="k">"ord"</span>: <span class="s">"sol"</span>,
   <span class="k">"resultater"</span>: [
@@ -270,7 +270,7 @@ pre .nl { color: #888; }
     </tbody>
   </table>
 </div>
-<pre>curl "<span class="u">https://rimregisteret.no/api/v1/nestenrim/dag?terskel=0.6&amp;maks=3</span>"</pre>
+<pre>curl "<span class="u">https://www.rimregisteret.no/api/v1/nestenrim/dag?terskel=0.6&amp;maks=3</span>"</pre>
 
 <!-- ═══════════════ SEMANTIKK ═══════════════ -->
 
@@ -295,7 +295,7 @@ pre .nl { color: #888; }
     </tbody>
   </table>
 </div>
-<pre>curl "<span class="u">https://rimregisteret.no/api/v1/synonymer/glad?maks=5</span>"</pre>
+<pre>curl "<span class="u">https://www.rimregisteret.no/api/v1/synonymer/glad?maks=5</span>"</pre>
 
 <div class="ep" id="antonymer">
   <div class="ep-head"><span class="ep-method">GET</span><span class="ep-path">/api/v1/antonymer/{ord}</span></div>
@@ -311,7 +311,7 @@ pre .nl { color: #888; }
     </tbody>
   </table>
 </div>
-<pre>curl "<span class="u">https://rimregisteret.no/api/v1/antonymer/billig</span>"</pre>
+<pre>curl "<span class="u">https://www.rimregisteret.no/api/v1/antonymer/billig</span>"</pre>
 
 <div class="ep" id="relaterte">
   <div class="ep-head"><span class="ep-method">GET</span><span class="ep-path">/api/v1/relaterte/{ord}</span></div>
@@ -327,7 +327,7 @@ pre .nl { color: #888; }
     </tbody>
   </table>
 </div>
-<pre>curl "<span class="u">https://rimregisteret.no/api/v1/relaterte/hund?maks=5</span>"</pre>
+<pre>curl "<span class="u">https://www.rimregisteret.no/api/v1/relaterte/hund?maks=5</span>"</pre>
 
 <!-- ═══════════════ FONETIKK ═══════════════ -->
 
@@ -362,7 +362,7 @@ pre .nl { color: #888; }
     </tbody>
   </table>
 </div>
-<pre>curl "<span class="u">https://rimregisteret.no/api/v1/info/sol</span>"</pre>
+<pre>curl "<span class="u">https://www.rimregisteret.no/api/v1/info/sol</span>"</pre>
 <pre>{
   <span class="k">"ord"</span>: <span class="s">"sol"</span>, <span class="k">"dialekt"</span>: <span class="s">"&oslash;st"</span>,
   <span class="k">"definisjon"</span>: <span class="s">"lys- og energigivende stjerne som jorda kretser om"</span>,
@@ -391,7 +391,7 @@ pre .nl { color: #888; }
     </tbody>
   </table>
 </div>
-<pre>curl "<span class="u">https://rimregisteret.no/api/v1/homofoner/sol</span>"</pre>
+<pre>curl "<span class="u">https://www.rimregisteret.no/api/v1/homofoner/sol</span>"</pre>
 
 <div class="ep" id="konsonanter">
   <div class="ep-head"><span class="ep-method">GET</span><span class="ep-path">/api/v1/konsonanter/{ord}</span></div>
@@ -407,7 +407,7 @@ pre .nl { color: #888; }
     </tbody>
   </table>
 </div>
-<pre>curl "<span class="u">https://rimregisteret.no/api/v1/konsonanter/sol?maks=5</span>"</pre>
+<pre>curl "<span class="u">https://www.rimregisteret.no/api/v1/konsonanter/sol?maks=5</span>"</pre>
 
 <!-- ═══════════════ DIALEKTER ═══════════════ -->
 
@@ -429,7 +429,7 @@ pre .nl { color: #888; }
     </tbody>
   </table>
 </div>
-<pre>curl "<span class="u">https://rimregisteret.no/api/v1/rim/barn/dialekter?maks=5</span>"</pre>
+<pre>curl "<span class="u">https://www.rimregisteret.no/api/v1/rim/barn/dialekter?maks=5</span>"</pre>
 
 <!-- ═══════════════ RIMKLYNGER ═══════════════ -->
 
@@ -482,13 +482,13 @@ pre .nl { color: #888; }
     </tbody>
   </table>
 </div>
-<pre>curl "<span class="u">https://rimregisteret.no/api/v1/rimklynger/par?antall=5&amp;stavelser=1</span>"</pre>
+<pre>curl "<span class="u">https://www.rimregisteret.no/api/v1/rimklynger/par?antall=5&amp;stavelser=1</span>"</pre>
 
 <div class="ep" id="klynger-bred">
   <div class="ep-head"><span class="ep-method">GET</span><span class="ep-path">/api/v1/rimklynger/bred</span></div>
   <div class="ep-desc">4 ord per klynge. Samme parametere som par.</div>
 </div>
-<pre>curl "<span class="u">https://rimregisteret.no/api/v1/rimklynger/bred?antall=5&amp;ord=sol</span>"</pre>
+<pre>curl "<span class="u">https://www.rimregisteret.no/api/v1/rimklynger/bred?antall=5&amp;ord=sol</span>"</pre>
 
 <div class="ep" id="klynger-dyp">
   <div class="ep-head"><span class="ep-method">GET</span><span class="ep-path">/api/v1/rimklynger/dyp</span></div>
@@ -504,7 +504,7 @@ pre .nl { color: #888; }
     </tbody>
   </table>
 </div>
-<pre>curl "<span class="u">https://rimregisteret.no/api/v1/rimklynger/dyp?ord=natt&amp;min_frekvens=5</span>"</pre>
+<pre>curl "<span class="u">https://www.rimregisteret.no/api/v1/rimklynger/dyp?ord=natt&amp;min_frekvens=5</span>"</pre>
 
 <!-- ═══════════════ SØK ═══════════════ -->
 
@@ -532,7 +532,7 @@ pre .nl { color: #888; }
     </tbody>
   </table>
 </div>
-<pre>curl "<span class="u">https://rimregisteret.no/api/v1/sok?q=sol&amp;maks=5</span>"</pre>
+<pre>curl "<span class="u">https://www.rimregisteret.no/api/v1/sok?q=sol&amp;maks=5</span>"</pre>
 <pre>{
   <span class="k">"prefiks"</span>: <span class="s">"sol"</span>,
   <span class="k">"resultater"</span>: [<span class="s">"sol"</span>, <span class="s">"sola"</span>, <span class="s">"solaktiviteten"</span>, <span class="s">"solar"</span>, <span class="s">"solare"</span>],

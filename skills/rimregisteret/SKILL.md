@@ -124,7 +124,7 @@ fMRI-forskning (Liu et al., Johns Hopkins 2012) viser at erfarne freestylere **d
 
 ## C. API-referanse
 
-**Base URL**: `https://rimregisteret.no/api/v1`
+**Base URL**: `https://www.rimregisteret.no/api/v1`
 
 ### Rim
 
@@ -136,9 +136,9 @@ Finn perfekte rim — ord med identisk rimsuffiks, sortert etter frekvens.
 Parametere: `maks` (int), `stavelser` (int), `tonelag` (1|2), `samme_tonelag` (bool), `dialekt` (øst|nord|midt|vest|sørvest)
 
 ```bash
-curl "https://rimregisteret.no/api/v1/rim/sol?maks=10"
-curl "https://rimregisteret.no/api/v1/rim/hjerte?stavelser=2&dialekt=vest"
-curl "https://rimregisteret.no/api/v1/rim/sol?samme_tonelag=true"
+curl "https://www.rimregisteret.no/api/v1/rim/sol?maks=10"
+curl "https://www.rimregisteret.no/api/v1/rim/hjerte?stavelser=2&dialekt=vest"
+curl "https://www.rimregisteret.no/api/v1/rim/sol?samme_tonelag=true"
 ```
 
 ### Nesten-rim
@@ -151,7 +151,7 @@ Finn nesten-rim med likhetsscore (0-1).
 Parametere: `maks`, `terskel` (float 0.0-1.0), `stavelser`, `tonelag`, `dialekt`
 
 ```bash
-curl "https://rimregisteret.no/api/v1/nestenrim/dag?terskel=0.6&maks=10"
+curl "https://www.rimregisteret.no/api/v1/nestenrim/dag?terskel=0.6&maks=10"
 ```
 
 ### Synonymer
@@ -162,7 +162,7 @@ GET /api/v1/synonymer/{ord}
 Synonymer fra Norwegian WordNet + norsk synonymordbok.
 
 ```bash
-curl "https://rimregisteret.no/api/v1/synonymer/glad?maks=10"
+curl "https://www.rimregisteret.no/api/v1/synonymer/glad?maks=10"
 ```
 
 ### Antonymer
@@ -173,7 +173,7 @@ GET /api/v1/antonymer/{ord}
 Antonymer (motsetningsord).
 
 ```bash
-curl "https://rimregisteret.no/api/v1/antonymer/billig"
+curl "https://www.rimregisteret.no/api/v1/antonymer/billig"
 ```
 
 ### Relaterte ord
@@ -184,7 +184,7 @@ GET /api/v1/relaterte/{ord}
 Hypernymer, hyponymer, meronymer, holonymer fra WordNet.
 
 ```bash
-curl "https://rimregisteret.no/api/v1/relaterte/hund"
+curl "https://www.rimregisteret.no/api/v1/relaterte/hund"
 ```
 
 ### Homofoner
@@ -195,7 +195,7 @@ GET /api/v1/homofoner/{ord}
 Ord med identisk uttale men ulik stavemåte.
 
 ```bash
-curl "https://rimregisteret.no/api/v1/homofoner/sol"
+curl "https://www.rimregisteret.no/api/v1/homofoner/sol"
 ```
 
 ### Konsonantmatching
@@ -206,7 +206,7 @@ GET /api/v1/konsonanter/{ord}
 Ord med samme konsonantskjelett (vokaler stripped).
 
 ```bash
-curl "https://rimregisteret.no/api/v1/konsonanter/sol"
+curl "https://www.rimregisteret.no/api/v1/konsonanter/sol"
 ```
 
 ### Ordinfo
@@ -219,8 +219,8 @@ Alt om et ord: definisjon (Bokmålsordboka), IPA, stavelser, tonelag, rimsuffiks
 Parametere: `dialekt`
 
 ```bash
-curl "https://rimregisteret.no/api/v1/info/sol"
-curl "https://rimregisteret.no/api/v1/info/barn?dialekt=vest"
+curl "https://www.rimregisteret.no/api/v1/info/sol"
+curl "https://www.rimregisteret.no/api/v1/info/barn?dialekt=vest"
 ```
 
 Respons inkluderer:
@@ -242,7 +242,7 @@ GET /api/v1/rim/{ord}/dialekter
 Vis hvilke dialekter et rimpar fungerer i.
 
 ```bash
-curl "https://rimregisteret.no/api/v1/rim/barn/dialekter?maks=10"
+curl "https://www.rimregisteret.no/api/v1/rim/barn/dialekter?maks=10"
 ```
 
 ### Rimklynger
@@ -257,16 +257,16 @@ Parametere: `antall` (par/bred), `stavelser`, `min_frekvens`, `ord` (startord), 
 
 ```bash
 # 10 tilfeldige rimpar
-curl "https://rimregisteret.no/api/v1/rimklynger/par?antall=10"
+curl "https://www.rimregisteret.no/api/v1/rimklynger/par?antall=10"
 
 # 5 brede klynger med 2-stavelsesord
-curl "https://rimregisteret.no/api/v1/rimklynger/bred?antall=5&stavelser=2"
+curl "https://www.rimregisteret.no/api/v1/rimklynger/bred?antall=5&stavelser=2"
 
 # Alle ord som rimer på "natt"
-curl "https://rimregisteret.no/api/v1/rimklynger/dyp?ord=natt&min_frekvens=1"
+curl "https://www.rimregisteret.no/api/v1/rimklynger/dyp?ord=natt&min_frekvens=1"
 
 # Klynger i vestlandsk dialekt
-curl "https://rimregisteret.no/api/v1/rimklynger/par?dialekt=vest&antall=5"
+curl "https://www.rimregisteret.no/api/v1/rimklynger/par?dialekt=vest&antall=5"
 ```
 
 ### Autocomplete
@@ -276,7 +276,7 @@ GET /api/v1/sok?q={prefiks}
 ```
 
 ```bash
-curl "https://rimregisteret.no/api/v1/sok?q=sol&maks=10"
+curl "https://www.rimregisteret.no/api/v1/sok?q=sol&maks=10"
 ```
 
 ### Responsformat

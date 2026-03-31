@@ -35,7 +35,7 @@ mcp = FastMCP(
     ),
 )
 
-BASE_URL = "https://rimregisteret.no/api/v1"
+BASE_URL = "https://www.rimregisteret.no/api/v1"
 _TIMEOUT = 10.0
 
 
