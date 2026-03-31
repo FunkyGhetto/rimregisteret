@@ -968,30 +968,20 @@ logoLink.addEventListener('click', e => {
 // --- Dice: random word ---
 diceBtn.addEventListener('click', async () => {
   try {
-    // Build a random 2-3 letter prefix for variety
-    const c1 = 'abcdefghijklmnoprstuvwåæø';
-    const c2 = 'aeiouyåøæklnrstdgmbfhpvj';
-    let prefix = c1[Math.floor(Math.random() * c1.length)];
-    prefix += c2[Math.floor(Math.random() * c2.length)];
-    if (Math.random() > 0.5) prefix += c2[Math.floor(Math.random() * c2.length)];
-    const r = await fetch(`${API}/api/v1/sok?q=${encodeURIComponent(prefix)}&maks=20`);
+    const r = await fetch(`${API}/api/v1/tilfeldig`);
     const data = await r.json();
-    const words = data.resultater || [];
-    if (words.length > 0) {
-      const word = words[Math.floor(Math.random() * words.length)];
-      searchEl.value = word;
-      if (currentTab === 'rimklynger') {
-        doGenerateCluster();
-      } else if (currentTab === 'laer') {
-        // Switch to Rim tab first
-        tabsEl.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-        tabsEl.querySelector('[data-tab="rim"]').classList.add('active');
-        currentTab = 'rim';
-        updateTabUI();
-        doSearch(word);
-      } else {
-        doSearch(word);
-      }
+    const word = data.ord;
+    searchEl.value = word;
+    if (currentTab === 'rimklynger') {
+      doGenerateCluster();
+    } else if (currentTab === 'laer') {
+      tabsEl.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      tabsEl.querySelector('[data-tab="rim"]').classList.add('active');
+      currentTab = 'rim';
+      updateTabUI();
+      doSearch(word);
+    } else {
+      doSearch(word);
     }
   } catch (err) {
     console.error('Dice error:', err);

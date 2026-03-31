@@ -630,6 +630,26 @@ def api_sok(
     }
 
 
+@app.get("/api/v1/tilfeldig", summary="Tilfeldig ord")
+def api_tilfeldig():
+    """Hent et tilfeldig vanlig norsk ord (frekvens > 5 per million, 3-10 bokstaver, uten bindestrek)."""
+    start = time.perf_counter()
+    from rimordbok.db import _connect
+    conn = _connect()
+    try:
+        row = conn.execute(
+            "SELECT LOWER(ord) as ord FROM ord "
+            "WHERE frekvens > 5 AND length(ord) BETWEEN 3 AND 10 "
+            "AND ord NOT LIKE '%-%' AND ord NOT LIKE '% %' "
+            "ORDER BY RANDOM() LIMIT 1"
+        ).fetchone()
+        word = row["ord"] if row else "sol"
+    finally:
+        conn.close()
+    elapsed = (time.perf_counter() - start) * 1000
+    return {"ord": word, "soketid_ms": round(elapsed, 1)}
+
+
 import pathlib as _pathlib
 
 _FRONTEND_DIR = _pathlib.Path(__file__).resolve().parent.parent / "frontend"
