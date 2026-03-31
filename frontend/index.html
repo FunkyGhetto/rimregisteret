@@ -108,6 +108,26 @@ body {
   transition: color 0.15s;
 }
 .dice-btn:hover svg { color: #e8920d; }
+.examples {
+  max-width: 800px;
+  margin: 0.5rem auto 0;
+  padding: 0 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.examples-label { font-size: 0.8rem; color: #555; }
+.example-word {
+  font-size: 0.8rem;
+  color: #888;
+  cursor: pointer;
+  padding: 0.15rem 0.5rem;
+  border: 1px solid #2a2a2a;
+  border-radius: 4px;
+  transition: color 0.15s, border-color 0.15s;
+}
+.example-word:hover { color: #e8920d; border-color: #e8920d; }
 .autocomplete {
   position: absolute;
   top: 100%;
@@ -555,6 +575,15 @@ body {
   <div class="autocomplete" id="autocomplete"></div>
 </div>
 
+<div class="examples" id="examples">
+  <span class="examples-label">Prøv:</span>
+  <a class="example-word" data-word="sol">sol</a>
+  <a class="example-word" data-word="kjærlighet">kjærlighet</a>
+  <a class="example-word" data-word="natt">natt</a>
+  <a class="example-word" data-word="drøm">drøm</a>
+  <a class="example-word" data-word="hjerte">hjerte</a>
+</div>
+
 <div class="tabs" id="tabs">
   <button class="tab active" data-tab="rim">Rim</button>
   <button class="tab" data-tab="nestenrim">Nesten-rim</button>
@@ -811,6 +840,22 @@ modusPills.addEventListener('click', e => {
   antallWrap.style.display = currentModus === 'dyp' ? 'none' : '';
 });
 
+// --- Example words ---
+document.getElementById('examples').addEventListener('click', e => {
+  const el = e.target.closest('.example-word');
+  if (!el) return;
+  const word = el.dataset.word;
+  searchEl.value = word;
+  // Switch to Rim tab if on Lær
+  if (currentTab === 'laer') {
+    tabsEl.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    tabsEl.querySelector('[data-tab="rim"]').classList.add('active');
+    currentTab = 'rim';
+    updateTabUI();
+  }
+  doSearch(word);
+});
+
 // --- Dialect selector ---
 dialektSelect.addEventListener('change', () => {
   currentDialekt = dialektSelect.value;
@@ -835,6 +880,7 @@ logoLink.addEventListener('click', e => {
   tabsEl.querySelector('[data-tab="rim"]').classList.add('active');
   currentTab = 'rim';
   updateTabUI();
+  document.getElementById('examples').style.display = '';
   history.pushState(null, '', '/');
   document.title = 'Rimregisteret';
 });
@@ -1072,6 +1118,7 @@ function renderClusters(klynger) {
 async function doSearch(word) {
   clearTimeout(debounceTimer);
   hideAC();
+  document.getElementById('examples').style.display = 'none';
   pushURL(word);
   statusEl.textContent = 'Laster...';
   resultsEl.innerHTML = '';
