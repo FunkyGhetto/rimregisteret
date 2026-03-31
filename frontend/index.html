@@ -1362,22 +1362,10 @@ function esc(s) {
   return d.innerHTML;
 }
 
-// --- Rotating placeholder with fade animation ---
-const _phWords = [
-  'sol','natt','kjærlighet','drøm','hjerte','sommer','vinter','dans',
-  'sang','sjel','håp','skygge','rose','stein','vind','flamme','storm',
-  'glede','fred','bølge','fjell','himmel','stjerne','regn','stillhet',
-];
-// Shuffle on every page load so repeat visitors see different order
-for (let i = _phWords.length - 1; i > 0; i--) {
-  const j = Math.floor(Math.random() * (i + 1));
-  [_phWords[i], _phWords[j]] = [_phWords[j], _phWords[i]];
-}
-let _phIdx = 0;
+// --- Rotating placeholder (uses /tilfeldig API) ---
 let _phInterval = null;
-let _phFirst = true;
+let _phShowingWord = false;
 
-// CSS for fade transition on placeholder
 const _phStyle = document.createElement('style');
 _phStyle.textContent = `
   #search.ph-fade::placeholder { opacity: 0; transition: opacity 0.3s; }
@@ -1385,20 +1373,29 @@ _phStyle.textContent = `
 `;
 document.head.appendChild(_phStyle);
 
-let _phShowingWord = false;
-
-function _phNext() {
+async function _phNext() {
   searchEl.classList.add('ph-fade');
-  setTimeout(() => {
-    if (_phShowingWord) {
+  if (_phShowingWord) {
+    setTimeout(() => {
       searchEl.placeholder = 'Skriv inn...';
-    } else {
-      searchEl.placeholder = `Prøv "${_phWords[_phIdx]}"`;
-      _phIdx = (_phIdx + 1) % _phWords.length;
+      searchEl.classList.remove('ph-fade');
+    }, 400);
+  } else {
+    try {
+      const r = await fetch(`${API}/api/v1/tilfeldig`);
+      const data = await r.json();
+      setTimeout(() => {
+        searchEl.placeholder = `Prøv "${data.ord}"`;
+        searchEl.classList.remove('ph-fade');
+      }, 400);
+    } catch {
+      setTimeout(() => {
+        searchEl.placeholder = 'Skriv inn...';
+        searchEl.classList.remove('ph-fade');
+      }, 400);
     }
-    _phShowingWord = !_phShowingWord;
-    searchEl.classList.remove('ph-fade');
-  }, 400);
+  }
+  _phShowingWord = !_phShowingWord;
   _phInterval = setTimeout(_phNext, 4000);
 }
 
@@ -1406,7 +1403,6 @@ function _startPlaceholder() {
   _stopPlaceholder();
   _phShowingWord = false;
   searchEl.placeholder = 'Skriv inn...';
-  _phFirst = false;
   _phInterval = setTimeout(_phNext, 4000);
 }
 
@@ -1417,7 +1413,7 @@ function _stopPlaceholder() {
 searchEl.addEventListener('focus', () => { if (!searchEl.value) _startPlaceholder(); });
 searchEl.addEventListener('input', () => {
   if (searchEl.value) _stopPlaceholder();
-  else { _phFirst = false; _startPlaceholder(); }
+  else _startPlaceholder();
 });
 
 _startPlaceholder();
