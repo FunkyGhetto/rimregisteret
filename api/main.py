@@ -59,7 +59,7 @@ app.add_middleware(
         "http://localhost:8080",
         "http://localhost:3000",
     ],
-    allow_methods=["GET"],
+    allow_methods=["GET", "POST"],
     allow_headers=["*"],
 )
 
