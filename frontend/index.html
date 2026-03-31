@@ -968,10 +968,13 @@ logoLink.addEventListener('click', e => {
 // --- Dice: random word ---
 diceBtn.addEventListener('click', async () => {
   try {
-    // Pick a random 2-letter prefix and get autocomplete results
-    const prefixes = 'abcdefghijklmnoprstuvwåæø';
-    const prefix = prefixes[Math.floor(Math.random() * prefixes.length)];
-    const r = await fetch(`${API}/api/v1/sok?q=${prefix}&maks=20`);
+    // Build a random 2-3 letter prefix for variety
+    const c1 = 'abcdefghijklmnoprstuvwåæø';
+    const c2 = 'aeiouyåøæklnrstdgmbfhpvj';
+    let prefix = c1[Math.floor(Math.random() * c1.length)];
+    prefix += c2[Math.floor(Math.random() * c2.length)];
+    if (Math.random() > 0.5) prefix += c2[Math.floor(Math.random() * c2.length)];
+    const r = await fetch(`${API}/api/v1/sok?q=${encodeURIComponent(prefix)}&maks=20`);
     const data = await r.json();
     const words = data.resultater || [];
     if (words.length > 0) {
