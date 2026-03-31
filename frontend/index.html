@@ -1263,40 +1263,29 @@ _phStyle.textContent = `
 `;
 document.head.appendChild(_phStyle);
 
-function _setPlaceholder(text) {
+function _phNext() {
   searchEl.classList.add('ph-fade');
   setTimeout(() => {
-    searchEl.placeholder = text;
+    searchEl.placeholder = `Prøv "${_phWords[_phIdx]}"`;
+    _phIdx = (_phIdx + 1) % _phWords.length;
     searchEl.classList.remove('ph-fade');
-  }, 300);
+  }, 400);
+  _phInterval = setTimeout(_phNext, 4000);
 }
 
 function _startPlaceholder() {
+  _stopPlaceholder();
   if (_phFirst) {
     searchEl.placeholder = 'Skriv inn...';
     _phFirst = false;
-    _phInterval = setTimeout(() => {
-      _setPlaceholder(`Prøv "${_phWords[_phIdx]}"`);
-      _phIdx = (_phIdx + 1) % _phWords.length;
-      _phInterval = setInterval(() => {
-        _setPlaceholder(`Prøv "${_phWords[_phIdx]}"`);
-        _phIdx = (_phIdx + 1) % _phWords.length;
-      }, 3000);
-    }, 2000);
+    _phInterval = setTimeout(_phNext, 3000);
   } else {
-    _setPlaceholder(`Prøv "${_phWords[_phIdx]}"`);
-    _phIdx = (_phIdx + 1) % _phWords.length;
-    _phInterval = setInterval(() => {
-      _setPlaceholder(`Prøv "${_phWords[_phIdx]}"`);
-      _phIdx = (_phIdx + 1) % _phWords.length;
-    }, 3000);
+    _phNext();
   }
 }
 
 function _stopPlaceholder() {
-  clearTimeout(_phInterval);
-  clearInterval(_phInterval);
-  _phInterval = null;
+  if (_phInterval) { clearTimeout(_phInterval); _phInterval = null; }
 }
 
 searchEl.addEventListener('focus', () => { if (!searchEl.value) _startPlaceholder(); });
