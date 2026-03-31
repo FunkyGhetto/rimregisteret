@@ -207,6 +207,84 @@ async def ordinfo(ord: str, dialekt: str = "øst") -> str:
 
 
 @mcp.tool()
+async def arsenal(ord: str, maks_rim: int = 15, maks_synonymer: int = 10, dialekt: str = "øst") -> str:
+    """Hent hele det kreative arsenalet for et ord i ett kall.
+
+    Returnerer rim, nesten-rim, synonymer, og rim for hvert synonym.
+    Erstatter 10-15 separate kall ved kreativ skriving.
+
+    Args:
+        ord: Ordet å bygge arsenal for (f.eks. "krone", "hjerte")
+        maks_rim: Maks antall rim (default 15)
+        maks_synonymer: Maks antall synonymer (default 10)
+        dialekt: Dialektregion (default øst)
+    """
+    try:
+        data = await _get(f"/arsenal/{ord}", {
+            "maks_rim": maks_rim, "maks_synonymer": maks_synonymer,
+            "maks_synonymrim": 5, "dialekt": dialekt,
+        })
+        info = data.get("info", {})
+        lines = [f"Arsenal for «{ord}» (/{info.get('ipa', '?')}/, {info.get('stavelser', '?')} stavelser):"]
+
+        defn = info.get("definisjon")
+        if defn:
+            lines.append(f"  Definisjon: {defn}")
+
+        rim = data.get("rim", [])
+        if rim:
+            lines.append(f"  Rim ({len(rim)}): {', '.join(rim)}")
+
+        nesten = data.get("nesten_rim", [])
+        if nesten:
+            lines.append(f"  Nesten-rim ({len(nesten)}): {', '.join(n['ord'] for n in nesten)}")
+
+        syns = data.get("synonymer", [])
+        if syns:
+            lines.append(f"  Synonymer med rim:")
+            for s in syns:
+                if s["rim"]:
+                    lines.append(f"    {s['ord']} → {', '.join(s['rim'])}")
+                else:
+                    lines.append(f"    {s['ord']} (ingen rim)")
+
+        return "\n".join(lines)
+    except Exception as e:
+        return f"Feil: {e}"
+
+
+@mcp.tool()
+async def sjekk_rim(ord1: str, ord2: str, dialekt: str = "øst") -> str:
+    """Sjekk om to norske ord rimer, med fonetisk begrunnelse.
+
+    Returnerer om ordene har perfekt rim, nesten-rim, eller ikke rimer,
+    med score og forklaring.
+
+    Args:
+        ord1: Første ord (f.eks. "krone")
+        ord2: Andre ord (f.eks. "tone")
+        dialekt: Dialektregion (default øst)
+    """
+    try:
+        data = await _get(f"/rimer/{ord1}/{ord2}", {"dialekt": dialekt})
+        r = data.get("resultat", {})
+        o1 = data.get("ord1", {})
+        o2 = data.get("ord2", {})
+
+        lines = [f"«{ord1}» /{o1.get('ipa', '?')}/ vs «{ord2}» /{o2.get('ipa', '?')}/:"]
+        lines.append(f"  {r.get('forklaring', '?')}")
+        if r.get("perfekt_rim"):
+            lines.append(f"  Perfekt rim (score {r.get('score', '?')})")
+        elif r.get("nesten_rim"):
+            lines.append(f"  Nesten-rim (score {r.get('score', '?')})")
+        else:
+            lines.append(f"  Rimer ikke (score {r.get('score', '?')})")
+        return "\n".join(lines)
+    except Exception as e:
+        return f"Feil: {e}"
+
+
+@mcp.tool()
 async def generer_rimklynger(
     modus: str = "par",
     antall: int = 10,

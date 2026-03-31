@@ -26,6 +26,7 @@ from rimordbok.rhyme import (
     finn_homofoner,
     match_konsonanter,
     finn_rim_alle_dialekter,
+    _score_near_rhyme,
 )
 from rimordbok.semantics import (
     finn_synonymer,
@@ -390,6 +391,123 @@ def api_rimklynger_dyp(
         "stavelser": stavelser, "min_frekvens": min_frekvens,
         "dialekt": dialekt, "ord": ord,
     })
+
+
+# --- Arsenal & Rimer ---
+
+
+@app.get("/api/v1/arsenal/{ord}", summary="Kreativt arsenal — rim, nesten-rim, synonymer med rim")
+def api_arsenal(
+    ord: str,
+    maks_rim: int = Query(15, ge=1, le=100),
+    maks_nesten: int = Query(10, ge=1, le=100),
+    maks_synonymer: int = Query(10, ge=1, le=50),
+    maks_synonymrim: int = Query(5, ge=1, le=20),
+    dialekt: str = Query("øst", description="Dialektregion"),
+):
+    """Alt kreativt materiale for ett ord i ett kall.
+
+    Returnerer rim, nesten-rim, synonymer, og rim for hvert synonym.
+    Erstatter 10-15 separate API-kall i kreativ skriving.
+    """
+    if dialekt not in GYLDIGE_DIALEKTER:
+        return JSONResponse(status_code=400, content={
+            "feil": f"Ugyldig dialekt: {dialekt}",
+            "gyldige": sorted(GYLDIGE_DIALEKTER),
+        })
+    start = time.perf_counter()
+
+    info = slaa_opp(ord, dialekt=dialekt)
+    rim = finn_perfekte_rim(ord, maks=maks_rim, dialekt=dialekt)
+    nesten = finn_nesten_rim(ord, maks=maks_nesten, terskel=0.7, dialekt=dialekt)
+    syns = finn_synonymer(ord, maks=maks_synonymer)
+    defn = hent_definisjon(ord)
+
+    # Rim for hvert synonym
+    syn_med_rim = []
+    for s in syns:
+        s_rim = finn_perfekte_rim(s["ord"], maks=maks_synonymrim, dialekt=dialekt)
+        syn_med_rim.append({
+            "ord": s["ord"],
+            "rim": [r["ord"] for r in s_rim],
+        })
+
+    elapsed = (time.perf_counter() - start) * 1000
+
+    return {
+        "ord": ord,
+        "info": {
+            "ipa": info.get("ipa_ren"),
+            "stavelser": info.get("stavelser"),
+            "tonelag": info.get("tonelag"),
+            "rimsuffiks": info.get("rimsuffiks"),
+            "definisjon": defn.get("definisjon"),
+            "ordklasse": defn.get("ordklasse"),
+        },
+        "rim": [r["ord"] for r in rim],
+        "nesten_rim": [{"ord": r["ord"], "score": r["score"]} for r in nesten],
+        "synonymer": syn_med_rim,
+        "dialekt": dialekt,
+        "soketid_ms": round(elapsed, 1),
+    }
+
+
+@app.get("/api/v1/rimer/{ord1}/{ord2}", summary="Sjekk om to ord rimer")
+def api_rimer(
+    ord1: str,
+    ord2: str,
+    dialekt: str = Query("øst", description="Dialektregion"),
+):
+    """Sammenlign to ord og si om de rimer, med fonetisk begrunnelse."""
+    if dialekt not in GYLDIGE_DIALEKTER:
+        return JSONResponse(status_code=400, content={
+            "feil": f"Ugyldig dialekt: {dialekt}",
+            "gyldige": sorted(GYLDIGE_DIALEKTER),
+        })
+    start = time.perf_counter()
+
+    info1 = slaa_opp(ord1, dialekt=dialekt)
+    info2 = slaa_opp(ord2, dialekt=dialekt)
+
+    s1 = info1.get("rimsuffiks") or ""
+    s2 = info2.get("rimsuffiks") or ""
+    t1 = info1.get("tonelag")
+    t2 = info2.get("tonelag")
+
+    perfekt = s1 == s2 and s1 != ""
+    score = 1.0 if perfekt else (_score_near_rhyme(s1, s2) if s1 and s2 else 0.0)
+    nesten = not perfekt and score >= 0.5
+    samme_tonelag = t1 is not None and t1 == t2
+
+    # Generer forklaring
+    if perfekt:
+        forklaring = f"Identisk rimsuffiks /{s1}/"
+        if samme_tonelag:
+            forklaring += f", begge tonelag {t1}"
+    elif nesten:
+        # Finn hva som er forskjellig
+        if s1.replace("\u02D0", "") == s2.replace("\u02D0", ""):
+            forklaring = f"Nesten-rim: vokallengde-forskjell /{s1}/ vs /{s2}/"
+        else:
+            forklaring = f"Nesten-rim (score {score:.1f}): /{s1}/ vs /{s2}/"
+    else:
+        forklaring = f"Rimer ikke: /{s1}/ vs /{s2}/"
+
+    elapsed = (time.perf_counter() - start) * 1000
+
+    return {
+        "ord1": {"ord": ord1, "ipa": info1.get("ipa_ren"), "rimsuffiks": s1, "tonelag": t1},
+        "ord2": {"ord": ord2, "ipa": info2.get("ipa_ren"), "rimsuffiks": s2, "tonelag": t2},
+        "resultat": {
+            "perfekt_rim": perfekt,
+            "nesten_rim": nesten,
+            "score": round(score, 2),
+            "samme_tonelag": samme_tonelag,
+            "forklaring": forklaring,
+        },
+        "dialekt": dialekt,
+        "soketid_ms": round(elapsed, 1),
+    }
 
 
 @app.get("/api/v1/sok", summary="Autocomplete / ordsøk")

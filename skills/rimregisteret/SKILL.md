@@ -269,6 +269,48 @@ curl "https://www.rimregisteret.no/api/v1/rimklynger/dyp?ord=natt&min_frekvens=1
 curl "https://www.rimregisteret.no/api/v1/rimklynger/par?dialekt=vest&antall=5"
 ```
 
+### Arsenal (kreativt arbeid)
+
+```
+GET /api/v1/arsenal/{ord}
+```
+Alt kreativt materiale i ett kall: rim, nesten-rim, synonymer med rim for hvert synonym.
+Erstatter 10-15 separate kall ved kreativ skriving.
+
+Parametere: `maks_rim`, `maks_synonymer`, `maks_synonymrim`, `dialekt`
+
+```bash
+curl "https://www.rimregisteret.no/api/v1/arsenal/krone?maks_rim=10&maks_synonymer=5"
+```
+
+Respons inkluderer:
+- `info`: IPA, stavelser, tonelag, rimsuffiks, definisjon, ordklasse
+- `rim`: liste av perfekte rimord
+- `nesten_rim`: liste av nesten-rim med score
+- `synonymer`: hvert synonym med en liste av rimord for det synonymet
+
+### Rimsjekk (to ord)
+
+```
+GET /api/v1/rimer/{ord1}/{ord2}
+```
+Sjekk om to ord rimer, med fonetisk begrunnelse.
+
+Parametere: `dialekt`
+
+```bash
+curl "https://www.rimregisteret.no/api/v1/rimer/krone/tone"
+curl "https://www.rimregisteret.no/api/v1/rimer/tanke/banke"
+curl "https://www.rimregisteret.no/api/v1/rimer/sol/jul"
+```
+
+Respons inkluderer:
+- `ord1`, `ord2`: IPA og rimsuffiks for begge ord
+- `resultat.perfekt_rim`: bool
+- `resultat.nesten_rim`: bool
+- `resultat.score`: 0.0-1.1
+- `resultat.forklaring`: norsk tekst som forklarer resultatet
+
 ### Autocomplete
 
 ```
@@ -326,8 +368,11 @@ Rimklynger:
 → `GET /rim/{ord}?maks=20`
 
 ### Skriv tekst eller vers
-→ Kombiner `/rim/{ord}` for rimord + `/synonymer/{ord}` for alternative ord som bevarer mening.
-Eksempel: Trenger rim på "kjærlighet"? Søk rim, men sjekk også synonymer for "kjærlighet" (lidenskap, forelskelse) og søk rim for disse.
+→ Bruk `/arsenal/{ord}` — gir rim, nesten-rim, synonymer med rim i ett kall.
+Eksempel: `/arsenal/kjærlighet` gir rim på "kjærlighet" + synonymer som "lidenskap", "forelskelse" med rim for hver.
+
+### Sjekk om to ord rimer
+→ `GET /rimer/{ord1}/{ord2}` — svarer ja/nei med fonetisk begrunnelse og score.
 
 ### Tren freestyle
 → `/rimklynger/par?stavelser=1&antall=10` (nybegynner)
