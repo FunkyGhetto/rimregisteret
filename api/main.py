@@ -13,7 +13,7 @@ import time
 from collections import defaultdict
 from typing import Optional
 
-from fastapi import FastAPI, Query, Request
+from fastapi import FastAPI, Query, Request, Body
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -505,6 +505,110 @@ def api_rimer(
             "samme_tonelag": samme_tonelag,
             "forklaring": forklaring,
         },
+        "dialekt": dialekt,
+        "soketid_ms": round(elapsed, 1),
+    }
+
+
+# --- Batch ---
+
+
+@app.post("/api/v1/batch", summary="Batch-oppslag for flere ord")
+def api_batch(
+    ord: list[str] = Body(..., min_length=1, max_length=50, description="Liste med ord"),
+    operasjoner: list[str] = Body(
+        ["rim"], description="Operasjoner: rim, nestenrim, synonymer, antonymer, info, arsenal, rimer"
+    ),
+    maks: int = Body(10, ge=1, le=100, description="Maks resultater per ord"),
+    dialekt: str = Body("øst", description="Dialektregion"),
+):
+    """Kjør operasjoner på flere ord i ett kall.
+
+    Eksempel: {"ord": ["sol", "natt"], "operasjoner": ["rim", "info"], "maks": 5}
+    """
+    if dialekt not in GYLDIGE_DIALEKTER:
+        return JSONResponse(status_code=400, content={
+            "feil": f"Ugyldig dialekt: {dialekt}",
+            "gyldige": sorted(GYLDIGE_DIALEKTER),
+        })
+
+    start = time.perf_counter()
+    resultater = {}
+
+    for word in ord:
+        entry = {}
+
+        if "info" in operasjoner:
+            info = slaa_opp(word, dialekt=dialekt)
+            defn = hent_definisjon(word)
+            entry["info"] = {
+                "ipa": info.get("ipa_ren"),
+                "stavelser": info.get("stavelser"),
+                "tonelag": info.get("tonelag"),
+                "rimsuffiks": info.get("rimsuffiks"),
+                "g2p": info.get("g2p"),
+                "definisjon": defn.get("definisjon"),
+                "ordklasse": defn.get("ordklasse"),
+            }
+
+        if "rim" in operasjoner:
+            rim = finn_perfekte_rim(word, maks=maks, dialekt=dialekt)
+            entry["rim"] = [r["ord"] for r in rim]
+
+        if "nestenrim" in operasjoner:
+            nesten = finn_nesten_rim(word, maks=maks, terskel=0.7, dialekt=dialekt)
+            entry["nestenrim"] = [{"ord": r["ord"], "score": r["score"]} for r in nesten]
+
+        if "synonymer" in operasjoner:
+            syns = finn_synonymer(word, maks=maks)
+            entry["synonymer"] = [s["ord"] for s in syns]
+
+        if "antonymer" in operasjoner:
+            ants = finn_antonymer(word, maks=maks)
+            entry["antonymer"] = [a["ord"] for a in ants]
+
+        if "arsenal" in operasjoner:
+            info = slaa_opp(word, dialekt=dialekt)
+            rim = finn_perfekte_rim(word, maks=maks, dialekt=dialekt)
+            nesten = finn_nesten_rim(word, maks=min(maks, 10), terskel=0.7, dialekt=dialekt)
+            syns = finn_synonymer(word, maks=min(maks, 10))
+            syn_rim = []
+            for s in syns:
+                sr = finn_perfekte_rim(s["ord"], maks=5, dialekt=dialekt)
+                syn_rim.append({"ord": s["ord"], "rim": [r["ord"] for r in sr]})
+            entry["arsenal"] = {
+                "rim": [r["ord"] for r in rim],
+                "nestenrim": [{"ord": r["ord"], "score": r["score"]} for r in nesten],
+                "synonymer": syn_rim,
+            }
+
+        resultater[word] = entry
+
+    # Handle "rimer" operation: check all pairs
+    if "rimer" in operasjoner and len(ord) >= 2:
+        par = []
+        for i in range(len(ord)):
+            for j in range(i + 1, len(ord)):
+                info1 = slaa_opp(ord[i], dialekt=dialekt)
+                info2 = slaa_opp(ord[j], dialekt=dialekt)
+                s1 = info1.get("rimsuffiks") or ""
+                s2 = info2.get("rimsuffiks") or ""
+                perfekt = s1 == s2 and s1 != ""
+                score = 1.0 if perfekt else (_score_near_rhyme(s1, s2) if s1 and s2 else 0.0)
+                par.append({
+                    "ord1": ord[i], "ord2": ord[j],
+                    "perfekt_rim": perfekt,
+                    "nesten_rim": not perfekt and score >= 0.5,
+                    "score": round(score, 2),
+                })
+        resultater["_rimpar"] = par
+
+    elapsed = (time.perf_counter() - start) * 1000
+
+    return {
+        "ord": ord,
+        "operasjoner": operasjoner,
+        "resultater": resultater,
         "dialekt": dialekt,
         "soketid_ms": round(elapsed, 1),
     }

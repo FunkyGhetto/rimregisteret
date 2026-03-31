@@ -47,6 +47,14 @@ async def _get(path: str, params: dict | None = None) -> dict:
         return r.json()
 
 
+async def _post(path: str, body: dict) -> dict:
+    """Make a POST request to the Rimregisteret API."""
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        r = await client.post(f"{BASE_URL}{path}", json=body)
+        r.raise_for_status()
+        return r.json()
+
+
 def _format_words(words: list[dict], key: str = "ord", show_score: bool = False) -> str:
     """Format a list of word dicts into readable text."""
     parts = []
@@ -279,6 +287,89 @@ async def sjekk_rim(ord1: str, ord2: str, dialekt: str = "øst") -> str:
             lines.append(f"  Nesten-rim (score {r.get('score', '?')})")
         else:
             lines.append(f"  Rimer ikke (score {r.get('score', '?')})")
+        return "\n".join(lines)
+    except Exception as e:
+        return f"Feil: {e}"
+
+
+@mcp.tool()
+async def batch(
+    ord: list[str],
+    operasjoner: list[str] = ["rim", "info"],
+    maks: int = 10,
+    dialekt: str = "øst",
+) -> str:
+    """Kjør operasjoner på flere ord samtidig i ett kall.
+
+    Støtter vilkårlig mange ord og vilkårlig kombinasjon av operasjoner.
+    Bruk dette når du trenger å slå opp, sammenligne, eller analysere
+    flere ord på én gang.
+
+    Args:
+        ord: Liste med ord (f.eks. ["sol", "natt", "hjerte"]). Maks 50.
+        operasjoner: Liste av operasjoner å kjøre per ord.
+            Tilgjengelige: "rim", "nestenrim", "synonymer", "antonymer", "info", "arsenal".
+            Legg til "rimer" for å sjekke alle par mot hverandre.
+        maks: Maks resultater per ord per operasjon (default 10)
+        dialekt: Dialektregion (default øst)
+    """
+    try:
+        data = await _post("/batch", {
+            "ord": ord,
+            "operasjoner": operasjoner,
+            "maks": maks,
+            "dialekt": dialekt,
+        })
+        res = data.get("resultater", {})
+        lines = []
+
+        for word in ord:
+            entry = res.get(word, {})
+            parts = [f"«{word}»"]
+
+            info = entry.get("info")
+            if info:
+                parts.append(f"/{info.get('ipa', '?')}/")
+                defn = info.get("definisjon")
+                if defn:
+                    parts.append(f"— {defn[:60]}")
+
+            lines.append("  ".join(parts))
+
+            rim = entry.get("rim")
+            if rim:
+                lines.append(f"  Rim: {', '.join(rim)}")
+
+            nestenrim = entry.get("nestenrim")
+            if nestenrim:
+                lines.append(f"  Nesten-rim: {', '.join(n['ord'] for n in nestenrim)}")
+
+            synonymer = entry.get("synonymer")
+            if synonymer:
+                lines.append(f"  Synonymer: {', '.join(synonymer)}")
+
+            antonymer = entry.get("antonymer")
+            if antonymer:
+                lines.append(f"  Antonymer: {', '.join(antonymer)}")
+
+            arsenal = entry.get("arsenal")
+            if arsenal:
+                if arsenal.get("rim"):
+                    lines.append(f"  Rim: {', '.join(arsenal['rim'])}")
+                for s in arsenal.get("synonymer", []):
+                    if s.get("rim"):
+                        lines.append(f"  {s['ord']} → {', '.join(s['rim'])}")
+
+            lines.append("")
+
+        # Rimpar
+        rimpar = res.get("_rimpar")
+        if rimpar:
+            lines.append("Rimpar:")
+            for p in rimpar:
+                status = "perfekt rim" if p["perfekt_rim"] else "nesten-rim" if p["nesten_rim"] else "rimer ikke"
+                lines.append(f"  {p['ord1']} / {p['ord2']}: {status} (score {p['score']})")
+
         return "\n".join(lines)
     except Exception as e:
         return f"Feil: {e}"
