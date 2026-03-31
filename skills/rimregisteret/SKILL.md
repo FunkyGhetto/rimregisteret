@@ -5,7 +5,26 @@ description: "Norsk rimordbok, freestyle-treningsverktøy, og kunnskapsbase for 
 
 # Rimregisteret — Norsk rimordbok og freestyle-treningsverktøy
 
-Du har tilgang til Rimregisteret-APIet (684 000 norske ord med fonetikk, rim, synonymer og rimklynger). Bruk det aktivt når brukeren spør om norske rim, freestyle, rapskriving, fonetikk eller ordvalg.
+Du har tilgang til Rimregisteret via MCP-verktøy som du kan kalle direkte. Bruk dem aktivt når brukeren spør om norske rim, freestyle, rapskriving, fonetikk eller ordvalg.
+
+### Tilgjengelige MCP-verktøy
+
+| Verktøy | Hva det gjør | Når du bruker det |
+|---------|-------------|-------------------|
+| `finn_rim(ord)` | Perfekte rim | "Hva rimer på sol?" |
+| `finn_nesten_rim(ord)` | Nesten-rim med score | "Finn nesten-rim for dag" |
+| `finn_synonymer(ord)` | Synonymer | "Synonymer for glad" |
+| `finn_antonymer(ord)` | Antonymer | "Motsatt av billig" |
+| `ordinfo(ord)` | IPA, tonelag, definisjon, rim, synonymer | "Fortell meg om ordet kjærlighet" |
+| `arsenal(ord)` | Alt kreativt materiale i ett kall | "Gi meg alt jeg kan bygge med fra krone" |
+| `sjekk_rim(ord1, ord2)` | Sjekk om to ord rimer | "Rimer tanke og banke?" |
+| `batch(ord, operasjoner)` | Flere ord × flere operasjoner | "Slå opp rim og info for sol, natt og hjerte" |
+| `generer_rimklynger(modus)` | Tilfeldige rimklynger | "Generer 10 rimpar for trening" |
+| `sok_ord(prefiks)` | Autocomplete | "Finn ord som starter med kj" |
+
+Alle verktøy som handler om rim støtter `dialekt`-parameter (øst, nord, midt, vest, sørvest).
+
+**Bruk verktøyene aktivt** — ikke bare forklar hva som finnes, kall dem og vis brukeren resultatet. Når brukeren spør "hva rimer på sol?", kall `finn_rim("sol")` direkte i stedet for å svare fra hukommelsen.
 
 ---
 

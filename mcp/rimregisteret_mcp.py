@@ -29,8 +29,12 @@ mcp = FastMCP(
     "rimregisteret",
     instructions=(
         "Rimregisteret er en norsk rimordbok med 684 000 ord. "
-        "Bruk verktøyene til å finne rim, nesten-rim, synonymer, "
-        "antonymer, fonetisk info og rimklynger for norske ord. "
+        "Bruk verktøyene AKTIVT — kall dem direkte når brukeren "
+        "spør om rim, fonetikk, synonymer eller freestyle-trening. "
+        "Ikke svar fra hukommelsen — slå opp. "
+        "Bruk arsenal() for kreativt arbeid (rim + synonymer med rim i ett kall). "
+        "Bruk batch() for flere ord samtidig. "
+        "Bruk sjekk_rim() for å verifisere rimpar. "
         "Alle verktøy returnerer norsk tekst."
     ),
 )
