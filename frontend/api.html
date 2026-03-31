@@ -120,6 +120,9 @@ pre .nl { color: #888; }
   <a href="#klynger-par"><span class="s-method">GET</span>/rimklynger/par</a>
   <a href="#klynger-bred"><span class="s-method">GET</span>/rimklynger/bred</a>
   <a href="#klynger-dyp"><span class="s-method">GET</span>/rimklynger/dyp</a>
+  <h3>Kreativt</h3>
+  <a href="#arsenal"><span class="s-method">GET</span>/arsenal/{ord}</a>
+  <a href="#rimer"><span class="s-method">GET</span>/rimer/{ord1}/{ord2}</a>
   <h3>S&oslash;k</h3>
   <a href="#sok"><span class="s-method">GET</span>/sok</a>
   <h3>Annet</h3>
@@ -505,6 +508,85 @@ pre .nl { color: #888; }
   </table>
 </div>
 <pre>curl "<span class="u">https://www.rimregisteret.no/api/v1/rimklynger/dyp?ord=natt&amp;min_frekvens=5</span>"</pre>
+
+<!-- ═══════════════ KREATIVT ═══════════════ -->
+
+<h2>Kreativt</h2>
+
+<div class="ep" id="arsenal">
+  <div class="ep-head"><span class="ep-method">GET</span><span class="ep-path">/api/v1/arsenal/{ord}</span></div>
+  <div class="ep-desc">Alt kreativt materiale for ett ord i &eacute;tt kall. Returnerer rim, nesten-rim, synonymer, og rim for hvert synonym. Erstatter 10&ndash;15 separate API-kall i kreativ skriving.</div>
+
+  <div class="tbl-label">Parametere</div>
+  <table><thead><tr><th>Parameter</th><th>Type</th><th>Default</th><th>Beskrivelse</th></tr></thead>
+    <tbody>
+      <tr><td>maks_rim</td><td>int</td><td>15</td><td>Maks antall perfekte rim</td></tr>
+      <tr><td>maks_nesten</td><td>int</td><td>10</td><td>Maks antall nesten-rim</td></tr>
+      <tr><td>maks_synonymer</td><td>int</td><td>10</td><td>Maks antall synonymer</td></tr>
+      <tr><td>maks_synonymrim</td><td>int</td><td>5</td><td>Maks antall rim per synonym</td></tr>
+      <tr><td>dialekt</td><td>string</td><td>"&oslash;st"</td><td>Dialektregion</td></tr>
+    </tbody>
+  </table>
+
+  <div class="tbl-label">Respons-felter</div>
+  <table><thead><tr><th>Felt</th><th>Type</th><th>Beskrivelse</th></tr></thead>
+    <tbody>
+      <tr><td>ord</td><td>string</td><td>S&oslash;keordet</td></tr>
+      <tr><td>info.ipa</td><td>string</td><td>IPA-transkripsjon</td></tr>
+      <tr><td>info.stavelser</td><td>int</td><td>Antall stavelser</td></tr>
+      <tr><td>info.tonelag</td><td>int|null</td><td>Tonelag</td></tr>
+      <tr><td>info.rimsuffiks</td><td>string</td><td>Fonetisk rimsuffiks</td></tr>
+      <tr><td>info.definisjon</td><td>string|null</td><td>Definisjon fra Bokm&aring;lsordboka</td></tr>
+      <tr><td>info.ordklasse</td><td>string|null</td><td>Ordklasse</td></tr>
+      <tr><td>rim</td><td>array&lt;string&gt;</td><td>Perfekte rimord</td></tr>
+      <tr><td>nesten_rim</td><td>array</td><td>Nesten-rim med <code>ord</code> og <code>score</code></td></tr>
+      <tr><td>synonymer</td><td>array</td><td>Hvert synonym med <code>ord</code> og <code>rim</code> (liste av rimord)</td></tr>
+      <tr><td>dialekt</td><td>string</td><td>Brukt dialekt</td></tr>
+      <tr><td>soketid_ms</td><td>float</td><td>Responstid</td></tr>
+    </tbody>
+  </table>
+</div>
+<pre>curl "<span class="u">https://www.rimregisteret.no/api/v1/arsenal/krone?maks_rim=5&amp;maks_synonymer=3</span>"</pre>
+
+<div class="ep" id="rimer">
+  <div class="ep-head"><span class="ep-method">GET</span><span class="ep-path">/api/v1/rimer/{ord1}/{ord2}</span></div>
+  <div class="ep-desc">Sjekk om to ord rimer, med fonetisk begrunnelse og score. Returnerer om de har perfekt rim, nesten-rim, eller ikke rimer, med forklaring p&aring; norsk.</div>
+
+  <div class="tbl-label">Parametere</div>
+  <table><thead><tr><th>Parameter</th><th>Type</th><th>Default</th><th>Beskrivelse</th></tr></thead>
+    <tbody>
+      <tr><td>dialekt</td><td>string</td><td>"&oslash;st"</td><td>Dialektregion</td></tr>
+    </tbody>
+  </table>
+
+  <div class="tbl-label">Respons-felter</div>
+  <table><thead><tr><th>Felt</th><th>Type</th><th>Beskrivelse</th></tr></thead>
+    <tbody>
+      <tr><td>ord1.ord</td><td>string</td><td>F&oslash;rste ord</td></tr>
+      <tr><td>ord1.ipa</td><td>string</td><td>IPA-transkripsjon</td></tr>
+      <tr><td>ord1.rimsuffiks</td><td>string</td><td>Rimsuffiks</td></tr>
+      <tr><td>ord1.tonelag</td><td>int|null</td><td>Tonelag</td></tr>
+      <tr><td>ord2.*</td><td></td><td>Samme felter for andre ord</td></tr>
+      <tr><td>resultat.perfekt_rim</td><td>bool</td><td>Identisk rimsuffiks</td></tr>
+      <tr><td>resultat.nesten_rim</td><td>bool</td><td>Score &ge; 0.5 men ikke perfekt</td></tr>
+      <tr><td>resultat.score</td><td>float</td><td>Likhetsscore 0.0&ndash;1.1</td></tr>
+      <tr><td>resultat.samme_tonelag</td><td>bool</td><td>Om begge har likt tonelag</td></tr>
+      <tr><td>resultat.forklaring</td><td>string</td><td>Norsk forklaring av resultatet</td></tr>
+      <tr><td>dialekt</td><td>string</td><td>Brukt dialekt</td></tr>
+      <tr><td>soketid_ms</td><td>float</td><td>Responstid</td></tr>
+    </tbody>
+  </table>
+</div>
+<pre>curl "<span class="u">https://www.rimregisteret.no/api/v1/rimer/krone/tone</span>"</pre>
+<pre>{
+  <span class="k">"ord1"</span>: {<span class="k">"ord"</span>: <span class="s">"krone"</span>, <span class="k">"ipa"</span>: <span class="s">"kru&#720;.n&#601;"</span>, <span class="k">"rimsuffiks"</span>: <span class="s">"u&#720;.n&#601;"</span>, <span class="k">"tonelag"</span>: <span class="n">2</span>},
+  <span class="k">"ord2"</span>: {<span class="k">"ord"</span>: <span class="s">"tone"</span>, <span class="k">"ipa"</span>: <span class="s">"tu&#720;.n&#601;"</span>, <span class="k">"rimsuffiks"</span>: <span class="s">"u&#720;.n&#601;"</span>, <span class="k">"tonelag"</span>: <span class="n">2</span>},
+  <span class="k">"resultat"</span>: {
+    <span class="k">"perfekt_rim"</span>: <span class="n">true</span>, <span class="k">"nesten_rim"</span>: <span class="n">false</span>, <span class="k">"score"</span>: <span class="n">1.0</span>,
+    <span class="k">"samme_tonelag"</span>: <span class="n">true</span>,
+    <span class="k">"forklaring"</span>: <span class="s">"Identisk rimsuffiks /u&#720;.n&#601;/, begge tonelag 2"</span>
+  }
+}</pre>
 
 <!-- ═══════════════ SØK ═══════════════ -->
 
