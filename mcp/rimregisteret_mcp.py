@@ -74,6 +74,12 @@ async def finn_rim(ord: str, maks: int = 20, dialekt: str = "øst") -> str:
         data = await _get(f"/rim/{ord}", {"maks": maks, "dialekt": dialekt})
         items = data.get("resultater", [])
         if not items:
+            # Fallback: near-rhymes with score >= 1.0 (e.g. vowel length difference)
+            near = await _get(f"/nestenrim/{ord}", {"maks": maks, "terskel": 0.9, "dialekt": dialekt})
+            near_items = [r for r in near.get("resultater", []) if r.get("score", 0) >= 1.0]
+            if near_items:
+                words = _format_words(near_items)
+                return f"Rim for «{ord}» ({len(near_items)} treff): {words}"
             return f"Ingen rim funnet for «{ord}»."
         words = _format_words(items)
         return f"Rim for «{ord}» ({len(items)} treff): {words}"

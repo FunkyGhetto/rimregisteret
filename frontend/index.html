@@ -1083,7 +1083,20 @@ async function doSearch(word) {
       fetch(`${API}/api/v1/info/${encodeURIComponent(word)}?x=1${dParam}`).then(r => r.json()),
     ]);
 
-    const items = resData.resultater || [];
+    let items = resData.resultater || [];
+
+    // Fallback: if no perfect rhymes found, fetch near-rhymes with score >= 1.0
+    if (items.length === 0 && currentTab === 'rim') {
+      const nearData = await fetch(`${API}/api/v1/nestenrim/${encodeURIComponent(word)}?maks=500&terskel=0.9${dParam}`).then(r => r.json());
+      const nearItems = (nearData.resultater || []).filter(r => r.score >= 1.0);
+      if (nearItems.length > 0) {
+        items = nearItems;
+        statusEl.textContent = `${items.length} rim for "${word}"`;
+        renderInfo(infoData);
+        renderGrouped(items);
+        return;
+      }
+    }
 
     if (items.length === 0) {
       statusEl.textContent = `Ingen ${tabLabel()} funnet for "${word}"`;
