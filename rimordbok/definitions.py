@@ -1,12 +1,17 @@
 from __future__ import annotations
 
-"""Hent orddefinisjoner fra ordbokapi.org (Bokmålsordboka).
+"""Hent orddefinisjoner, synonymer og antonymer.
 
-Cacher resultater i SQLite for å unngå gjentatte API-kall.
-Timeout: 2 sekunder. Manglende definisjon er ikke en feil.
+Kilder:
+- ordbokapi.org (Bokmålsordboka): definisjoner, synonymer, antonymer
+- synonymordboka.no: kryssord-synonymer (bredere dekning)
+
+Cacher resultater i SQLite for å unngå gjentatte kall.
+Timeout: 2 sekunder. Manglende data er ikke en feil.
 """
 
 import json
+import re
 import sqlite3
 import time
 from pathlib import Path
@@ -151,6 +156,31 @@ def _pick_best_definition(articles: list) -> tuple[Optional[str], Optional[str],
     return None, ordklasse, all_synonymer, all_antonymer
 
 
+def _hent_synonymordboka(word: str) -> list[str]:
+    """Fetch synonyms from synonymordboka.no (crossword synonym database)."""
+    if not _HAS_HTTPX:
+        return []
+    try:
+        with httpx.Client(timeout=_TIMEOUT) as client:
+            r = client.get(
+                f"https://www.synonymordboka.no/no/?q={word.lower()}",
+                follow_redirects=True,
+            )
+            if r.status_code != 200:
+                return []
+            match = re.search(r'Synonymer til \w+\s*(.*?)Loading', r.text, re.DOTALL)
+            if not match:
+                return []
+            words = re.findall(r'>([^<]+)<', match.group(1))
+            return [w.strip() for w in words
+                    if w.strip() and len(w.strip()) > 1
+                    and w.strip().lower() != word.lower()
+                    and not w.strip().startswith("Vis")
+                    and not w.strip().startswith("Legg")]
+    except Exception:
+        return []
+
+
 def hent_definisjon(
     ord: str, cache_db: Optional[Path] = None
 ) -> dict:
@@ -190,8 +220,19 @@ def hent_definisjon(
         articles = word_data.get("articles", [])
         definisjon, ordklasse, synonymer, antonymer = _pick_best_definition(articles)
 
+        # Merge with synonymordboka.no (crossword synonyms — much broader)
+        kryssord_syns = _hent_synonymordboka(ord)
+        synonymer = synonymer + kryssord_syns
+
         # Deduplicate and remove self
-        synonymer = list(dict.fromkeys(s for s in synonymer if s.lower() != ord.lower()))
+        seen = set()
+        deduped = []
+        for s in synonymer:
+            low = s.lower()
+            if low != ord.lower() and low not in seen:
+                seen.add(low)
+                deduped.append(s)
+        synonymer = deduped
         antonymer = list(dict.fromkeys(a for a in antonymer if a.lower() != ord.lower()))
 
         _set_cached(ord, definisjon, ordklasse, synonymer, antonymer, db_path)
