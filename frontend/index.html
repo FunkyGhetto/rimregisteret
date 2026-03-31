@@ -642,8 +642,6 @@ body {
   <button class="tab active" data-tab="rim">Rim</button>
   <button class="tab" data-tab="nestenrim">Nesten-rim</button>
   <button class="tab" data-tab="synonymer">Synonymer</button>
-  <button class="tab" data-tab="antonymer">Antonymer</button>
-  <button class="tab" data-tab="homofoner">Homofoner</button>
   <button class="tab" data-tab="rimklynger">Rimklynger</button>
   <button class="tab" data-tab="laer">Lær</button>
 </div>
@@ -681,7 +679,7 @@ body {
 <div class="landing" id="landing">
   <div class="landing-intro">
     <h2>Norges st&oslash;rste rimordbok</h2>
-    <p>684 000 norske ord med uttale, rim, synonymer, antonymer og st&oslash;tte for fem dialekter.<br>Bygget p&aring; data fra Nasjonalbiblioteket, Bokm&aring;lsordboka og Synonymordboka.</p>
+    <p>684 000 norske ord med uttale, rim, synonymer og st&oslash;tte for fem dialekter.<br>Bygget p&aring; data fra Nasjonalbiblioteket.</p>
     <div class="landing-hint">Skriv inn et ord og se hva du finner.</div>
   </div>
 
@@ -820,7 +818,7 @@ body {
 
 </div>
 
-<div class="footer">Rimregisteret &mdash; Data fra NB Uttale, Norwegian WordNet, Spr&aring;kbanken N-gram, Bokm&aring;lsordboka, Synonymordboka, Wiktionary og ConceptNet. &bull; <a href="/api" style="color:#888">API</a> &bull; <a href="https://github.com/FunkyGhetto/rimregisteret" style="color:#888">GitHub</a></div>
+<div class="footer">Rimregisteret &mdash; Data fra NB Uttale, Spr&aring;kbanken, Bokm&aring;lsordboka og Norwegian WordNet. &bull; <a href="/api" style="color:#888">API</a> &bull; <a href="https://github.com/FunkyGhetto/rimregisteret" style="color:#888">GitHub</a></div>
 
 <script>
 const API = (function() {
@@ -1199,8 +1197,7 @@ async function doSearch(word) {
   resultsEl.innerHTML = '';
 
   const endpoint = {
-    rim: 'rim', nestenrim: 'nestenrim', synonymer: 'synonymer',
-    antonymer: 'antonymer', homofoner: 'homofoner'
+    rim: 'rim', nestenrim: 'nestenrim', synonymer: 'synonymer'
   }[currentTab] || 'rim';
 
   try {
@@ -1234,7 +1231,7 @@ async function doSearch(word) {
     statusEl.textContent = `${items.length} ${tabLabel()} for "${word}"`;
     renderInfo(infoData);
 
-    if (currentTab === 'synonymer' || currentTab === 'antonymer') {
+    if (currentTab === 'synonymer') {
       renderFlat(items);
     } else {
       renderGrouped(items);
@@ -1246,8 +1243,7 @@ async function doSearch(word) {
 }
 
 function tabLabel() {
-  return { rim: 'rim', nestenrim: 'nesten-rim', synonymer: 'synonymer',
-           antonymer: 'antonymer', homofoner: 'homofoner' }[currentTab] || 'resultater';
+  return { rim: 'rim', nestenrim: 'nesten-rim', synonymer: 'synonymer' }[currentTab] || 'resultater';
 }
 
 // --- Rendering ---
