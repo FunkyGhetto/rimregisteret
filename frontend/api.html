@@ -127,6 +127,8 @@ pre .nl { color: #888; }
   <h3>Kreativt</h3>
   <a href="#arsenal"><span class="s-method">GET</span>/arsenal/{ord}</a>
   <a href="#rimer"><span class="s-method">GET</span>/rimer/{ord1}/{ord2}</a>
+  <h3>Batch</h3>
+  <a href="#batch"><span class="s-method">POST</span>/batch</a>
   <h3>S&oslash;k</h3>
   <a href="#sok"><span class="s-method">GET</span>/sok</a>
   <h3>Annet</h3>
@@ -591,6 +593,40 @@ pre .nl { color: #888; }
     <span class="k">"forklaring"</span>: <span class="s">"Identisk rimsuffiks /u&#720;.n&#601;/, begge tonelag 2"</span>
   }
 }</pre>
+
+<!-- ═══════════════ BATCH ═══════════════ -->
+
+<h2>Batch</h2>
+
+<div class="ep" id="batch">
+  <div class="ep-head"><span class="ep-method">POST</span><span class="ep-path">/api/v1/batch</span></div>
+  <div class="ep-desc">Kj&oslash;r operasjoner p&aring; flere ord i ett kall. Opp til 50 ord, vilk&aring;rlig kombinasjon av operasjoner. Send &laquo;rimer&raquo; for &aring; sammenligne alle ordpar.</div>
+
+  <div class="tbl-label">Body (JSON)</div>
+  <table><thead><tr><th>Felt</th><th>Type</th><th>Default</th><th>Beskrivelse</th></tr></thead>
+    <tbody>
+      <tr><td>ord</td><td>array&lt;string&gt;</td><td>&mdash;</td><td>Liste med ord (p&aring;krevd, maks 50)</td></tr>
+      <tr><td>operasjoner</td><td>array&lt;string&gt;</td><td>["rim"]</td><td>rim, nestenrim, synonymer, antonymer, info, arsenal, rimer</td></tr>
+      <tr><td>maks</td><td>int</td><td>10</td><td>Maks resultater per ord per operasjon</td></tr>
+      <tr><td>dialekt</td><td>string</td><td>"&oslash;st"</td><td>Dialektregion</td></tr>
+    </tbody>
+  </table>
+
+  <div class="tbl-label">Respons-felter</div>
+  <table><thead><tr><th>Felt</th><th>Type</th><th>Beskrivelse</th></tr></thead>
+    <tbody>
+      <tr><td>ord</td><td>array</td><td>Innsendte ord</td></tr>
+      <tr><td>operasjoner</td><td>array</td><td>Brukte operasjoner</td></tr>
+      <tr><td>resultater</td><td>object</td><td>Hvert ord som n&oslash;kkel med resultat per operasjon</td></tr>
+      <tr><td>resultater._rimpar</td><td>array</td><td>Alle ordpar med perfekt_rim, nesten_rim, score (kun med &laquo;rimer&raquo;)</td></tr>
+      <tr><td>dialekt</td><td>string</td><td>Brukt dialekt</td></tr>
+      <tr><td>soketid_ms</td><td>float</td><td>Responstid</td></tr>
+    </tbody>
+  </table>
+</div>
+<pre>curl -X POST "<span class="u">https://www.rimregisteret.no/api/v1/batch</span>" \
+  -H "Content-Type: application/json" \
+  -d '{"ord": ["sol", "natt"], "operasjoner": ["rim", "info", "rimer"], "maks": 5}'</pre>
 
 <!-- ═══════════════ SØK ═══════════════ -->
 

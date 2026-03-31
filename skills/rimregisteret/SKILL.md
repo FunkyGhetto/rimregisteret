@@ -311,6 +311,27 @@ Respons inkluderer:
 - `resultat.score`: 0.0-1.1
 - `resultat.forklaring`: norsk tekst som forklarer resultatet
 
+### Batch (flere ord samtidig)
+
+```
+POST /api/v1/batch
+```
+Kjør operasjoner på flere ord i ett kall. Støtter vilkårlig mange ord (maks 50) og vilkårlig kombinasjon av operasjoner.
+
+Body (JSON):
+- `ord`: liste med ord (påkrevd)
+- `operasjoner`: liste av operasjoner — "rim", "nestenrim", "synonymer", "antonymer", "info", "arsenal", "rimer"
+- `maks`: maks resultater per ord (default 10)
+- `dialekt`: dialektregion (default "øst")
+
+```bash
+curl -X POST "https://www.rimregisteret.no/api/v1/batch" \
+  -H "Content-Type: application/json" \
+  -d '{"ord": ["sol", "natt", "hjerte"], "operasjoner": ["rim", "info", "rimer"], "maks": 5}'
+```
+
+Respons: `resultater` dict med hvert ord som nøkkel, pluss `_rimpar` med alle par-sammenligninger hvis "rimer" er inkludert.
+
 ### Autocomplete
 
 ```
@@ -373,6 +394,9 @@ Eksempel: `/arsenal/kjærlighet` gir rim på "kjærlighet" + synonymer som "lide
 
 ### Sjekk om to ord rimer
 → `GET /rimer/{ord1}/{ord2}` — svarer ja/nei med fonetisk begrunnelse og score.
+
+### Batch-oppslag (flere ord)
+→ `POST /batch` med `{"ord": ["sol", "natt"], "operasjoner": ["rim", "info", "rimer"]}` — alt i ett kall.
 
 ### Tren freestyle
 → `/rimklynger/par?stavelser=1&antall=10` (nybegynner)
