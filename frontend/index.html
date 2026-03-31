@@ -922,6 +922,7 @@ searchEl.addEventListener('keydown', e => {
   }
   if (e.key === 'Enter') {
     e.preventDefault();
+    clearTimeout(debounceTimer);
     hideAC();
     if (currentTab === 'rimklynger') {
       doGenerateCluster();
@@ -978,6 +979,8 @@ function hideAC() {
 
 // --- Cluster generation ---
 async function doGenerateCluster() {
+  clearTimeout(debounceTimer);
+  hideAC();
   statusEl.textContent = 'Genererer...';
   resultsEl.innerHTML = '';
   generateBtn.disabled = true;
@@ -1067,6 +1070,8 @@ function renderClusters(klynger) {
 
 // --- Standard search ---
 async function doSearch(word) {
+  clearTimeout(debounceTimer);
+  hideAC();
   pushURL(word);
   statusEl.textContent = 'Laster...';
   resultsEl.innerHTML = '';
