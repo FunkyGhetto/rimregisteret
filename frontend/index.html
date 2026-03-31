@@ -1263,11 +1263,18 @@ _phStyle.textContent = `
 `;
 document.head.appendChild(_phStyle);
 
+let _phShowingWord = false;
+
 function _phNext() {
   searchEl.classList.add('ph-fade');
   setTimeout(() => {
-    searchEl.placeholder = `Prøv "${_phWords[_phIdx]}"`;
-    _phIdx = (_phIdx + 1) % _phWords.length;
+    if (_phShowingWord) {
+      searchEl.placeholder = 'Skriv inn...';
+    } else {
+      searchEl.placeholder = `Prøv "${_phWords[_phIdx]}"`;
+      _phIdx = (_phIdx + 1) % _phWords.length;
+    }
+    _phShowingWord = !_phShowingWord;
     searchEl.classList.remove('ph-fade');
   }, 400);
   _phInterval = setTimeout(_phNext, 4000);
@@ -1275,13 +1282,10 @@ function _phNext() {
 
 function _startPlaceholder() {
   _stopPlaceholder();
-  if (_phFirst) {
-    searchEl.placeholder = 'Skriv inn...';
-    _phFirst = false;
-    _phInterval = setTimeout(_phNext, 3000);
-  } else {
-    _phNext();
-  }
+  _phShowingWord = false;
+  searchEl.placeholder = 'Skriv inn...';
+  _phFirst = false;
+  _phInterval = setTimeout(_phNext, 4000);
 }
 
 function _stopPlaceholder() {
