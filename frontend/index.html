@@ -48,6 +48,21 @@ body {
   gap: 0.4rem;
   padding-top: 0.5rem;
 }
+.support-pill {
+  font-size: 13px;
+  font-weight: 500;
+  color: #e8920d;
+  border: 1px solid rgba(232,146,13,0.4);
+  border-radius: 20px;
+  padding: 6px 14px;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: border-color 0.15s, background 0.15s;
+}
+.support-pill:hover {
+  border-color: #e8920d;
+  background: rgba(232,146,13,0.08);
+}
 #dialekt {
   font-family: 'Space Grotesk', sans-serif;
   font-size: 0.85rem;
@@ -623,6 +638,7 @@ body {
     <p>Norsk rimordbok og treningsverktøy</p>
   </div>
   <div class="header-right">
+    <a href="https://buymeacoffee.com/rimregisteret" target="_blank" rel="noopener" class="support-pill">&#x2615; St&oslash;tt</a>
     <select id="dialekt">
       <option value="øst">Østnorsk</option>
       <option value="nord">Nordnorsk</option>
@@ -718,7 +734,6 @@ body {
     </div>
   </div>
 
-  <div style="text-align:center;margin-top:2rem"><a href="https://buymeacoffee.com/rimregisteret" target="_blank" rel="noopener" style="color:#e8920d;font-size:0.8rem">Kj&oslash;p meg en kaffe!</a></div>
 </div>
 
 <div class="learn-content" id="learnContent">
@@ -823,7 +838,7 @@ body {
 
 </div>
 
-<div class="footer">Rimregisteret &mdash; Data fra NB Uttale, Spr&aring;kbanken, Bokm&aring;lsordboka og Norwegian WordNet. &bull; <a href="/api" style="color:#888">API</a> &bull; <a href="https://github.com/FunkyGhetto/rimregisteret" style="color:#888">GitHub</a></div>
+<div class="footer">Rimregisteret &mdash; Data fra NB Uttale, Spr&aring;kbanken, Bokm&aring;lsordboka og Norwegian WordNet. &bull; <a href="/api" style="color:#888">API</a> &bull; <a href="https://github.com/FunkyGhetto/rimregisteret" style="color:#888">GitHub</a> &bull; <a href="https://buymeacoffee.com/rimregisteret" target="_blank" rel="noopener" class="support-pill" style="font-size:11px;padding:4px 10px">&#x2615; St&oslash;tt</a></div>
 
 <script>
 const API = (function() {
