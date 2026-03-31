@@ -1088,6 +1088,7 @@ function moveAC(dir) {
 
 function selectAC(word) {
   searchEl.value = word;
+  clearTimeout(debounceTimer);
   hideAC();
   if (currentTab === 'rimklynger') {
     // Don't auto-generate, just fill the field
