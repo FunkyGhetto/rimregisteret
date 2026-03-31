@@ -669,6 +669,10 @@ body {
       <label>Antall</label>
       <input type="number" class="cluster-number" id="clusterAntall" value="10" min="1" max="50">
     </span>
+    <span id="dypMaksWrap" style="display:none">
+      <label>Maks ord</label>
+      <input type="number" class="cluster-number" id="dypMaks" value="50" min="5" max="500">
+    </span>
   </div>
   <button class="generate-btn" id="generateBtn">&#x27F3; Generer nye klynger</button>
 </div>
@@ -846,6 +850,8 @@ const modusDesc = document.getElementById('modusDesc');
 const clusterSyl = document.getElementById('clusterSyl');
 const clusterAntall = document.getElementById('clusterAntall');
 const antallWrap = document.getElementById('antallWrap');
+const dypMaksWrap = document.getElementById('dypMaksWrap');
+const dypMaksEl = document.getElementById('dypMaks');
 const generateBtn = document.getElementById('generateBtn');
 const dialektSelect = document.getElementById('dialekt');
 const learnContent = document.getElementById('learnContent');
@@ -932,6 +938,7 @@ modusPills.addEventListener('click', e => {
   currentModus = pill.dataset.modus;
   modusDesc.innerHTML = MODUS_DESCS[currentModus];
   antallWrap.style.display = currentModus === 'dyp' ? 'none' : '';
+  dypMaksWrap.style.display = currentModus === 'dyp' ? '' : 'none';
 });
 
 // --- Dialect selector ---
@@ -1113,6 +1120,10 @@ async function doGenerateCluster() {
   if (word) url += `&ord=${encodeURIComponent(word)}`;
   if (syl) url += `&stavelser=${syl}`;
   if (currentModus !== 'dyp') url += `&antall=${antall}`;
+  if (currentModus === 'dyp') {
+    const dypMax = parseInt(dypMaksEl.value) || 50;
+    url += `&maks=${dypMax}`;
+  }
 
   try {
     const r = await fetch(url);
@@ -1203,7 +1214,7 @@ async function doSearch(word) {
   try {
     const dParam = `&dialekt=${encodeURIComponent(currentDialekt)}`;
     const [resData, infoData] = await Promise.all([
-      fetch(`${API}/api/v1/${endpoint}/${encodeURIComponent(word)}?maks=500${dParam}`).then(r => r.json()),
+      fetch(`${API}/api/v1/${endpoint}/${encodeURIComponent(word)}?maks=1000${dParam}`).then(r => r.json()),
       fetch(`${API}/api/v1/info/${encodeURIComponent(word)}?x=1${dParam}`).then(r => r.json()),
     ]);
 
@@ -1211,7 +1222,7 @@ async function doSearch(word) {
 
     // Fallback: if no perfect rhymes found, fetch near-rhymes with score >= 1.0
     if (items.length === 0 && currentTab === 'rim') {
-      const nearData = await fetch(`${API}/api/v1/nestenrim/${encodeURIComponent(word)}?maks=500&terskel=0.9${dParam}`).then(r => r.json());
+      const nearData = await fetch(`${API}/api/v1/nestenrim/${encodeURIComponent(word)}?maks=1000&terskel=0.9${dParam}`).then(r => r.json());
       const nearItems = (nearData.resultater || []).filter(r => r.score >= 1.0);
       if (nearItems.length > 0) {
         items = nearItems;

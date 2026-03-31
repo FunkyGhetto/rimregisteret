@@ -374,6 +374,7 @@ def api_rimklynger_dyp(
     ord: Optional[str] = Query(None, description="Startord (tilfeldig rimfamilie hvis utelatt)"),
     stavelser: Optional[int] = Query(None, description="Filtrer på antall stavelser"),
     min_frekvens: float = Query(1.0, ge=0.0, description="Minimum ordfrekvens per million"),
+    maks: int = Query(0, ge=0, le=1000, description="Maks antall ord (0 = alle)"),
     dialekt: str = Query("øst", description="Dialektregion"),
 ):
     if dialekt not in GYLDIGE_DIALEKTER:
@@ -386,6 +387,9 @@ def api_rimklynger_dyp(
         modus="dyp", stavelser=stavelser,
         min_frekvens=min_frekvens, dialekt=dialekt, ord=ord,
     )
+    # Truncate if maks is set
+    if maks > 0 and klynger and len(klynger[0]["ord"]) > maks:
+        klynger[0]["ord"] = klynger[0]["ord"][:maks]
     elapsed = (time.perf_counter() - start) * 1000
     return _klynge_response("dyp", klynger, elapsed, {
         "stavelser": stavelser, "min_frekvens": min_frekvens,
