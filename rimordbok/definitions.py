@@ -32,6 +32,15 @@ query($word: String!) {
           textContent
         }
       }
+      relationships {
+        __typename
+        ... on SynonymArticleRelationship {
+          article { lemmas { lemma } }
+        }
+        ... on AntonymArticleRelationship {
+          article { lemmas { lemma } }
+        }
+      }
     }
   }
 }
@@ -39,7 +48,7 @@ query($word: String!) {
 
 
 def _init_cache(db_path: Path) -> None:
-    """Create cache table if it doesn't exist."""
+    """Create cache tables if they don't exist."""
     db_path.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(str(db_path))
     conn.execute("""
@@ -47,9 +56,20 @@ def _init_cache(db_path: Path) -> None:
             ord TEXT PRIMARY KEY,
             definisjon TEXT,
             ordklasse TEXT,
+            synonymer TEXT,
+            antonymer TEXT,
             hentet_dato TEXT
         )
     """)
+    # Add columns if they don't exist (migration for existing DBs)
+    try:
+        conn.execute("ALTER TABLE definisjoner ADD COLUMN synonymer TEXT")
+    except sqlite3.OperationalError:
+        pass
+    try:
+        conn.execute("ALTER TABLE definisjoner ADD COLUMN antonymer TEXT")
+    except sqlite3.OperationalError:
+        pass
     conn.commit()
     conn.close()
 
@@ -60,35 +80,46 @@ def _get_cached(word: str, db_path: Path) -> Optional[dict]:
         return None
     conn = sqlite3.connect(str(db_path))
     row = conn.execute(
-        "SELECT definisjon, ordklasse FROM definisjoner WHERE ord = ?",
+        "SELECT definisjon, ordklasse, synonymer, antonymer FROM definisjoner WHERE ord = ?",
         (word.lower(),),
     ).fetchone()
     conn.close()
     if row is not None:
-        return {"definisjon": row[0], "ordklasse": row[1]}
+        return {
+            "definisjon": row[0],
+            "ordklasse": row[1],
+            "synonymer": json.loads(row[2]) if row[2] else [],
+            "antonymer": json.loads(row[3]) if row[3] else [],
+        }
     return None
 
 
-def _set_cached(word: str, definisjon: Optional[str], ordklasse: Optional[str], db_path: Path) -> None:
-    """Store a definition in cache."""
+def _set_cached(word: str, definisjon: Optional[str], ordklasse: Optional[str],
+                synonymer: list, antonymer: list, db_path: Path) -> None:
+    """Store definition + synonyms/antonyms in cache."""
     _init_cache(db_path)
     conn = sqlite3.connect(str(db_path))
     conn.execute(
-        "INSERT OR REPLACE INTO definisjoner (ord, definisjon, ordklasse, hentet_dato) VALUES (?, ?, ?, datetime('now'))",
-        (word.lower(), definisjon, ordklasse),
+        "INSERT OR REPLACE INTO definisjoner (ord, definisjon, ordklasse, synonymer, antonymer, hentet_dato) "
+        "VALUES (?, ?, ?, ?, ?, datetime('now'))",
+        (word.lower(), definisjon, ordklasse,
+         json.dumps(synonymer, ensure_ascii=False) if synonymer else None,
+         json.dumps(antonymer, ensure_ascii=False) if antonymer else None),
     )
     conn.commit()
     conn.close()
 
 
-def _pick_best_definition(articles: list) -> tuple[Optional[str], Optional[str]]:
-    """Pick the most relevant definition from articles.
+def _pick_best_definition(articles: list) -> tuple[Optional[str], Optional[str], list, list]:
+    """Pick the most relevant definition and extract synonyms/antonyms.
 
     Strategy: choose the article with the most definitions (most common meaning),
-    then take its first definition text.
+    then take its first definition text. Collect synonyms/antonyms from ALL articles.
     """
     best_article = None
     best_count = 0
+    all_synonymer = []
+    all_antonymer = []
 
     for art in articles:
         defs = art.get("definitions", [])
@@ -97,25 +128,35 @@ def _pick_best_definition(articles: list) -> tuple[Optional[str], Optional[str]]
             best_count = count
             best_article = art
 
+        # Collect synonyms/antonyms from relationships
+        for rel in art.get("relationships", []):
+            typename = rel.get("__typename", "")
+            article = rel.get("article", {})
+            lemmas = [l["lemma"] for l in article.get("lemmas", [])] if article else []
+            if typename == "SynonymArticleRelationship":
+                all_synonymer.extend(lemmas)
+            elif typename == "AntonymArticleRelationship":
+                all_antonymer.extend(lemmas)
+
     if not best_article:
-        return None, None
+        return None, None, all_synonymer, all_antonymer
 
     ordklasse = best_article.get("wordClass")
     for d in best_article.get("definitions", []):
         for c in d.get("content", []):
             text = c.get("textContent", "").strip()
             if text and len(text) > 3:
-                return text, ordklasse
+                return text, ordklasse, all_synonymer, all_antonymer
 
-    return None, ordklasse
+    return None, ordklasse, all_synonymer, all_antonymer
 
 
 def hent_definisjon(
     ord: str, cache_db: Optional[Path] = None
 ) -> dict:
-    """Hent definisjon for et norsk ord.
+    """Hent definisjon, synonymer og antonymer for et norsk ord.
 
-    Returns dict with keys: definisjon (str|None), ordklasse (str|None).
+    Returns dict with keys: definisjon, ordklasse, synonymer, antonymer.
     Never raises — returns empty on failure.
     """
     db_path = cache_db or CACHE_DB
@@ -125,9 +166,11 @@ def hent_definisjon(
     if cached is not None:
         return cached
 
+    empty = {"definisjon": None, "ordklasse": None, "synonymer": [], "antonymer": []}
+
     # No httpx = can't fetch
     if not _HAS_HTTPX:
-        return {"definisjon": None, "ordklasse": None}
+        return empty
 
     # Fetch from API
     try:
@@ -141,15 +184,20 @@ def hent_definisjon(
 
         word_data = data.get("data", {}).get("word")
         if not word_data:
-            _set_cached(ord, None, None, db_path)
-            return {"definisjon": None, "ordklasse": None}
+            _set_cached(ord, None, None, [], [], db_path)
+            return empty
 
         articles = word_data.get("articles", [])
-        definisjon, ordklasse = _pick_best_definition(articles)
+        definisjon, ordklasse, synonymer, antonymer = _pick_best_definition(articles)
 
-        _set_cached(ord, definisjon, ordklasse, db_path)
-        return {"definisjon": definisjon, "ordklasse": ordklasse}
+        # Deduplicate and remove self
+        synonymer = list(dict.fromkeys(s for s in synonymer if s.lower() != ord.lower()))
+        antonymer = list(dict.fromkeys(a for a in antonymer if a.lower() != ord.lower()))
+
+        _set_cached(ord, definisjon, ordklasse, synonymer, antonymer, db_path)
+        return {"definisjon": definisjon, "ordklasse": ordklasse,
+                "synonymer": synonymer, "antonymer": antonymer}
 
     except Exception:
         # Timeout, network error, etc. — don't cache failures
-        return {"definisjon": None, "ordklasse": None}
+        return empty

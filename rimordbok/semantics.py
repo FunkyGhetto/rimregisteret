@@ -84,6 +84,27 @@ def _query_relations(
         conn.close()
 
 
+def _bokmaalsordboka_fallback(ord: str, relation: str, rhyme_db: Optional[Path] = None) -> list[dict]:
+    """Fallback to Bokmålsordboka via ordbokapi.org for synonyms/antonyms."""
+    try:
+        from rimordbok.definitions import hent_definisjon
+        defn = hent_definisjon(ord)
+        words = defn.get("synonymer" if relation == "synonym" else "antonymer", [])
+        if not words:
+            return []
+        freq_map = _get_frequencies_batch(words, rhyme_db)
+        results = [{
+            "ord": w,
+            "relasjon": relation,
+            "kilde": "bokmaalsordboka",
+            "frekvens": freq_map.get(w.lower(), 0.0),
+        } for w in words]
+        results.sort(key=lambda r: -r["frekvens"])
+        return results
+    except Exception:
+        return []
+
+
 def finn_synonymer(
     ord: str,
     db_path: Optional[Path] = None,
@@ -92,12 +113,21 @@ def finn_synonymer(
 ) -> list[dict]:
     """Find synonyms for a word.
 
-    Combines WordNet synset co-membership and the synonym list.
+    Combines WordNet + synonym list + Bokmålsordboka fallback.
     Results sorted by word frequency (most common first).
 
     Returns list of dicts: ord, relasjon, kilde, frekvens.
     """
-    return _query_relations(ord, "synonym", db_path, rhyme_db, maks)
+    results = _query_relations(ord, "synonym", db_path, rhyme_db, maks)
+    # Always merge with Bokmålsordboka
+    bm = _bokmaalsordboka_fallback(ord, "synonym", rhyme_db)
+    existing = {r["ord"].lower() for r in results}
+    for r in bm:
+        if r["ord"].lower() not in existing:
+            results.append(r)
+            existing.add(r["ord"].lower())
+    results.sort(key=lambda r: -r["frekvens"])
+    return results[:maks]
 
 
 def finn_antonymer(
@@ -108,10 +138,18 @@ def finn_antonymer(
 ) -> list[dict]:
     """Find antonyms for a word.
 
-    Note: Norwegian WordNet has limited antonym coverage (~58 pairs).
+    Combines WordNet + Bokmålsordboka.
     Returns list of dicts: ord, relasjon, kilde, frekvens.
     """
-    return _query_relations(ord, "antonym", db_path, rhyme_db, maks)
+    results = _query_relations(ord, "antonym", db_path, rhyme_db, maks)
+    bm = _bokmaalsordboka_fallback(ord, "antonym", rhyme_db)
+    existing = {r["ord"].lower() for r in results}
+    for r in bm:
+        if r["ord"].lower() not in existing:
+            results.append(r)
+            existing.add(r["ord"].lower())
+    results.sort(key=lambda r: -r["frekvens"])
+    return results[:maks]
 
 
 def finn_relaterte(
