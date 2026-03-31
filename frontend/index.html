@@ -1240,33 +1240,69 @@ function esc(s) {
   return d.innerHTML;
 }
 
-// --- Rotating placeholder ---
+// --- Rotating placeholder with fade animation ---
 const _phWords = [
   'sol','natt','kjærlighet','drøm','hjerte','sommer','vinter','dans',
   'sang','sjel','håp','skygge','rose','stein','vind','flamme','storm',
   'glede','fred','bølge','fjell','himmel','stjerne','regn','stillhet',
 ];
-let _phIdx = Math.floor(Math.random() * _phWords.length);
+// Shuffle on every page load so repeat visitors see different order
+for (let i = _phWords.length - 1; i > 0; i--) {
+  const j = Math.floor(Math.random() * (i + 1));
+  [_phWords[i], _phWords[j]] = [_phWords[j], _phWords[i]];
+}
+let _phIdx = 0;
 let _phInterval = null;
+let _phFirst = true;
+
+// CSS for fade transition on placeholder
+const _phStyle = document.createElement('style');
+_phStyle.textContent = `
+  #search.ph-fade::placeholder { opacity: 0; transition: opacity 0.3s; }
+  #search::placeholder { opacity: 1; transition: opacity 0.3s; }
+`;
+document.head.appendChild(_phStyle);
+
+function _setPlaceholder(text) {
+  searchEl.classList.add('ph-fade');
+  setTimeout(() => {
+    searchEl.placeholder = text;
+    searchEl.classList.remove('ph-fade');
+  }, 300);
+}
 
 function _startPlaceholder() {
-  _phIdx = Math.floor(Math.random() * _phWords.length);
-  searchEl.placeholder = `Prøv: ${_phWords[_phIdx]}`;
-  _phInterval = setInterval(() => {
-    _phIdx = (_phIdx + 1 + Math.floor(Math.random() * 3)) % _phWords.length;
-    searchEl.placeholder = `Prøv: ${_phWords[_phIdx]}`;
-  }, 3000);
+  if (_phFirst) {
+    searchEl.placeholder = 'Skriv inn...';
+    _phFirst = false;
+    _phInterval = setTimeout(() => {
+      _setPlaceholder(`Prøv "${_phWords[_phIdx]}"`);
+      _phIdx = (_phIdx + 1) % _phWords.length;
+      _phInterval = setInterval(() => {
+        _setPlaceholder(`Prøv "${_phWords[_phIdx]}"`);
+        _phIdx = (_phIdx + 1) % _phWords.length;
+      }, 3000);
+    }, 2000);
+  } else {
+    _setPlaceholder(`Prøv "${_phWords[_phIdx]}"`);
+    _phIdx = (_phIdx + 1) % _phWords.length;
+    _phInterval = setInterval(() => {
+      _setPlaceholder(`Prøv "${_phWords[_phIdx]}"`);
+      _phIdx = (_phIdx + 1) % _phWords.length;
+    }, 3000);
+  }
 }
 
 function _stopPlaceholder() {
-  if (_phInterval) { clearInterval(_phInterval); _phInterval = null; }
+  clearTimeout(_phInterval);
+  clearInterval(_phInterval);
+  _phInterval = null;
 }
 
-// Stop rotating when user types, restart when field is emptied
 searchEl.addEventListener('focus', () => { if (!searchEl.value) _startPlaceholder(); });
 searchEl.addEventListener('input', () => {
   if (searchEl.value) _stopPlaceholder();
-  else _startPlaceholder();
+  else { _phFirst = false; _startPlaceholder(); }
 });
 
 _startPlaceholder();
