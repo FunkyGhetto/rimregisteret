@@ -595,29 +595,6 @@ def match_konsonanter(
         pass
 
 
-def _fetch_examples(conn, rimsuffiks: str, exclude_word: str = "") -> list:
-    """Fetch clean example words for a rhyme suffix."""
-    cur = conn.execute(
-        "SELECT LOWER(o.ord) as ord, MAX(o.frekvens) as f FROM ord o "
-        "WHERE o.rimsuffiks = ? AND o.frekvens >= 5.0 "
-        "AND length(o.ord) BETWEEN 3 AND 10 "
-        "AND o.ord NOT LIKE '%-%' "
-        "AND o.pos NOT LIKE 'PM%%' "
-        "GROUP BY LOWER(o.ord) ORDER BY f DESC LIMIT 20",
-        (rimsuffiks,),
-    )
-    exclude = exclude_word.lower()
-    eks = []
-    for row in cur:
-        w = row["ord"]
-        if exclude and len(w) > len(exclude) + 2 and exclude in w:
-            continue
-        eks.append(w)
-        if len(eks) >= 10:
-            break
-    return eks
-
-
 def finn_rimsti(
     ord: str,
     db_path: Optional[Path] = None,
@@ -626,13 +603,13 @@ def finn_rimsti(
     min_frekvens: float = 1.0,
     dialekt: str = "øst",
 ) -> dict:
-    """Find the rhyme path — a chain of rhyme families you can walk along.
+    """Find the rhyme path — a word-by-word chain of incremental vowel shifts.
 
-    Starts from the input word's rhyme family, then walks to the nearest
-    unvisited family, then from there to the next nearest, and so on.
-    Each step is a small vowel shift — a transition a freestyler can glide.
+    Each step is ONE word that near-rhymes with the previous word.
+    The chain walks through vowel space one small step at a time:
+    hus → brus → buss → fuss → foss → moss → koss → ...
 
-    Returns dict with ord, rimsuffiks, konsonantskjelett, steg[], antall_steg.
+    Returns dict with ord, rimsuffiks, steg[] where each steg is one word.
     """
     empty = {"ord": ord, "rimsuffiks": None, "konsonantskjelett": None, "steg": [], "antall_steg": 0}
 
@@ -666,78 +643,100 @@ def finn_rimsti(
             if row:
                 skeleton_str = row["konsonantskjelett"]
             cur = conn.execute(
-                "SELECT rimsuffiks, familiestr FROM rimsti_indeks "
+                "SELECT rimsuffiks FROM rimsti_indeks "
                 "WHERE konsonantskjelett = ? AND familiestr >= ?",
                 (skeleton_str, min_familiestr),
             )
         except Exception:
-            cur = conn.execute(
-                "SELECT DISTINCT rimsuffiks, 0 as familiestr FROM ord"
-            )
+            cur = conn.execute("SELECT DISTINCT rimsuffiks FROM ord")
 
-        # Build pool of candidate families (same syllable structure only)
-        pool = {}
+        # Collect all valid suffixes (same syllable structure)
+        valid_suffixes = set()
         for r in cur:
             sfx = r["rimsuffiks"]
-            if sfx.count(".") != syl_count:
-                continue
-            pool[sfx] = r["familiestr"]
+            if sfx.count(".") == syl_count:
+                valid_suffixes.add(sfx)
 
-        if not pool:
+        if not valid_suffixes:
             return empty
 
-        # --- Chain walk: greedy nearest-neighbor from the start suffix ---
-        visited = set()
+        # Build word pool: for each valid suffix, get common words
+        # {word: (suffix, frequency)}
+        word_pool = {}
+        for sfx in valid_suffixes:
+            cur2 = conn.execute(
+                "SELECT LOWER(o.ord) as ord, MAX(o.frekvens) as f, o.rimsuffiks "
+                "FROM ord o "
+                "WHERE o.rimsuffiks = ? AND o.frekvens >= 5.0 "
+                "AND length(o.ord) BETWEEN 3 AND 8 "
+                "AND o.ord NOT LIKE '%-%' "
+                "AND o.pos NOT LIKE 'PM%%' "
+                "GROUP BY LOWER(o.ord) ORDER BY f DESC LIMIT 8",
+                (sfx,),
+            )
+            for row2 in cur2:
+                w = row2["ord"]
+                word_pool[w] = (sfx, row2["f"])
+
+        if not word_pool:
+            return empty
+
+        # --- Word-level chain walk ---
+        # Start with the input word. At each step, find the nearest
+        # unvisited word (by suffix vowel distance) that has a DIFFERENT
+        # suffix from the current word (so we actually move).
         steg = []
-        current = suffix
+        used_words = set()
+        visited_suffixes = set()
+        current_word = ord.lower()
+        current_suffix = suffix
 
-        for _ in range(maks_steg):
-            if current not in pool and current != suffix:
-                break
-            visited.add(current)
+        # Add starting word
+        steg.append({
+            "ord": current_word,
+            "rimsuffiks": current_suffix,
+            "aktiv": True,
+        })
+        used_words.add(current_word)
+        visited_suffixes.add(current_suffix)
+        # Also mark length-variant suffixes as visited
+        visited_suffixes.add(current_suffix.replace("ː", ""))
 
-            eks = _fetch_examples(conn, current, ord)
-            fam_size = pool.get(current, 0)
-
-            # Skip families with no good examples (unless it's the start)
-            if len(eks) < 2 and current != suffix:
-                visited.add(current)
-                # Still need to find next neighbor from here
-                best_sfx = None
-                best_dist = float("inf")
-                for candidate in pool:
-                    if candidate in visited:
-                        continue
-                    d = _suffix_vowel_distance(current, candidate)
-                    if d < best_dist:
-                        best_dist = d
-                        best_sfx = candidate
-                if best_sfx is None:
-                    break
-                current = best_sfx
-                continue
-
-            steg.append({
-                "rimsuffiks": current,
-                "eksempler": eks[:10],
-                "familiestr": fam_size,
-                "aktiv": current == suffix,
-            })
-
-            # Find nearest unvisited neighbor
-            best_sfx = None
+        for _ in range(maks_steg - 1):
+            # Find nearest word whose suffix we haven't visited yet
+            best_word = None
             best_dist = float("inf")
-            for candidate in pool:
-                if candidate in visited:
+            best_sfx = None
+
+            for candidate_word, (cand_sfx, cand_freq) in word_pool.items():
+                if candidate_word in used_words:
                     continue
-                d = _suffix_vowel_distance(current, candidate)
+                # Suffix must be truly new (not visited, not length-variant of visited)
+                if cand_sfx in visited_suffixes:
+                    continue
+                if cand_sfx.replace("ː", "") in visited_suffixes:
+                    continue
+                d = _suffix_vowel_distance(current_suffix, cand_sfx)
+                # Prefer common words (slight frequency bonus)
+                d -= min(cand_freq / 1000.0, 0.05)
                 if d < best_dist:
                     best_dist = d
-                    best_sfx = candidate
+                    best_word = candidate_word
+                    best_sfx = cand_sfx
 
-            if best_sfx is None:
+            if best_word is None:
                 break
-            current = best_sfx
+
+            steg.append({
+                "ord": best_word,
+                "rimsuffiks": best_sfx,
+                "aktiv": False,
+            })
+            used_words.add(best_word)
+            visited_suffixes.add(best_sfx)
+            visited_suffixes.add(best_sfx.replace("ː", ""))
+            current_word = best_word
+            current_suffix = best_sfx
 
         return {
             "ord": ord,

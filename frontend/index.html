@@ -1417,54 +1417,34 @@ function renderFlat(items) {
 
 function renderRimstier(data) {
   const steg = data.steg || [];
-  const sfx = data.rimsuffiks || '?';
 
-  // Header — show the word's actual suffix, not the abstract skeleton
-  const header = document.createElement('div');
-  header.style.cssText = 'margin:1rem 0 0.8rem;font-size:0.85rem;color:#888';
-  header.innerHTML = `Rimsti fra <span style="color:#e8920d;font-family:'Lucida Sans Unicode','DejaVu Sans',sans-serif;font-weight:600">/${esc(sfx)}/</span> &mdash; ${steg.length} n&aelig;rliggende rimfamilier`;
-  resultsEl.appendChild(header);
+  // Render as a flowing word chain
+  const chain = document.createElement('div');
+  chain.style.cssText = 'display:flex;flex-wrap:wrap;gap:0.3rem 0.15rem;align-items:center;margin-top:0.8rem;line-height:2';
 
-  for (const s of steg) {
-    const row = document.createElement('div');
-    row.style.cssText = 'display:flex;align-items:baseline;gap:0.6rem;padding:0.5rem 0.7rem;border-radius:6px;margin-bottom:0.3rem';
-    if (s.aktiv) {
-      row.style.background = 'rgba(232,146,13,0.1)';
-      row.style.borderLeft = '3px solid #e8920d';
+  for (let i = 0; i < steg.length; i++) {
+    const s = steg[i];
+
+    // Arrow between words (except before the first)
+    if (i > 0) {
+      const arrow = document.createElement('span');
+      arrow.style.cssText = 'color:#555;font-size:0.8rem;margin:0 0.1rem';
+      arrow.textContent = '\u2192';
+      chain.appendChild(arrow);
     }
 
-    // Suffix
-    const sfx = document.createElement('span');
-    sfx.style.cssText = 'font-family:"Lucida Sans Unicode","DejaVu Sans",sans-serif;font-size:0.85rem;color:#666;min-width:70px;flex-shrink:0';
-    sfx.textContent = '/' + s.rimsuffiks + '/';
-    row.appendChild(sfx);
-
-    // Words
-    const words = document.createElement('span');
-    words.style.cssText = 'font-size:0.9rem;flex:1';
-    for (let i = 0; i < s.eksempler.length; i++) {
-      if (i > 0) {
-        const sep = document.createTextNode(', ');
-        words.appendChild(sep);
-      }
-      const a = document.createElement('a');
-      a.textContent = s.eksempler[i];
-      a.style.cssText = 'color:#e8920d;cursor:pointer;text-decoration:none';
-      a.addEventListener('mouseenter', () => { a.style.color = '#f5a623'; });
-      a.addEventListener('mouseleave', () => { a.style.color = '#e8920d'; });
-      a.addEventListener('click', e => { e.preventDefault(); searchWord(s.eksempler[i]); });
-      words.appendChild(a);
-    }
-    row.appendChild(words);
-
-    // Count
-    const count = document.createElement('span');
-    count.style.cssText = 'font-size:0.75rem;color:#555;white-space:nowrap';
-    count.textContent = s.familiestr + ' ord';
-    row.appendChild(count);
-
-    resultsEl.appendChild(row);
+    const el = document.createElement('a');
+    el.style.cssText = s.aktiv
+      ? 'color:#e8920d;font-size:1.05rem;font-weight:600;cursor:pointer;text-decoration:none;padding:0.15rem 0.3rem;border-radius:4px;background:rgba(232,146,13,0.1)'
+      : 'color:#e8920d;font-size:1.05rem;cursor:pointer;text-decoration:none;padding:0.15rem 0.3rem;border-radius:4px';
+    el.textContent = s.ord;
+    el.addEventListener('mouseenter', () => { el.style.background = '#2a2a2a'; });
+    el.addEventListener('mouseleave', () => { el.style.background = s.aktiv ? 'rgba(232,146,13,0.1)' : ''; });
+    el.addEventListener('click', e => { e.preventDefault(); searchWord(s.ord); });
+    chain.appendChild(el);
   }
+
+  resultsEl.appendChild(chain);
 }
 
 function makeWordEl(item) {

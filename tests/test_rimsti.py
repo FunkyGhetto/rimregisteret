@@ -105,22 +105,17 @@ class TestFinnRimsti:
         assert len(active) == 1
         assert active[0]["rimsuffiks"] == result["rimsuffiks"]
 
-    def test_family_size_filter(self):
-        """All steg have familiestr >= min_familiestr."""
-        result = finn_rimsti("sang", min_familiestr=5)
-        for s in result["steg"]:
-            assert s["familiestr"] >= 5
-
     def test_maks_steg(self):
         """maks_steg limits the number of results."""
         result = finn_rimsti("sang", maks_steg=3)
         assert result["antall_steg"] <= 3
 
-    def test_eksempler_present(self):
-        """Each steg has at least one eksempel."""
+    def test_each_steg_has_word(self):
+        """Each steg has an ord field."""
         result = finn_rimsti("sang", min_familiestr=3)
         for s in result["steg"]:
-            assert len(s["eksempler"]) > 0
+            assert "ord" in s
+            assert len(s["ord"]) >= 2
 
     def test_unknown_word(self):
         """Unknown word returns empty steg."""
@@ -156,11 +151,9 @@ class TestAPIRimsti:
         assert data["antall_steg"] > 0
 
     def test_parameters(self):
-        r = client.get("/api/v1/rimsti/sang?maks_steg=3&min_familiestr=5")
+        r = client.get("/api/v1/rimsti/sang?maks_steg=3")
         data = r.json()
         assert len(data["steg"]) <= 3
-        for s in data["steg"]:
-            assert s["familiestr"] >= 5
 
     def test_invalid_dialekt(self):
         r = client.get("/api/v1/rimsti/sang?dialekt=invalid")
@@ -178,6 +171,5 @@ class TestAPIRimsti:
         if data["steg"]:
             s = data["steg"][0]
             assert "rimsuffiks" in s
-            assert "eksempler" in s
-            assert "familiestr" in s
+            assert "ord" in s
             assert "aktiv" in s
