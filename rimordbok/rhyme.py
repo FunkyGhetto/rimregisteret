@@ -1069,24 +1069,14 @@ def finn_halvrim(
         grupper_dict[d] = grupper_dict[d][:maks]
 
     if grupper:
-        if maks_dybde == 1:
-            # Single-syllable search word: depth grouping is meaningless.
-            # Reformat into syllable-count groups instead.
-            flat_all = []
-            for d in sorted(grupper_dict.keys()):
-                flat_all.extend(grupper_dict[d])
-            flat_all.sort(key=lambda r: (-r["score"], -r.get("frekvens", 0)))
-            result_groups = _grupper_etter_stavelser(flat_all[:maks])
-        else:
-            result_groups = [
-                {
-                    "stavelser": d,
-                    "suffiks": dybde_suffikser.get(d, suffix),
-                    "ord": grupper_dict[d],
-                }
-                for d in sorted(grupper_dict.keys())
-                if grupper_dict[d]
-            ]
+        # Always group by actual word syllable count for display.
+        # Depth-based grouping is used internally for scoring, but
+        # the final output should show "1 stavelse", "2 stavelser" etc.
+        flat_all = []
+        for d in sorted(grupper_dict.keys()):
+            flat_all.extend(grupper_dict[d])
+        flat_all.sort(key=lambda r: (-r["score"], -r.get("frekvens", 0)))
+        result_groups = _grupper_etter_stavelser(flat_all[:maks])
     else:
         # Flat mode: merge all groups
         flat = []
