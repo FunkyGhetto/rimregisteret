@@ -973,7 +973,7 @@ const MODUS_DESCS = {
   par: 'Tilfeldige rimpar \u2014 tren overganger',
   bred: '4 ord per klynge \u2014 tren bredde',
   dyp: '\u00c9n rimfamilie, alle ord \u2014 tren dybde',
-  sti: 'Rimstier \u2014 gli mellom rimfamilier via vokalskift',
+  sti: 'Rimstier \u2014 gli mellom rimfamilier via konsonant-drift',
 };
 
 // --- URL state ---
@@ -1596,8 +1596,8 @@ function renderRimstier(stier) {
     // Header for each sti
     const header = document.createElement('div');
     header.style.cssText = 'margin:1rem 0 0.4rem;font-size:0.85rem;color:#888';
-    const skeleton = sti.konsonantskjelett || '?';
-    header.textContent = `${sti.ord} \u2014 /${skeleton}/`;
+    const sfx = sti.rimsuffiks || '?';
+    header.textContent = `${sti.ord} \u2014 /${sfx}/`;
     resultsEl.appendChild(header);
 
     const steg = sti.steg || [];

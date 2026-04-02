@@ -450,7 +450,7 @@ def api_rimklynger_dyp(
     })
 
 
-@app.get("/api/v1/rimklynger/sti", summary="Rimklynger: sti-modus (rimstier via vokalskift)")
+@app.get("/api/v1/rimklynger/sti", summary="Rimklynger: sti-modus (rimstier via konsonant-drift)")
 def api_rimklynger_sti(
     ord: Optional[str] = Query(None, description="Startord (tilfeldige hvis utelatt)"),
     antall_stier: int = Query(3, ge=1, le=20, description="Antall rimstier å generere"),
