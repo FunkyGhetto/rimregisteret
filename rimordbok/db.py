@@ -212,12 +212,15 @@ def hent_rim_dialekt(
 def hent_varianter(ord: str, db_path: Optional[Path] = None) -> list[dict]:
     """Find all distinct pronunciation variants for a word (homograph detection).
 
-    Groups by (rimsuffiks, ipa_ren) to detect words with multiple pronunciations.
+    Groups by rimsuffiks to detect words with different rhyme behavior.
+    Only variants with genuinely different rimsuffikser are returned —
+    words that are spelled the same but pronounced differently for rhyme
+    purposes (e.g. "stolt" as verb /uːlt/ vs adjective /ɔlt/).
+
     Returns list of dicts: rimsuffiks, ipa_ren, pos, tonelag, stavelser, frekvens.
     Sorted by frequency descending (most common variant first).
 
-    If only one variant exists, the word is unambiguous.
-    If multiple variants exist, the caller should offer disambiguation.
+    If only one unique rimsuffiks exists, returns a single entry.
     """
     conn = _connect(db_path)
     try:
@@ -225,7 +228,7 @@ def hent_varianter(ord: str, db_path: Optional[Path] = None) -> list[dict]:
             "SELECT rimsuffiks, ipa_ren, pos, tonelag, stavelser, "
             "MAX(frekvens) as frekvens "
             "FROM ord WHERE LOWER(ord) = ? "
-            "GROUP BY rimsuffiks, ipa_ren "
+            "GROUP BY rimsuffiks "
             "ORDER BY frekvens DESC",
             (ord.lower(),),
         )

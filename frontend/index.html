@@ -1452,9 +1452,10 @@ async function doSearch(word, variant) {
     updateSEO(word, totalCount, items);
     renderInfo(infoData);
 
-    // Show variant disambiguation bar if word has multiple pronunciations
+    // Show variant disambiguation bar only if word has distinct pronunciations
     const varianter = resData.varianter || [];
-    if (varianter.length > 1 && (currentTab === 'rim' || currentTab === 'halvrim')) {
+    const uniqSuffix = new Set(varianter.map(v => v.rimsuffiks));
+    if (uniqSuffix.size > 1 && (currentTab === 'rim' || currentTab === 'halvrim')) {
       renderVariantBar(word, varianter, resData.rimsuffiks);
     }
 
