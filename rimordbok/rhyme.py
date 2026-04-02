@@ -947,21 +947,18 @@ def finn_rimsti(
     min_frekvens: float = 1.0,
     dialekt: str = "øst",
 ) -> dict:
-    """Build a rhyme chain — each word leads to the next through rhyme.
+    """Build a rhyme path — suffix drifts via consonant equivalence.
 
-    The chain evolves organically: each word is the anchor for the next.
-    The suffix drifts naturally as the chain progresses, creating a
-    freestyle training path that escalates step by step.
+    Each step is a rhyme family. The bridge between steps changes one
+    consonant to an equivalent (l→r, t→p→k, m→n→ŋ) or extends/reduces
+    the suffix structure (uːl → uː.lə → uː.rə). This creates gradual
+    drift through sound-space.
 
     Example for "sol":
-      Step 1: sol, pol, monopol, parabol
-      Step 2: anabol, abstraksjon, busstasjon, telefon
-      Step 3: ...
-
-    Each word rhymes with or connects to the previous word.
-    Steps are groups where each step's last word bridges to the next.
-
-    Returns dict with steg[] where each steg has ord[] and rimsuffiks.
+      Step 1: sol, stol, alkohol, domstol    /uːl/
+      Step 2: for, stor, tror, fjor          /uːr/   (l→r, both LIQ)
+      Step 3: store, gjorde, tore, bordet    /uː.rə/ (extend r→.rə)
+      Step 4: skole, stole, vinmonopolet     /uː.lə/ (swap r→l)
     """
     empty = {"ord": ord, "rimsuffiks": None, "steg": [], "antall_steg": 0}
 
@@ -973,28 +970,25 @@ def finn_rimsti(
     if not suffix:
         return empty
 
-    # --- Step-by-step algorithm ---
-    # Each step is a rhyme family. Fill it with helrim words, then
-    # bridge to the nearest vowel-neighbor for the next step.
-    # Last word of each step is the anchor for the bridge.
-
     used_words: set[str] = {ord.lower()}
+    used_suffixes: set[str] = set()
     all_steg: list[dict] = []
     cur_suffix = suffix
-    anchor = ord
 
-    for _step_i in range(maks_steg):
-        # Fill this step with helrim words sharing cur_suffix
-        step_words = [anchor.lower()] if _step_i == 0 else []
-        helrim = _rimsti_candidates(
-            anchor, used_words, mode="helrim",
-            db_path=db_path, dialekt=dialekt,
+    for step_i in range(maks_steg):
+        # Fill step with helrim words
+        step_words = []
+        if step_i == 0:
+            step_words.append(ord.lower())
+
+        rim = hent_rim_for_suffiks(
+            suffiks=cur_suffix, ord_lower="|",
+            db_path=db_path, maks=500, ekskluder_propn=True,
         )
-        # Pick top words by frequency
-        helrim.sort(key=lambda c: -(c.get("frekvens", 0) or 0))
-        for c in helrim:
-            w = c["ord"]
-            if w in used_words:
+        rim.sort(key=lambda r: -(r.get("frekvens", 0) or 0))
+        for r in rim:
+            w = r["ord"]
+            if w in used_words or len(w) > 12:
                 continue
             step_words.append(w)
             used_words.add(w)
@@ -1007,28 +1001,33 @@ def finn_rimsti(
         all_steg.append({
             "rimsuffiks": cur_suffix,
             "ord": step_words,
-            "aktiv": _step_i == 0,
+            "aktiv": step_i == 0,
         })
+        used_suffixes.add(cur_suffix)
 
         if len(all_steg) >= maks_steg:
             break
 
-        # Bridge: use last word as anchor, find nearest vowel-neighbor
-        bridge_anchor = step_words[-1]
-        bro_candidates = _rimsti_candidates(
-            bridge_anchor, used_words, mode="bro",
-            db_path=db_path, dialekt=dialekt,
-        )
-        if not bro_candidates:
+        # Bridge: find neighbor suffix via consonant drift
+        neighbors = _suffix_neighbors(cur_suffix)
+        neighbors = [(n, t) for n, t in neighbors if n not in used_suffixes]
+        if not neighbors:
             break
 
-        # Pick best bridge word (highest score = closest vowel)
-        bro_candidates.sort(key=lambda c: -(c.get("score", 0)))
-        chosen = bro_candidates[0]
-        anchor = chosen["ord"]
-        used_words.add(anchor)
-        anchor_info = _get_word_info(anchor, db_path=db_path, dialekt=dialekt)
-        cur_suffix = anchor_info.get("rimsuffiks", "") if anchor_info else ""
+        # Pick neighbor with most common words available
+        best_sfx = None
+        best_count = 0
+        for n, _t in neighbors:
+            words = hent_rim_for_suffiks(n, "|", db_path=db_path, maks=10, ekskluder_propn=True)
+            count = sum(1 for w in words if w["ord"] not in used_words)
+            if count > best_count:
+                best_count = count
+                best_sfx = n
+
+        if not best_sfx or best_count == 0:
+            break
+
+        cur_suffix = best_sfx
 
     return {
         "ord": ord,
@@ -1038,175 +1037,94 @@ def finn_rimsti(
     }
 
 
-def _rimsti_candidates(
-    anchor: str,
-    used_words: set[str],
-    mode: str = "helrim",
-    db_path: Optional[Path] = None,
-    dialekt: str = "øst",
-) -> list[dict]:
-    """Find candidate next words for the rimsti chain.
+# --- Suffix neighbor finding for rimsti ---
 
-    mode="helrim": perfect rhymes (for within-step chaining).
-                   No morphological filter — pol → monopol is desired.
-    mode="bro":    halvrim, for bridging to new suffix territory.
+_all_suffixes_cache = None
+
+
+def _get_all_suffixes(db_path: Optional[Path] = None) -> set:
+    global _all_suffixes_cache
+    if _all_suffixes_cache is None:
+        conn = _connect(db_path)
+        _all_suffixes_cache = set()
+        for row in conn.execute("SELECT rimsuffiks FROM rimsti_indeks WHERE familiestr >= 3"):
+            _all_suffixes_cache.add(row[0])
+    return _all_suffixes_cache
+
+
+def _suffix_neighbors(suffix: str) -> list[tuple[str, str]]:
+    """Find suffixes reachable by one consonant mutation.
+
+    Three mutation types:
+    1. Swap: replace one consonant with equiv class member (l→r)
+    2. Extend: move last consonant into schwa syllable (uːl → uː.lə)
+    3. Reduce: collapse trailing schwa syllable (uː.rə → uːr)
+
+    Returns list of (neighbor_suffix, change_description).
     """
-    candidates = []
+    phonemes = _parse_suffix_phonemes(suffix)
+    all_sfx = _get_all_suffixes()
+    neighbors = []
     seen = set()
-    anchor_lower = anchor.lower()
 
-    if mode == "helrim":
-        # Use the DB directly to bypass the morphological filter.
-        # In rimsti, words containing the anchor ARE desired (pol → monopol).
-        info = _get_word_info(anchor, db_path=db_path, dialekt=dialekt)
-        if info and info.get("rimsuffiks"):
-            suffix = info["rimsuffiks"]
-            from rimordbok.db import hent_rim_for_suffiks
-            results = hent_rim_for_suffiks(
-                suffiks=suffix,
-                ord_lower=anchor_lower,
-                db_path=db_path,
-                maks=500,
-                ekskluder_propn=True,
-            )
-            for r in results:
-                w = r["ord"]
-                if w not in used_words and w not in seen:
-                    r["score"] = 1.0
-                    seen.add(w)
-                    candidates.append(r)
+    # Type 1: Swap one consonant for equiv class member
+    for i, ph in enumerate(phonemes):
+        if _is_vowel_phoneme(ph):
+            continue
+        my_class = _cons_equiv_class(ph)
+        for other_cons, other_class in CONS_EQUIV.items():
+            if other_class == my_class and other_cons != ph:
+                new_phonemes = list(phonemes)
+                new_phonemes[i] = other_cons
+                new_suffix = _rebuild_suffix(suffix, phonemes, new_phonemes)
+                if new_suffix in all_sfx and new_suffix != suffix and new_suffix not in seen:
+                    neighbors.append((new_suffix, f"swap {ph}→{other_cons}"))
+                    seen.add(new_suffix)
 
-    elif mode == "bro":
-        # Fast bridge: find suffixes with same consonant skeleton via
-        # rimsti_indeks (0.7ms) instead of full finn_halvrim (200-400ms).
-        info = _get_word_info(anchor, db_path=db_path, dialekt=dialekt)
-        if info and info.get("rimsuffiks"):
-            cur_suffix = info["rimsuffiks"]
-            conn = _connect(db_path)
-            skel_row = conn.execute(
-                "SELECT konsonantskjelett FROM rimsti_indeks WHERE rimsuffiks = ?",
-                (cur_suffix,),
-            ).fetchone()
-            if skel_row:
-                skel = skel_row["konsonantskjelett"]
-                neighbor_rows = conn.execute(
-                    "SELECT rimsuffiks FROM rimsti_indeks "
-                    "WHERE konsonantskjelett = ? AND rimsuffiks != ? AND familiestr >= ?",
-                    (skel, cur_suffix, 3),
-                ).fetchall()
-                # Score neighbors by vowel distance — closer = better
-                cur_vowels = [p for p in _parse_suffix_phonemes(cur_suffix)
-                              if _is_vowel_phoneme(p)]
-                cur_dots = cur_suffix.count(".")
-                scored_neighbors = []
-                for nr in neighbor_rows:
-                    nsuffix = nr["rimsuffiks"]
-                    # Only consider suffixes with same syllable structure
-                    if nsuffix.count(".") != cur_dots:
-                        continue
-                    n_vowels = [p for p in _parse_suffix_phonemes(nsuffix)
-                                if _is_vowel_phoneme(p)]
-                    if cur_vowels and n_vowels:
-                        dist = _vowel_distance(
-                            cur_vowels[0].replace("ː", ""),
-                            n_vowels[0].replace("ː", ""),
-                        )
-                    else:
-                        dist = 1.0
-                    scored_neighbors.append((nsuffix, dist))
-                # Only use the closest neighbors (gradual drift)
-                scored_neighbors.sort(key=lambda x: x[1])
-                from rimordbok.db import hent_rim_for_suffiks
-                for nsuffix, dist in scored_neighbors[:5]:
-                    if dist > 0.7:
-                        break  # too far — stop
-                    proximity = max(0.0, 1.0 - dist)
-                    results = hent_rim_for_suffiks(
-                        suffiks=nsuffix, ord_lower=anchor_lower,
-                        db_path=db_path, maks=15, ekskluder_propn=True,
-                    )
-                    for r in results:
-                        w = r["ord"]
-                        if w not in used_words and w not in seen:
-                            r["score"] = proximity
-                            seen.add(w)
-                            candidates.append(r)
+    # Type 2: Extend — move last consonant into schwa syllable
+    last_cons = [ph for ph in phonemes if not _is_vowel_phoneme(ph)]
+    if last_cons:
+        last_c = last_cons[-1]
+        if suffix.endswith(last_c):
+            base = suffix[:-len(last_c)]
+            extended = base + "." + last_c + "ə"
+            if extended in all_sfx and extended not in seen:
+                neighbors.append((extended, f"extend {last_c}→.{last_c}ə"))
+                seen.add(extended)
+        # Also try plain schwa addition
+        extended2 = suffix + ".ə"
+        if extended2 in all_sfx and extended2 not in seen:
+            neighbors.append((extended2, "extend +.ə"))
+            seen.add(extended2)
 
-    return candidates
+    # Type 3: Reduce — collapse trailing schwa syllable
+    if "." in suffix:
+        parts = suffix.rsplit(".", 1)
+        tail_phonemes = _parse_suffix_phonemes(parts[1])
+        tail_cons = [p for p in tail_phonemes if not _is_vowel_phoneme(p)]
+        if tail_cons:
+            reduced = parts[0] + tail_cons[0]
+            if reduced in all_sfx and reduced not in seen:
+                neighbors.append((reduced, f"reduce .{parts[1]}→{tail_cons[0]}"))
+                seen.add(reduced)
+        reduced_bare = parts[0]
+        if reduced_bare in all_sfx and reduced_bare not in seen:
+            neighbors.append((reduced_bare, f"reduce .{parts[1]}"))
+            seen.add(reduced_bare)
+
+    return neighbors
 
 
-def _rimsti_pick(
-    candidates: list[dict],
-    anchor: str,
-    step_words: list[str],
-    prefer_drift: bool = False,
-) -> Optional[dict]:
-    """Pick the best next word for the chain.
-
-    Within a step (prefer_drift=False):
-    - Prefer common, multi-syllable words that stay in the rhyme family
-    - Longer words contain the suffix and add new material (pol → monopol)
-
-    As bridge (prefer_drift=True):
-    - Prefer words whose suffix differs from anchor (opens new territory)
-    - Still must score well as halvrim
-    """
-    if not candidates:
-        return None
-
-    import math
-    anchor_lower = anchor.lower()
-    anchor_suffix = None
-    anchor_info = _get_word_info(anchor)
-    if anchor_info:
-        anchor_suffix = anchor_info.get("rimsuffiks", "")
-
-    # Track syllable count of current anchor for rhythm matching
-    anchor_syl = None
-    anchor_info_full = _get_word_info(anchor)
-    if anchor_info_full:
-        anchor_syl = anchor_info_full.get("stavelser", 1) or 1
-
-    def score(c: dict) -> float:
-        s = 0.0
-        freq = c.get("frekvens", 0)
-        syl = c.get("stavelser", 1) or 1
-        word = c.get("ord", "")
-        c_suffix = c.get("rimsuffiks", "")
-        rhyme_score = c.get("score", 1.0)
-
-        # Base rhyme quality
-        s += rhyme_score * 2.0
-
-        # Frequency: prefer recognizable, common words
-        if freq > 0:
-            s += min(math.log(freq + 1), 4.0) * 1.2
-
-        # Penalty: very short words (less interesting for freestyle)
-        if len(word) <= 2:
-            s -= 3.0
-        # Penalty: very long compounds (impractical to rap)
-        if len(word) > 12:
-            s -= 2.0
-
-        # Rhythm: prefer words with similar or escalating syllable count
-        # (sol → monopol → parabol all feel rhythmically related)
-        if anchor_syl and syl >= anchor_syl:
-            s += 0.3  # mild preference for same or more syllables
-
-        if prefer_drift:
-            # Bridge mode: reward suffix change (new territory)
-            if anchor_suffix and c_suffix and c_suffix != anchor_suffix:
-                s += 3.0
-            # Prefer multi-syllable bridges (they carry more rhythm)
-            if syl >= 3:
-                s += 1.0
-        else:
-            # Within-step: penalize suffix change (stay in family)
-            if anchor_suffix and c_suffix and c_suffix != anchor_suffix:
-                s -= 2.0
-
-        return s
-
-    ranked = sorted(candidates, key=score, reverse=True)
-    return ranked[0] if ranked else None
+def _rebuild_suffix(original: str, old_phonemes: list, new_phonemes: list) -> str:
+    """Rebuild suffix string preserving dot positions."""
+    result = []
+    ph_idx = 0
+    for syl_i, syl in enumerate(original.split(".")):
+        if syl_i > 0:
+            result.append(".")
+        syl_phonemes = _segment_phonemes(syl)
+        for _sp in syl_phonemes:
+            if ph_idx < len(new_phonemes):
+                result.append(new_phonemes[ph_idx])
+            ph_idx += 1
+    return "".join(result)
