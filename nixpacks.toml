@@ -1,12 +1,9 @@
-[phases.setup]
-nixPkgs = ['git-lfs']
-
-[phases.lfs]
-dependsOn = ['setup']
-cmds = ['git lfs install --skip-repo', 'git lfs pull || echo "LFS pull failed, checking if files exist..."']
+# Reassemble split db files before starting the app
+[phases.assemble]
+cmds = ['cat data/db/rimindeks.db.part* > data/db/rimindeks.db']
 
 [phases.install]
-dependsOn = ['lfs']
+dependsOn = ['assemble']
 
 [start]
 cmd = 'uvicorn api.main:app --host 0.0.0.0 --port ${PORT:-8000}'

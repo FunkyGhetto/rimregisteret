@@ -11,7 +11,10 @@ build/
 data/processed/*.jsonl
 data/processed/*.log
 data/raw/
-# Note: data/db/*.db are tracked in Git for Railway deploy
+# DB: definisjoner.db og semantics.db trackes direkte.
+# rimindeks.db er for stor (274 MB) — splittet i .part-filer og
+# settes sammen ved build. Selve rimindeks.db ignoreres.
+data/db/rimindeks.db
 # SQLite temp/journal files and FUSE artifacts — never track
 *.db-wal
 *.db-shm
