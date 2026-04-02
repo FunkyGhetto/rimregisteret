@@ -1422,7 +1422,7 @@ async function doSearch(word, variant) {
   const endpoint = {
     rim: 'rim', halvrim: 'halvrim', synonymer: 'synonymer'
   }[currentTab] || 'rim';
-  const maksParam = currentTab === 'rim' ? 2000 : currentTab === 'halvrim' ? 500 : 1000;
+  const maksParam = 50000;  // Get all results — "Vis X til" button handles large lists
 
   try {
     const [resData, infoData] = await Promise.all([

@@ -11,7 +11,6 @@ Swagger-dokumentasjon: http://localhost:8000/docs
 import logging
 import time
 from collections import defaultdict
-from functools import lru_cache
 from typing import Optional
 
 from fastapi import FastAPI, Query, Request, Body
@@ -94,29 +93,6 @@ async def rate_limit(request: Request, call_next):
             )
         _rate_store[ip].append(now)
     return await call_next(request)
-
-
-# --- Simple in-memory response cache (TTL-based) ---
-
-_response_cache: dict[str, tuple[float, dict]] = {}
-_CACHE_TTL = 300  # 5 minutes
-_CACHE_MAX = 2000  # max entries
-
-
-def _cache_get(key: str) -> dict | None:
-    entry = _response_cache.get(key)
-    if entry and time.time() - entry[0] < _CACHE_TTL:
-        return entry[1]
-    return None
-
-
-def _cache_set(key: str, value: dict) -> None:
-    if len(_response_cache) >= _CACHE_MAX:
-        # Evict oldest 25%
-        sorted_keys = sorted(_response_cache, key=lambda k: _response_cache[k][0])
-        for k in sorted_keys[:_CACHE_MAX // 4]:
-            del _response_cache[k]
-    _response_cache[key] = (time.time(), value)
 
 
 # --- Middleware: logging og feilhåndtering ---
@@ -217,11 +193,6 @@ def api_rim(
             "gyldige": sorted(GYLDIGE_DIALEKTER),
         })
 
-    cache_key = f"rim:{ord}:{maks}:{samme_tonelag}:{dialekt}:{variant}:{grupper}:{ekskluder_propn}:{stavelser}"
-    cached = _cache_get(cache_key)
-    if cached:
-        return cached
-
     start = time.perf_counter()
     result = finn_perfekte_rim(
         ord, maks=maks, samme_tonelag=samme_tonelag,
@@ -240,7 +211,6 @@ def api_rim(
         if grupper else len(result["resultater"])
     )
     result["soketid_ms"] = round(elapsed, 1)
-    _cache_set(cache_key, result)
     return result
 
 
@@ -261,11 +231,6 @@ def api_halvrim(
             "feil": f"Ugyldig dialekt: {dialekt}",
             "gyldige": sorted(GYLDIGE_DIALEKTER),
         })
-
-    cache_key = f"halvrim:{ord}:{maks}:{terskel}:{dialekt}:{variant}:{grupper}:{ekskluder_propn}:{stavelser}"
-    cached = _cache_get(cache_key)
-    if cached:
-        return cached
 
     start = time.perf_counter()
 
@@ -290,7 +255,6 @@ def api_halvrim(
         else len(items)
     )
     result["soketid_ms"] = round(elapsed, 1)
-    _cache_set(cache_key, result)
     return result
 
 

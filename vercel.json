@@ -32,10 +32,15 @@
   ],
   "headers": [
     {
+      "source": "/api/v1/(rim|halvrim|info|varianter|synonymer|relaterte|konsonanter|rim)/:path*",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=3600, s-maxage=3600" }
+      ]
+    },
+    {
       "source": "/api/:path*",
       "headers": [
-        { "key": "Cache-Control", "value": "no-store, no-cache, must-revalidate" },
-        { "key": "CDN-Cache-Control", "value": "no-store" }
+        { "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }
       ]
     },
     {
