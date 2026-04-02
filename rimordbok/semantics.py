@@ -11,6 +11,7 @@ All lookups go through the pre-built semantics.db (built by scripts/parse_wordne
 """
 
 import sqlite3
+import threading
 from functools import lru_cache
 from pathlib import Path
 from typing import Optional
@@ -18,11 +19,26 @@ from typing import Optional
 DEFAULT_DB = Path(__file__).resolve().parent.parent / "data/db/semantics.db"
 RHYME_DB = Path(__file__).resolve().parent.parent / "data/db/rimindeks.db"
 
+# Thread-local persistent connections (same pattern as db.py)
+_local = threading.local()
+
 
 def _connect(db_path: Optional[Path] = None) -> sqlite3.Connection:
-    path = db_path or DEFAULT_DB
-    conn = sqlite3.connect(str(path))
+    path = str(db_path or DEFAULT_DB)
+    conns = getattr(_local, "conns", None)
+    if conns is None:
+        _local.conns = {}
+        conns = _local.conns
+    conn = conns.get(path)
+    if conn is not None:
+        try:
+            conn.execute("SELECT 1")
+            return conn
+        except Exception:
+            conns.pop(path, None)
+    conn = sqlite3.connect(path)
     conn.row_factory = sqlite3.Row
+    conns[path] = conn
     return conn
 
 
@@ -31,8 +47,7 @@ def _get_frequencies_batch(words: list, rhyme_db: Optional[Path] = None) -> dict
     path = rhyme_db or RHYME_DB
     if not path.exists() or not words:
         return {}
-    conn = sqlite3.connect(str(path))
-    # Use a single query with IN clause for batch lookup
+    conn = _connect(path)
     placeholders = ",".join("?" for _ in words)
     lower_words = [w.lower() for w in words]
     cur = conn.execute(
@@ -43,7 +58,6 @@ def _get_frequencies_batch(words: list, rhyme_db: Optional[Path] = None) -> dict
     result = {}
     for row in cur:
         result[row[0]] = row[1] if row[1] else 0.0
-    pass
     return result
 
 

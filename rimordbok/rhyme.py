@@ -10,6 +10,7 @@ Provides four rhyme-finding functions:
 """
 
 import sqlite3
+from functools import lru_cache
 from pathlib import Path
 from typing import Optional
 
@@ -855,43 +856,62 @@ def finn_rim_alle_dialekter(
     }
 
 
+# Cache all distinct suffixes grouped by dot-count for fast halvrim lookup.
+# Loaded once on first use, shared across all requests.
+_suffix_by_dots: dict[int, list[str]] | None = None
+
+
+def _get_suffixes_by_dots(db_path: Optional[Path] = None) -> dict[int, list[str]]:
+    global _suffix_by_dots
+    if _suffix_by_dots is None:
+        conn = _connect(db_path)
+        cur = conn.execute("SELECT DISTINCT rimsuffiks FROM ord")
+        _suffix_by_dots = {}
+        for row in cur:
+            s = row[0]
+            n = s.count(".")
+            if n not in _suffix_by_dots:
+                _suffix_by_dots[n] = []
+            _suffix_by_dots[n].append(s)
+    return _suffix_by_dots
+
+
+@lru_cache(maxsize=2048)
+def _finn_kandidat_suffikser_cached(
+    source_suffix: str,
+    terskel: float = 0.5,
+    maks_suffikser: int = 300,
+) -> tuple[tuple[str, float], ...]:
+    """Cached version — returns tuple of tuples for hashability."""
+    by_dots = _get_suffixes_by_dots()
+    n_dots = source_suffix.count(".")
+    same_dot = by_dots.get(n_dots, [])
+
+    source_norm = _normalize_length(source_suffix)
+    candidates = []
+    for cand in same_dot:
+        if _normalize_length(cand) == source_norm:
+            continue
+        score = _score_halvrim(source_suffix, cand)
+        if score >= terskel:
+            candidates.append((cand, score))
+
+    candidates.sort(key=lambda x: -x[1])
+    return tuple(candidates[:maks_suffikser])
+
+
 def _finn_kandidat_suffikser(
     source_suffix: str,
     db_path: Optional[Path] = None,
     terskel: float = 0.5,
     maks_suffikser: int = 300,
 ) -> list[tuple[str, float]]:
-    """Find rimsuffikser that are halvrim candidates at depth 1.
+    """Find rimsuffikser that are halvrim candidates.
 
     Scans all distinct suffixes with the same dot-count (syllable structure)
-    and scores them using _score_halvrim. This catches both:
-    - Assonance (same vowels, different consonants): mor→sol
-    - Consonance (same consonants, different vowels): søvn→jevn
-
-    Returns list of (suffix, score) sorted by score descending.
-    The source suffix itself is NOT included (it's a perfect rhyme).
+    and scores them using _score_halvrim. Results are cached.
     """
-    conn = _connect(db_path)
-    n_dots = source_suffix.count(".")
-
-    cur = conn.execute("SELECT DISTINCT rimsuffiks FROM ord")
-
-    source_norm = _normalize_length(source_suffix)
-    candidates = []
-    for row in cur:
-        cand = row[0]
-        # Skip exact matches and length-only variants (ɪk ≈ ɪːk)
-        if _normalize_length(cand) == source_norm:
-            continue
-        if cand.count(".") != n_dots:
-            continue
-
-        score = _score_halvrim(source_suffix, cand)
-        if score >= terskel:
-            candidates.append((cand, score))
-
-    candidates.sort(key=lambda x: -x[1])
-    return candidates[:maks_suffikser]
+    return list(_finn_kandidat_suffikser_cached(source_suffix, terskel, maks_suffikser))
 
 
 def finn_halvrim(
