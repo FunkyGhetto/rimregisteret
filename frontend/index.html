@@ -659,6 +659,7 @@ body {
 <div class="tabs" id="tabs">
   <button class="tab active" data-tab="rim">Rim</button>
   <button class="tab" data-tab="nestenrim">Nesten-rim</button>
+  <button class="tab" data-tab="rimstier">Rimstier</button>
   <button class="tab" data-tab="synonymer">Synonymer</button>
   <button class="tab" data-tab="rimklynger">Rimklynger</button>
   <button class="tab" data-tab="laer">Lær</button>
@@ -1267,12 +1268,36 @@ async function doSearch(word) {
   statusEl.textContent = 'Laster...';
   resultsEl.innerHTML = '';
 
+  const dParam = `&dialekt=${encodeURIComponent(currentDialekt)}`;
+
+  // Rimstier has its own endpoint and rendering
+  if (currentTab === 'rimstier') {
+    try {
+      const [stiData, infoData] = await Promise.all([
+        fetch(`${API}/api/v1/rimsti/${encodeURIComponent(word)}?maks_steg=20${dParam}`).then(r => r.json()),
+        fetch(`${API}/api/v1/info/${encodeURIComponent(word)}?x=1${dParam}`).then(r => r.json()),
+      ]);
+      const steg = stiData.steg || [];
+      if (steg.length === 0) {
+        statusEl.textContent = `Ingen rimstier funnet for "${word}"`;
+        renderInfo(infoData);
+        return;
+      }
+      statusEl.textContent = `${steg.length} rimfamilier for "${word}"`;
+      renderInfo(infoData);
+      renderRimstier(stiData);
+    } catch (err) {
+      statusEl.textContent = 'Feil: Kunne ikke koble til API-et.';
+      console.error(err);
+    }
+    return;
+  }
+
   const endpoint = {
     rim: 'rim', nestenrim: 'nestenrim', synonymer: 'synonymer'
   }[currentTab] || 'rim';
 
   try {
-    const dParam = `&dialekt=${encodeURIComponent(currentDialekt)}`;
     const [resData, infoData] = await Promise.all([
       fetch(`${API}/api/v1/${endpoint}/${encodeURIComponent(word)}?maks=1000${dParam}`).then(r => r.json()),
       fetch(`${API}/api/v1/info/${encodeURIComponent(word)}?x=1${dParam}`).then(r => r.json()),
@@ -1315,7 +1340,7 @@ async function doSearch(word) {
 }
 
 function tabLabel() {
-  return { rim: 'rim', nestenrim: 'nesten-rim', synonymer: 'synonymer' }[currentTab] || 'resultater';
+  return { rim: 'rim', nestenrim: 'nesten-rim', rimstier: 'rimstier', synonymer: 'synonymer' }[currentTab] || 'resultater';
 }
 
 // --- Rendering ---
@@ -1390,6 +1415,58 @@ function renderFlat(items) {
     list.appendChild(el);
   }
   resultsEl.appendChild(list);
+}
+
+function renderRimstier(data) {
+  const skeleton = data.konsonantskjelett || '?';
+  const steg = data.steg || [];
+
+  // Header
+  const header = document.createElement('div');
+  header.style.cssText = 'margin:1rem 0 0.8rem;font-size:0.85rem;color:#888';
+  header.innerHTML = `Konsonantskjelett: <span style="color:#e8920d;font-family:'Space Grotesk',sans-serif;font-weight:600">/${esc(skeleton)}/</span> &mdash; ${steg.length} rimfamilier`;
+  resultsEl.appendChild(header);
+
+  for (const s of steg) {
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;align-items:baseline;gap:0.6rem;padding:0.5rem 0.7rem;border-radius:6px;margin-bottom:0.3rem';
+    if (s.aktiv) {
+      row.style.background = 'rgba(232,146,13,0.1)';
+      row.style.borderLeft = '3px solid #e8920d';
+    }
+
+    // Suffix
+    const sfx = document.createElement('span');
+    sfx.style.cssText = 'font-family:"Lucida Sans Unicode","DejaVu Sans",sans-serif;font-size:0.85rem;color:#666;min-width:70px;flex-shrink:0';
+    sfx.textContent = '/' + s.rimsuffiks + '/';
+    row.appendChild(sfx);
+
+    // Words
+    const words = document.createElement('span');
+    words.style.cssText = 'font-size:0.9rem;flex:1';
+    for (let i = 0; i < s.eksempler.length; i++) {
+      if (i > 0) {
+        const sep = document.createTextNode(', ');
+        words.appendChild(sep);
+      }
+      const a = document.createElement('a');
+      a.textContent = s.eksempler[i];
+      a.style.cssText = 'color:#e8920d;cursor:pointer;text-decoration:none';
+      a.addEventListener('mouseenter', () => { a.style.color = '#f5a623'; });
+      a.addEventListener('mouseleave', () => { a.style.color = '#e8920d'; });
+      a.addEventListener('click', e => { e.preventDefault(); searchWord(s.eksempler[i]); });
+      words.appendChild(a);
+    }
+    row.appendChild(words);
+
+    // Count
+    const count = document.createElement('span');
+    count.style.cssText = 'font-size:0.75rem;color:#555;white-space:nowrap';
+    count.textContent = s.familiestr + ' ord';
+    row.appendChild(count);
+
+    resultsEl.appendChild(row);
+  }
 }
 
 function makeWordEl(item) {
