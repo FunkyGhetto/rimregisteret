@@ -774,23 +774,14 @@ def finn_perfekte_rim(
     }
 
     if grupper:
-        sokeord_ipa = info.get("ipa_ren", "")
-        maks_dybde = len(sokeord_ipa.split(".")) if sokeord_ipa else 1
-        if sokeord_ipa and maks_dybde > 1:
-            response["resultater"] = _grupper_etter_dybde(
-                sokeord_ipa, results, sokeord_lower=ord_lower,
-            )
-        else:
-            # For single-syllable words, depth grouping is meaningless
-            # (all results are depth 1). Group by syllable count instead.
-            # First apply morphological variant filter
-            if len(ord_lower) >= 3:
-                results = [
-                    r for r in results
-                    if not (ord_lower in r.get("ord", "").lower()
-                            or r.get("ord", "").lower() in ord_lower)
-                ]
-            response["resultater"] = _grupper_etter_stavelser(results)
+        # Filter morphological variants (e.g. "hjertelig" for "hjerte")
+        if len(ord_lower) >= 3:
+            results = [
+                r for r in results
+                if not (ord_lower in r.get("ord", "").lower()
+                        or r.get("ord", "").lower() in ord_lower)
+            ]
+        response["resultater"] = _grupper_etter_stavelser(results)
     else:
         # Flat mode: also filter morphological variants
         if len(ord_lower) >= 3:
