@@ -127,18 +127,17 @@ class TestFinnRimsti:
         result = finn_rimsti("xyznonexistent")
         assert result["antall_steg"] == 0
 
-    def test_sorted_by_vowel_distance(self):
-        """Steg are sorted by avstand (vowel distance) ascending."""
+    def test_chain_starts_with_input(self):
+        """First step should be the input word's own family."""
         result = finn_rimsti("sang", min_familiestr=3)
-        distances = [s["avstand"] for s in result["steg"]]
-        assert distances == sorted(distances)
+        assert result["steg"][0]["aktiv"] is True
+        assert result["steg"][0]["rimsuffiks"] == result["rimsuffiks"]
 
-    def test_active_step_has_zero_distance(self):
-        """The active step should have avstand 0.0."""
-        result = finn_rimsti("sang", min_familiestr=3)
-        active = [s for s in result["steg"] if s["aktiv"]]
-        assert len(active) == 1
-        assert active[0]["avstand"] == 0.0
+    def test_chain_has_no_duplicates(self):
+        """No suffix should appear twice in the chain."""
+        result = finn_rimsti("hus", maks_steg=15)
+        suffixes = [s["rimsuffiks"] for s in result["steg"]]
+        assert len(suffixes) == len(set(suffixes))
 
 
 # ===================================================================
