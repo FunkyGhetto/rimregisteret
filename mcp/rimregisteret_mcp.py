@@ -35,6 +35,7 @@ mcp = FastMCP(
         "Bruk arsenal() for kreativt arbeid (rim + synonymer med rim i ett kall). "
         "Bruk batch() for flere ord samtidig. "
         "Bruk sjekk_rim() for å verifisere rimpar. "
+        "Bruk rimsti() for å finne rimfamilier du kan gli mellom — nyttig for overganger i freestyle. "
         "Alle verktøy returnerer norsk tekst."
     ),
 )
@@ -373,6 +374,42 @@ async def batch(
             for p in rimpar:
                 status = "perfekt rim" if p["perfekt_rim"] else "nesten-rim" if p["nesten_rim"] else "rimer ikke"
                 lines.append(f"  {p['ord1']} / {p['ord2']}: {status} (score {p['score']})")
+
+        return "\n".join(lines)
+    except Exception as e:
+        return f"Feil: {e}"
+
+
+@mcp.tool()
+async def rimsti(ord: str, maks_steg: int = 20, min_familiestr: int = 3, dialekt: str = "øst") -> str:
+    """Finn rimstien for et ord — alle rimfamilier som deler konsonantskjelett.
+
+    En rimsti viser hvordan du kan gli mellom rimfamilier ved å skifte vokal
+    mens konsonantstrukturen er den samme. Eksempel: penger (ɛŋ.ər) →
+    ringer (ɪŋ.ər) → ganger (ɑŋ.ər). Brukes for overganger i freestyle.
+
+    Args:
+        ord: Ordet å finne rimsti for (f.eks. "sang", "natt", "hjerte")
+        maks_steg: Maks antall rimfamilier å vise (default 20)
+        min_familiestr: Minimum ord per rimfamilie (default 3)
+        dialekt: Dialektregion (default øst)
+    """
+    try:
+        data = await _get(f"/rimsti/{ord}", {
+            "maks_steg": maks_steg,
+            "min_familiestr": min_familiestr,
+            "dialekt": dialekt,
+        })
+        steg = data.get("steg", [])
+        if not steg:
+            return f"Ingen rimsti funnet for «{ord}»."
+
+        skeleton = data.get("konsonantskjelett", "?")
+        lines = [f"Rimsti for «{ord}» (konsonantskjelett: /{skeleton}/), {len(steg)} steg:"]
+        for s in steg:
+            marker = " ←" if s.get("aktiv") else ""
+            eksempler = ", ".join(s.get("eksempler", []))
+            lines.append(f"  /{s['rimsuffiks']}/ ({s['familiestr']} ord): {eksempler}{marker}")
 
         return "\n".join(lines)
     except Exception as e:

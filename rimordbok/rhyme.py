@@ -124,6 +124,18 @@ def _cons_equiv_class(ph: str) -> str:
     return CONS_EQUIV.get(ph, ph)
 
 
+def _consonant_skeleton(suffix: str) -> tuple:
+    """Extract the consonant skeleton from a rhyme suffix.
+
+    Strips vowels and length marks, keeps consonants.
+    Used to group rhyme families into 'rimstier' (rhyme paths).
+
+    Example: "ɛŋ.ər" → ("ŋ", "r")  — same skeleton as "ɑŋ.ər", "ɪŋ.ər"
+    """
+    phonemes = _parse_suffix_phonemes(suffix)
+    return tuple(ph for ph in phonemes if not _is_vowel_phoneme(ph))
+
+
 def _score_near_rhyme(suffix_a: str, suffix_b: str) -> float:
     """Score the similarity between two rhyme suffixes.
 
@@ -499,5 +511,120 @@ def match_konsonanter(
 
         results.sort(key=lambda r: r["ord"])
         return results[:maks]
+    finally:
+        pass
+
+
+def finn_rimsti(
+    ord: str,
+    db_path: Optional[Path] = None,
+    min_familiestr: int = 3,
+    maks_steg: int = 20,
+    min_frekvens: float = 1.0,
+    dialekt: str = "øst",
+) -> dict:
+    """Find the rhyme path — all rhyme families sharing the consonant skeleton.
+
+    A rhyme path shows how to glide between rhyme families by changing
+    vowels while keeping the consonant structure.
+
+    Returns dict with ord, rimsuffiks, konsonantskjelett, steg[], antall_steg.
+    """
+    info = _get_word_info(ord, db_path=db_path, dialekt=dialekt)
+    if info is None:
+        return {"ord": ord, "rimsuffiks": None, "konsonantskjelett": None, "steg": [], "antall_steg": 0}
+
+    suffix = info.get("rimsuffiks")
+    if not suffix:
+        from scripts.build_rhyme_index import compute_rhyme_suffix
+        fonemer = info.get("fonemer")
+        stress = info.get("stress")
+        if fonemer and stress:
+            suffix = compute_rhyme_suffix(fonemer, stress)
+    if not suffix:
+        return {"ord": ord, "rimsuffiks": None, "konsonantskjelett": None, "steg": [], "antall_steg": 0}
+
+    conn = _connect(db_path)
+    try:
+        # Try prebuilt index first
+        use_index = False
+        try:
+            conn.execute("SELECT 1 FROM rimsti_indeks LIMIT 1")
+            use_index = True
+        except Exception:
+            pass
+
+        if use_index:
+            # Fast path: use prebuilt rimsti_indeks
+            row = conn.execute(
+                "SELECT konsonantskjelett FROM rimsti_indeks WHERE rimsuffiks = ?",
+                (suffix,),
+            ).fetchone()
+            if not row:
+                # Suffix not in index, compute live
+                skeleton = _consonant_skeleton(suffix)
+                skeleton_str = ".".join(skeleton) if skeleton else "(tom)"
+            else:
+                skeleton_str = row["konsonantskjelett"]
+
+            cur = conn.execute(
+                "SELECT rimsuffiks, familiestr, eksempler FROM rimsti_indeks "
+                "WHERE konsonantskjelett = ? AND familiestr >= ? "
+                "ORDER BY familiestr DESC LIMIT ?",
+                (skeleton_str, min_familiestr, maks_steg),
+            )
+            steg = []
+            for r in cur:
+                eks = r["eksempler"].split(",") if r["eksempler"] else []
+                steg.append({
+                    "rimsuffiks": r["rimsuffiks"],
+                    "eksempler": eks,
+                    "familiestr": r["familiestr"],
+                    "aktiv": r["rimsuffiks"] == suffix,
+                })
+        else:
+            # Fallback: compute live (slow)
+            skeleton = _consonant_skeleton(suffix)
+            skeleton_str = ".".join(skeleton) if skeleton else "(tom)"
+
+            cur = conn.execute("SELECT DISTINCT rimsuffiks FROM ord")
+            matching = [r["rimsuffiks"] for r in cur if _consonant_skeleton(r["rimsuffiks"]) == skeleton]
+
+            steg = []
+            for sfx in matching:
+                row2 = conn.execute(
+                    "SELECT COUNT(*) as n FROM ("
+                    "  SELECT LOWER(ord) FROM ord "
+                    "  WHERE rimsuffiks = ? AND frekvens >= ? "
+                    "  AND length(ord) >= 2 AND length(ord) <= 15 "
+                    "  GROUP BY LOWER(ord))",
+                    (sfx, min_frekvens),
+                ).fetchone()
+                count = row2["n"]
+                if count < min_familiestr:
+                    continue
+                cur3 = conn.execute(
+                    "SELECT LOWER(ord) as ord FROM ord "
+                    "WHERE rimsuffiks = ? AND frekvens >= ? "
+                    "AND length(ord) >= 2 AND length(ord) <= 15 "
+                    "GROUP BY LOWER(ord) ORDER BY MAX(frekvens) DESC LIMIT 5",
+                    (sfx, min_frekvens),
+                )
+                steg.append({
+                    "rimsuffiks": sfx,
+                    "eksempler": [r["ord"] for r in cur3],
+                    "familiestr": count,
+                    "aktiv": sfx == suffix,
+                })
+            steg.sort(key=lambda s: -s["familiestr"])
+            steg = steg[:maks_steg]
+
+        return {
+            "ord": ord,
+            "rimsuffiks": suffix,
+            "konsonantskjelett": skeleton_str,
+            "steg": steg,
+            "antall_steg": len(steg),
+        }
     finally:
         pass

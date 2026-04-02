@@ -27,6 +27,7 @@ from rimordbok.rhyme import (
     finn_homofoner,
     match_konsonanter,
     finn_rim_alle_dialekter,
+    finn_rimsti,
     _score_near_rhyme,
 )
 from rimordbok.semantics import (
@@ -399,6 +400,32 @@ def api_rimklynger_dyp(
         "stavelser": stavelser, "min_frekvens": min_frekvens,
         "dialekt": dialekt, "ord": ord,
     })
+
+
+# --- Rimsti ---
+
+
+@app.get("/api/v1/rimsti/{ord}", summary="Finn rimsti — rimfamilier med samme konsonantskjelett")
+def api_rimsti(
+    ord: str,
+    maks_steg: int = Query(20, ge=1, le=50, description="Maks antall rimfamilier"),
+    min_familiestr: int = Query(3, ge=1, le=100, description="Minimum ord i en rimfamilie"),
+    min_frekvens: float = Query(1.0, ge=0.0, description="Minimum ordfrekvens per million"),
+    dialekt: str = Query("øst", description="Dialektregion: øst, nord, midt, vest, sørvest"),
+):
+    if dialekt not in GYLDIGE_DIALEKTER:
+        return JSONResponse(status_code=400, content={
+            "feil": f"Ugyldig dialekt: {dialekt}",
+            "gyldige": sorted(GYLDIGE_DIALEKTER),
+        })
+    start = time.perf_counter()
+    result = finn_rimsti(
+        ord, maks_steg=maks_steg, min_familiestr=min_familiestr,
+        min_frekvens=min_frekvens, dialekt=dialekt,
+    )
+    elapsed = (time.perf_counter() - start) * 1000
+    result["soketid_ms"] = round(elapsed, 1)
+    return result
 
 
 # --- Arsenal & Rimer ---
