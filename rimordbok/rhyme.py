@@ -634,6 +634,9 @@ def finn_rimsti(
         except Exception:
             pass
 
+        # Max vowel distance — families beyond this are too far to glide to
+        MAX_DISTANCE = 0.8
+
         if use_index:
             row = conn.execute(
                 "SELECT konsonantskjelett FROM rimsti_indeks WHERE rimsuffiks = ?",
@@ -642,16 +645,41 @@ def finn_rimsti(
             if row:
                 skeleton_str = row["konsonantskjelett"]
 
-            # Fetch MORE than maks_steg so we can sort by distance and then trim
             cur = conn.execute(
-                "SELECT rimsuffiks, familiestr, eksempler FROM rimsti_indeks "
+                "SELECT rimsuffiks, familiestr FROM rimsti_indeks "
                 "WHERE konsonantskjelett = ? AND familiestr >= ?",
                 (skeleton_str, min_familiestr),
             )
             candidates = []
             for r in cur:
-                eks = r["eksempler"].split(",") if r["eksempler"] else []
                 dist = _suffix_vowel_distance(suffix, r["rimsuffiks"])
+                if dist > MAX_DISTANCE and r["rimsuffiks"] != suffix:
+                    continue
+                # Fetch examples: common, short, no compounds
+                # Get common words, excluding proper nouns (PM)
+                cur2 = conn.execute(
+                    "SELECT LOWER(o.ord) as ord, MAX(o.frekvens) as f FROM ord o "
+                    "WHERE o.rimsuffiks = ? AND o.frekvens >= 5.0 "
+                    "AND length(o.ord) BETWEEN 3 AND 10 "
+                    "AND o.ord NOT LIKE '%-%' "
+                    "AND o.pos NOT LIKE 'PM%%' "
+                    "GROUP BY LOWER(o.ord) ORDER BY f DESC LIMIT 15",
+                    (r["rimsuffiks"],),
+                )
+                eks = [row2["ord"] for row2 in cur2][:5]
+                if len(eks) < 2:
+                    cur2 = conn.execute(
+                        "SELECT LOWER(ord) as ord, MAX(frekvens) as f FROM ord "
+                        "WHERE rimsuffiks = ? AND frekvens >= 1.0 "
+                        "AND length(ord) BETWEEN 3 AND 12 "
+                        "AND pos NOT LIKE 'PM%%' "
+                        "GROUP BY LOWER(ord) ORDER BY f DESC LIMIT 10",
+                        (r["rimsuffiks"],),
+                    )
+                    eks = [row2["ord"] for row2 in cur2][:5]
+                # Skip families with no usable examples (unless it's the active one)
+                if len(eks) < 2 and r["rimsuffiks"] != suffix:
+                    continue
                 candidates.append({
                     "rimsuffiks": r["rimsuffiks"],
                     "eksempler": eks,
