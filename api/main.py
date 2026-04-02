@@ -218,7 +218,7 @@ def api_rim(
 def api_halvrim(
     ord: str,
     maks: int = Query(200, ge=1, le=100000),
-    terskel: float = Query(0.5, ge=0.0, le=1.0, description="Minimum likhetsscore"),
+    terskel: float = Query(0.75, ge=0.0, le=1.0, description="Minimum likhetsscore"),
     stavelser: Optional[int] = Query(None),
     tonelag: Optional[int] = Query(None),
     dialekt: str = Query("øst", description="Dialektregion: øst, nord, midt, vest, sørvest"),
@@ -371,7 +371,7 @@ def api_rimklynger_par(
     dialekt: str = Query("øst", description="Dialektregion"),
     ord: Optional[str] = Query(None, description="Startord — bruk dette ordets rimfamilie"),
     rimtype: str = Query("begge", description="helrim, halvrim eller begge"),
-    terskel: float = Query(0.5, ge=0.0, le=1.0, description="Terskel for halvrim"),
+    terskel: float = Query(0.75, ge=0.0, le=1.0, description="Terskel for halvrim"),
 ):
     if dialekt not in GYLDIGE_DIALEKTER:
         return JSONResponse(status_code=400, content={
@@ -399,7 +399,7 @@ def api_rimklynger_bred(
     dialekt: str = Query("øst", description="Dialektregion"),
     ord: Optional[str] = Query(None, description="Startord — bruk dette ordets rimfamilie"),
     rimtype: str = Query("begge", description="helrim, halvrim eller begge"),
-    terskel: float = Query(0.5, ge=0.0, le=1.0, description="Terskel for halvrim"),
+    terskel: float = Query(0.75, ge=0.0, le=1.0, description="Terskel for halvrim"),
 ):
     if dialekt not in GYLDIGE_DIALEKTER:
         return JSONResponse(status_code=400, content={
@@ -427,7 +427,7 @@ def api_rimklynger_dyp(
     maks: int = Query(0, ge=0, le=1000, description="Maks antall ord (0 = alle)"),
     dialekt: str = Query("øst", description="Dialektregion"),
     rimtype: str = Query("begge", description="helrim, halvrim eller begge"),
-    terskel: float = Query(0.5, ge=0.0, le=1.0, description="Terskel for halvrim"),
+    terskel: float = Query(0.75, ge=0.0, le=1.0, description="Terskel for halvrim"),
 ):
     if dialekt not in GYLDIGE_DIALEKTER:
         return JSONResponse(status_code=400, content={

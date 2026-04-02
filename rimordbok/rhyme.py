@@ -669,7 +669,7 @@ def _get_suffixes_by_dots(db_path: Optional[Path] = None) -> dict[int, list[str]
 @lru_cache(maxsize=2048)
 def _finn_kandidat_suffikser_cached(
     source_suffix: str,
-    terskel: float = 0.5,
+    terskel: float = 0.75,
     maks_suffikser: int = 300,
 ) -> tuple[tuple[str, float], ...]:
     """Cached version — returns tuple of tuples for hashability."""
@@ -693,7 +693,7 @@ def _finn_kandidat_suffikser_cached(
 def _finn_kandidat_suffikser(
     source_suffix: str,
     db_path: Optional[Path] = None,
-    terskel: float = 0.5,
+    terskel: float = 0.75,
     maks_suffikser: int = 300,
 ) -> list[tuple[str, float]]:
     """Find rimsuffikser that are halvrim candidates.
@@ -708,7 +708,7 @@ def finn_halvrim(
     ord: str,
     db_path: Optional[Path] = None,
     maks: int = 200,
-    terskel: float = 0.5,
+    terskel: float = 0.75,
     dialekt: str = "øst",
     rimsuffiks: Optional[str] = None,
     grupper: bool = False,
