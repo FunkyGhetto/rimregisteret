@@ -294,15 +294,19 @@ def _score_halvrim(target_sfx: str, cand_sfx: str) -> float:
         c_sim = 0.0
     else:
         weighted = _weighted_lcs(ca, cb, exact_weight=1.0, class_weight=0.6)
-        c_sim = min(1.0, weighted / len(ca))
+        recall = min(1.0, weighted / len(ca))
+        precision = min(1.0, weighted / len(cb))
+        # F1 score — both coverage AND specificity must be high.
+        # Prevents "over" (v,r) from perfectly matching "stave" (v)
+        # just because v is covered (recall=1.0 but precision=0.5).
+        c_sim = (2 * recall * precision / (recall + precision)) if (recall + precision) > 0 else 0.0
 
-    # Require meaningful consonant overlap — just sharing one common
-    # consonant (c_sim ≤ 0.5) while vowels match is not enough.
-    # This filters out "klokken" (k,n vs n,r → c_sim=0.5) for "ånder".
-    if v_sim < 0.3 or c_sim < 0.55:
+    # Both vowels and consonants must contribute meaningfully.
+    # Geometric mean ensures both dimensions must be high.
+    if v_sim < 0.2 or c_sim < 0.2:
         return 0.0
 
-    return 0.60 * v_sim + 0.40 * c_sim
+    return (v_sim ** 0.5) * (c_sim ** 0.5)
 
 
 def _berik_varianter_med_definisjoner(ord: str, varianter: list[dict]) -> list[dict]:
