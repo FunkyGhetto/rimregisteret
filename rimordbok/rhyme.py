@@ -125,15 +125,30 @@ def _cons_equiv_class(ph: str) -> str:
 
 
 def _consonant_skeleton(suffix: str) -> tuple:
-    """Extract the consonant skeleton from a rhyme suffix.
+    """Extract the rhythmic skeleton from a rhyme suffix.
 
-    Strips vowels and length marks, keeps consonants.
-    Used to group rhyme families into 'rimstier' (rhyme paths).
+    Replaces vowels with "V" (collapsing consecutive vowels/diphthongs)
+    and keeps consonants. Preserves syllable structure so that
+    monosyllabic and polysyllabic suffixes never match.
 
-    Example: "ɛŋ.ər" → ("ŋ", "r")  — same skeleton as "ɑŋ.ər", "ɪŋ.ər"
+    Examples:
+        "ʉːs" (hus)    → ("V", "s")
+        "ɛs" (press)    → ("V", "s")
+        "øː.sə" (løse)  → ("V", "s", "V")
+        "ɛŋ.ər" (penger) → ("V", "ŋ", "V", "r")
     """
     phonemes = _parse_suffix_phonemes(suffix)
-    return tuple(ph for ph in phonemes if not _is_vowel_phoneme(ph))
+    result = []
+    last_was_vowel = False
+    for ph in phonemes:
+        if _is_vowel_phoneme(ph):
+            if not last_was_vowel:
+                result.append("V")
+            last_was_vowel = True
+        else:
+            result.append(ph)
+            last_was_vowel = False
+    return tuple(result)
 
 
 def _score_near_rhyme(suffix_a: str, suffix_b: str) -> float:

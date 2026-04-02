@@ -1422,7 +1422,7 @@ function renderRimstier(data) {
   // Header
   const header = document.createElement('div');
   header.style.cssText = 'margin:1rem 0 0.8rem;font-size:0.85rem;color:#888';
-  header.innerHTML = `Konsonantskjelett: <span style="color:#e8920d;font-family:'Space Grotesk',sans-serif;font-weight:600">/${esc(skeleton)}/</span> &mdash; ${steg.length} rimfamilier`;
+  header.innerHTML = `Rimsti: <span style="color:#e8920d;font-family:'Space Grotesk',sans-serif;font-weight:600">/${esc(skeleton)}/</span> &mdash; ${steg.length} rimfamilier`;
   resultsEl.appendChild(header);
 
   for (const s of steg) {

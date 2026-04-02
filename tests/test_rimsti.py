@@ -53,21 +53,31 @@ class TestConsonantSkeletonBasic:
 
 class TestConsonantSkeletonEdgeCases:
     def test_vowel_only(self):
-        """Suffix with only a vowel gives empty skeleton."""
-        assert _consonant_skeleton("ɑː") == ()
+        """Suffix with only a vowel gives skeleton with just V."""
+        assert _consonant_skeleton("ɑː") == ("V",)
 
-    def test_diphthong(self):
-        """Diphthong stripped, only consonant remains."""
-        skel = _consonant_skeleton("æ͡ɪ.ən")
-        assert "n" in skel
-        # Should not contain any vowel
-        from rimordbok.rhyme import _is_vowel_phoneme
-        for ph in skel:
-            assert not _is_vowel_phoneme(ph)
+    def test_diphthong_collapses(self):
+        """Diphthong + consonant: vowels collapse to one V."""
+        assert _consonant_skeleton("æ͡ɪs") == ("V", "s")
+        assert _consonant_skeleton("æ͡ɪ.ən") == ("V", "n")
 
     def test_long_short_vowel_same(self):
         """Long and short vowel give same skeleton."""
         assert _consonant_skeleton("ɑːl") == _consonant_skeleton("ɑl")
+
+    def test_preserves_syllable_structure(self):
+        """Monosyllabic and polysyllabic suffixes get different skeletons."""
+        mono = _consonant_skeleton("ʉːs")  # hus
+        poly = _consonant_skeleton("øː.sə")  # løse
+        assert mono == ("V", "s")
+        assert poly == ("V", "s", "V")
+        assert mono != poly
+
+    def test_specific_values(self):
+        """Verify exact skeleton values for key suffixes."""
+        assert _consonant_skeleton("ɛŋ.ər") == ("V", "ŋ", "V", "r")
+        assert _consonant_skeleton("ɑ.sə") == ("V", "s", "V")
+        assert _consonant_skeleton("ɑːl") == ("V", "l")
 
 
 # ===================================================================
