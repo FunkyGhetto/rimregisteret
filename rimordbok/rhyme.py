@@ -88,27 +88,21 @@ VOWEL_EQUIV = {
     "ə": "SCHWA",
 }
 
-# Consonant equivalence: grouped by manner of articulation + voicing.
-# For halvrim, consonants that share how they're produced (plosive, nasal,
-# fricative) and voicing sound more alike than consonants at the same
-# place but different manner.  E.g. k≈t (both voiceless plosives) is
-# closer than k≈g (same place, different voicing) for near-rhyme.
+# Consonant equivalence: grouped by manner of articulation.
+# Voiced/voiceless pairs are in the SAME class (v≈f, b≈p, d≈t, g≈k)
+# because they sound alike for halvrim purposes.
 CONS_EQUIV = {
-    # Voiceless plosives (p≈t≈k)
-    "p": "VPLOS", "t": "VPLOS", "k": "VPLOS",
-    "ʈ": "VPLOS",  # retroflex voiceless plosive
-    # Voiced plosives (b≈d≈g)
-    "b": "SPLOS", "d": "SPLOS", "g": "SPLOS",
-    "ɖ": "SPLOS",  # retroflex voiced plosive
+    # Plosives — all voiceless+voiced together (p≈b≈t≈d≈k≈g)
+    "p": "PLOS", "b": "PLOS", "t": "PLOS", "d": "PLOS",
+    "k": "PLOS", "g": "PLOS",
+    "ʈ": "PLOS", "ɖ": "PLOS",  # retroflexes
     # Nasals (m≈n≈ŋ)
     "m": "NAS", "n": "NAS", "ŋ": "NAS",
     "ɳ": "NAS",  # retroflex nasal
-    # Voiceless fricatives (f≈s≈ʃ≈ʂ≈ç≈h)
-    "f": "VFRIK", "s": "VFRIK", "ʃ": "VFRIK", "ʂ": "VFRIK",
-    "ç": "VFRIK", "h": "VFRIK",
-    # Voiced fricatives / approximants (v≈j)
-    "v": "SFRIK", "j": "SFRIK",
-    "ʋ": "SFRIK",  # labiodental approximant
+    # Fricatives — all together (f≈v≈s≈ʃ≈ʂ≈ç≈h≈j)
+    "f": "FRIK", "v": "FRIK", "s": "FRIK", "ʃ": "FRIK",
+    "ʂ": "FRIK", "ç": "FRIK", "h": "FRIK",
+    "j": "FRIK", "ʋ": "FRIK",
     # Liquids: laterals and trills (l≈r)
     "l": "LIQ", "ɭ": "LIQ",
     "r": "LIQ",
@@ -782,14 +776,11 @@ def finn_halvrim(
     for d in range(1, maks_dybde + 1):
         target_suffix = dybde_suffikser.get(d, suffix)
 
-        # Raise threshold at deeper depths: more syllables compared
-        # means more chance of spurious partial matches.
         # For multi-syllable search words, skip depth 1 entirely —
-        # matching only the last syllable gives too many false positives
-        # (e.g. "ånder" with suffix "ər" matches "det", "en", "med").
+        # matching only the last syllable gives too many false positives.
         if d == 1 and maks_dybde >= 2:
             continue
-        depth_terskel = terskel + 0.05 * (d - 1)
+        depth_terskel = terskel
 
         # Build suffix list for DB fetch.
         # For depth D, use depth-D candidates (D-1 dot rimsuffikser).
@@ -836,12 +827,9 @@ def finn_halvrim(
             if _normalize_length(word_suffix) == _normalize_length(target_suffix):
                 continue
 
-            # Syllable weight filter: short vowel (heavy syllable, e.g.
-            # ɪk in 'politikk') doesn't match long vowel (light syllable,
-            # e.g. ɪːt in 'hit').  Orthographic double consonant (kk, tt)
-            # = short vowel in IPA; they must have matching weight.
-            if not _same_vowel_weight(target_suffix, word_suffix):
-                continue
+            # Note: vowel length difference (ɑː vs ɑ) is handled by the
+            # scoring function, not as a hard filter. This allows halvrim
+            # like stave (ɑː.və) → kaffe (ɑ.fə) to come through.
 
             suffix_score = _score_halvrim(target_suffix, word_suffix)
             if suffix_score < depth_terskel:
