@@ -36,7 +36,7 @@ mcp = FastMCP(
         "Bruk batch() for flere ord samtidig. "
         "Bruk sjekk_rim() for å verifisere rimpar. "
         "Bruk hent_definisjon() for orddefinisjoner fra Bokmålsordboka. "
-        "Bruk generer_rimklynger(modus='sti') for rimstier — gli mellom rimfamilier via vokalskift. "
+        "Bruk generer_rimklynger(modus='sti') for rimstier — gli mellom rimfamilier via konsonant-drift. "
         "Alle verktøy returnerer norsk tekst."
     ),
 )

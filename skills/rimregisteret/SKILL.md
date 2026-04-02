@@ -14,11 +14,17 @@ Du har tilgang til Rimregisteret via MCP-verktøy som du kan kalle direkte. Bruk
 | `finn_rim(ord)` | Perfekte rim | "Hva rimer på sol?" |
 | `finn_halvrim(ord)` | Halvrim med score | "Finn halvrim for dag" |
 | `finn_synonymer(ord)` | Synonymer | "Synonymer for glad" |
+| `finn_relaterte(ord)` | Hypernymer, hyponymer fra WordNet | "Hva er overordnet for hund?" |
 | `ordinfo(ord)` | IPA, tonelag, definisjon, rim, synonymer | "Fortell meg om ordet kjærlighet" |
+| `hent_definisjon(ord)` | Definisjon fra Bokmålsordboka | "Hva betyr fregatt?" |
 | `arsenal(ord)` | Alt kreativt materiale i ett kall | "Gi meg alt jeg kan bygge med fra krone" |
 | `sjekk_rim(ord1, ord2)` | Sjekk om to ord rimer | "Rimer tanke og banke?" |
 | `batch(ord, operasjoner)` | Flere ord × flere operasjoner | "Slå opp rim og info for sol, natt og hjerte" |
 | `generer_rimklynger(modus)` | Tilfeldige rimklynger | "Generer 10 rimpar for trening" |
+| `finn_varianter(ord)` | Uttale-varianter (homografer) | "Hvilke uttaler har stolt?" |
+| `finn_rim_dialekter(ord)` | Rim i alle 5 dialekter | "Vis rim for barn i alle dialekter" |
+| `finn_konsonantmatch(ord)` | Ord med likt konsonantskjelett | "Finn konsonantmatch for krone" |
+| `tilfeldig_ord()` | Tilfeldig vanlig norsk ord | "Gi meg et tilfeldig ord" |
 | `sok_ord(prefiks)` | Autocomplete | "Finn ord som starter med kj" |
 
 Alle verktøy som handler om rim støtter `dialekt`-parameter (øst, nord, midt, vest, sørvest).
