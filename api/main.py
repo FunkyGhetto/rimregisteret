@@ -234,6 +234,14 @@ def api_nestenrim(
             "gyldige": sorted(GYLDIGE_DIALEKTER),
         })
     start = time.perf_counter()
+
+    # Check for homograph variants (same as /rim/ endpoint)
+    varianter = hent_varianter(ord)
+    berikede = (
+        _berik_varianter_med_definisjoner(ord, varianter)
+        if len(varianter) > 1 else []
+    )
+
     results = finn_nesten_rim(
         ord, maks=_clamp_maks(maks), terskel=terskel,
         dialekt=dialekt, rimsuffiks=variant, grupper=grupper,
@@ -243,6 +251,12 @@ def api_nestenrim(
     elapsed = (time.perf_counter() - start) * 1000
     resp = _wrap(ord, results, elapsed)
     resp["dialekt"] = dialekt
+    resp["varianter"] = berikede
+    # Include which suffix was used
+    if variant:
+        resp["rimsuffiks"] = variant
+    elif varianter:
+        resp["rimsuffiks"] = varianter[0].get("rimsuffiks")
     return resp
 
 
