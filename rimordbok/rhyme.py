@@ -1095,15 +1095,36 @@ def _rimsti_candidates(
                     candidates.append(r)
 
     elif mode == "bro":
-        halvrim = finn_halvrim(
-            anchor, maks=100, terskel=0.6, grupper=False,
-            db_path=db_path, dialekt=dialekt, ekskluder_propn=True,
-        )
-        for r in halvrim.get("resultater", []):
-            w = r["ord"]
-            if w not in used_words and w not in seen and r.get("score", 0) >= 0.7:
-                seen.add(w)
-                candidates.append(r)
+        # Fast bridge: find suffixes with same consonant skeleton via
+        # rimsti_indeks (0.7ms) instead of full finn_halvrim (200-400ms).
+        info = _get_word_info(anchor, db_path=db_path, dialekt=dialekt)
+        if info and info.get("rimsuffiks"):
+            cur_suffix = info["rimsuffiks"]
+            conn = _connect(db_path)
+            skel_row = conn.execute(
+                "SELECT konsonantskjelett FROM rimsti_indeks WHERE rimsuffiks = ?",
+                (cur_suffix,),
+            ).fetchone()
+            if skel_row:
+                skel = skel_row["konsonantskjelett"]
+                neighbor_rows = conn.execute(
+                    "SELECT rimsuffiks FROM rimsti_indeks "
+                    "WHERE konsonantskjelett = ? AND rimsuffiks != ? AND familiestr >= ?",
+                    (skel, cur_suffix, min_familiestr if 'min_familiestr' in dir() else 3),
+                ).fetchall()
+                for nr in neighbor_rows:
+                    nsuffix = nr["rimsuffiks"]
+                    from rimordbok.db import hent_rim_for_suffiks
+                    results = hent_rim_for_suffiks(
+                        suffiks=nsuffix, ord_lower=anchor_lower,
+                        db_path=db_path, maks=20, ekskluder_propn=True,
+                    )
+                    for r in results:
+                        w = r["ord"]
+                        if w not in used_words and w not in seen:
+                            r["score"] = 0.8
+                            seen.add(w)
+                            candidates.append(r)
 
     return candidates
 
