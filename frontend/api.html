@@ -112,6 +112,7 @@ pre .nl { color: #888; }
   <h3>Rim</h3>
   <a href="#rim"><span class="s-method">GET</span>/rim/{ord}</a>
   <a href="#nestenrim"><span class="s-method">GET</span>/nestenrim/{ord}</a>
+  <a href="#rimsti"><span class="s-method">GET</span>/rimsti/{ord}</a>
   <h3>Semantikk</h3>
   <a href="#synonymer"><span class="s-method">GET</span>/synonymer/{ord}</a>
   <a href="#antonymer"><span class="s-method">GET</span>/antonymer/{ord}</a>
@@ -282,6 +283,38 @@ pre .nl { color: #888; }
   </table>
 </div>
 <pre>curl "<span class="u">https://www.rimregisteret.no/api/v1/nestenrim/dag?terskel=0.6&amp;maks=3</span>"</pre>
+
+<!-- rimsti -->
+<div class="ep" id="rimsti">
+  <div class="ep-head"><span class="ep-method">GET</span><span class="ep-path">/api/v1/rimsti/{ord}</span></div>
+  <div class="ep-desc">Finn rimstien &mdash; alle rimfamilier som deler konsonantskjelett med ordets rimsuffiks. Viser hvordan du kan gli mellom rimfamilier ved &aring; skifte vokal mens konsonantstrukturen holdes fast. Hver familie inkluderer de 5 mest brukte ordene og antall kvalifiserte ord.</div>
+
+  <div class="tbl-label">Parametere</div>
+  <table><thead><tr><th>Parameter</th><th>Type</th><th>Default</th><th>Beskrivelse</th></tr></thead>
+    <tbody>
+      <tr><td>maks_steg</td><td>int</td><td>20</td><td>Maks antall rimfamilier &aring; returnere (1&ndash;50)</td></tr>
+      <tr><td>min_familiestr</td><td>int</td><td>3</td><td>Minimum antall ord i en rimfamilie for &aring; inkludere den</td></tr>
+      <tr><td>min_frekvens</td><td>float</td><td>1.0</td><td>Minimum ordfrekvens per million for &aring; telle i familiest&oslash;rrelse</td></tr>
+      <tr><td>dialekt</td><td>string</td><td>"&oslash;st"</td><td>Dialektregion</td></tr>
+    </tbody>
+  </table>
+
+  <div class="tbl-label">Respons-felter</div>
+  <table><thead><tr><th>Felt</th><th>Type</th><th>Beskrivelse</th></tr></thead>
+    <tbody>
+      <tr><td>ord</td><td>string</td><td>S&oslash;keordet</td></tr>
+      <tr><td>rimsuffiks</td><td>string</td><td>Ordets fonetiske rimsuffiks</td></tr>
+      <tr><td>konsonantskjelett</td><td>string</td><td>Konsonantene i suffikset (f.eks. &laquo;&nacute;&raquo; for sang-familien)</td></tr>
+      <tr><td>steg[].rimsuffiks</td><td>string</td><td>Rimsuffikset for denne familien</td></tr>
+      <tr><td>steg[].eksempler</td><td>array</td><td>Topp 5 ord etter frekvens</td></tr>
+      <tr><td>steg[].familiestr</td><td>int</td><td>Antall kvalifiserte ord i familien</td></tr>
+      <tr><td>steg[].aktiv</td><td>bool</td><td>true hvis dette er s&oslash;keordets egen rimfamilie</td></tr>
+      <tr><td>antall_steg</td><td>int</td><td>Antall rimfamilier returnert</td></tr>
+      <tr><td>soketid_ms</td><td>float</td><td>Responstid</td></tr>
+    </tbody>
+  </table>
+</div>
+<pre>curl "<span class="u">https://www.rimregisteret.no/api/v1/rimsti/sang?maks_steg=5</span>"</pre>
 
 <!-- ═══════════════ SEMANTIKK ═══════════════ -->
 
