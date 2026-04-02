@@ -999,9 +999,17 @@ function pushURL(word) {
 }
 
 function updateSEO(word, count, items) {
-  // Top 3-5 rhyme words for title/description
-  const topWords = (items || []).slice(0, 5).map(r => r.ord).join(', ');
-  const topThree = (items || []).slice(0, 3).map(r => r.ord).join(', ');
+  // Flatten grouped results [{stavelser, ord: [...]}] into word strings
+  let flat = [];
+  for (const item of (items || [])) {
+    if (Array.isArray(item.ord)) {
+      for (const w of item.ord) flat.push(typeof w === 'string' ? w : w.ord);
+    } else {
+      flat.push(typeof item === 'string' ? item : item.ord);
+    }
+  }
+  const topWords = flat.slice(0, 5).join(', ');
+  const topThree = flat.slice(0, 3).join(', ');
 
   // Title with top rhymes
   document.title = topThree
