@@ -138,29 +138,53 @@ async def finn_rim(
 
 @mcp.tool()
 async def finn_nesten_rim(
-    ord: str, maks: int = 20, terskel: float = 0.5, dialekt: str = "øst"
+    ord: str, maks: int = 20, terskel: float = 0.5,
+    dialekt: str = "øst", variant: str | None = None,
 ) -> str:
     """Finn nesten-rim (slant rhymes) for et norsk ord.
 
     Nesten-rim har lignende, men ikke identiske, rimsuffikser.
     Hvert ord får en likhetsscore fra 0 til 1.
 
+    Hvis ordet har flere uttaler, vis varianter og bruk variant-parameteret
+    for å velge en spesifikk uttale.
+
     Args:
         ord: Ordet å finne nesten-rim for
         maks: Maks antall resultater (default 20)
         terskel: Minimum likhetsscore 0.0-1.0 (default 0.5)
         dialekt: Dialektregion (default øst)
+        variant: Rimsuffiks for disambiguering (f.eks. "ɔlt" for stolt-adjektiv)
     """
     try:
-        data = await _get(
-            f"/nestenrim/{ord}",
-            {"maks": maks, "terskel": terskel, "dialekt": dialekt},
-        )
+        params: dict = {"maks": maks, "terskel": terskel, "dialekt": dialekt}
+        if variant:
+            params["variant"] = variant
+        data = await _get(f"/nestenrim/{ord}", params)
+
+        lines = []
+
+        # Show variants if ambiguous
+        varianter = data.get("varianter", [])
+        if varianter:
+            lines.append(f"⚠ «{ord}» har {len(varianter)} uttaler:")
+            for i, v in enumerate(varianter):
+                suffix = v.get("rimsuffiks", "?")
+                wc = v.get("ordklasse_tekst") or v.get("pos", "?")
+                defn = v.get("definisjon")
+                marker = " ← valgt" if variant and variant == suffix else ""
+                desc = f" — {defn[:70]}" if defn else ""
+                lines.append(f"  {i+1}. /{suffix}/ ({wc}){desc}{marker}")
+            if not variant:
+                lines.append(f"  Bruker vanligste uttale. Bruk variant=\"<suffiks>\" for å velge.")
+            lines.append("")
+
         items = data.get("resultater", [])
         if not items:
-            return f"Ingen nesten-rim funnet for «{ord}»."
+            return "\n".join(lines) + f"Ingen nesten-rim funnet for «{ord}»."
         words = _format_words(items, show_score=True)
-        return f"Nesten-rim for «{ord}» ({len(items)} treff): {words}"
+        lines.append(f"Nesten-rim for «{ord}» ({len(items)} treff): {words}")
+        return "\n".join(lines)
     except Exception as e:
         return f"Feil: {e}"
 
@@ -263,7 +287,10 @@ async def ordinfo(ord: str, dialekt: str = "øst") -> str:
 
 
 @mcp.tool()
-async def arsenal(ord: str, maks_rim: int = 15, maks_synonymer: int = 10, dialekt: str = "øst") -> str:
+async def arsenal(
+    ord: str, maks_rim: int = 15, maks_synonymer: int = 10,
+    dialekt: str = "øst", variant: str | None = None,
+) -> str:
     """Hent hele det kreative arsenalet for et ord i ett kall.
 
     Returnerer rim, nesten-rim, synonymer, og rim for hvert synonym.
@@ -274,12 +301,16 @@ async def arsenal(ord: str, maks_rim: int = 15, maks_synonymer: int = 10, dialek
         maks_rim: Maks antall rim (default 15)
         maks_synonymer: Maks antall synonymer (default 10)
         dialekt: Dialektregion (default øst)
+        variant: Rimsuffiks for disambiguering av homografer
     """
     try:
-        data = await _get(f"/arsenal/{ord}", {
+        params: dict = {
             "maks_rim": maks_rim, "maks_synonymer": maks_synonymer,
             "maks_synonymrim": 5, "dialekt": dialekt,
-        })
+        }
+        if variant:
+            params["variant"] = variant
+        data = await _get(f"/arsenal/{ord}", params)
         info = data.get("info", {})
         lines = [f"Arsenal for «{ord}» (/{info.get('ipa', '?')}/, {info.get('stavelser', '?')} stavelser):"]
 

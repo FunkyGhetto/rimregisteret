@@ -210,27 +210,36 @@ _POS_TIL_WORDCLASS = {
 _WORDCLASS_TIL_POS = {v: k for k, v in _POS_TIL_WORDCLASS.items()}
 
 
+_alle_def_cache: dict[str, list[dict]] = {}  # In-memory cache for per-article defs
+
+
 def hent_alle_definisjoner(ord: str) -> list[dict]:
     """Hent ALLE definisjoner for et ord, gruppert per artikkel/ordklasse.
 
     Returns list of dicts: {ordklasse, pos, definisjoner: [str]}.
     Each article from Bokmålsordboka becomes one entry.
     Used for disambiguating homographs.
+    Cached in-memory to avoid repeated API calls.
     Never raises — returns empty on failure.
     """
+    key = ord.lower()
+    if key in _alle_def_cache:
+        return _alle_def_cache[key]
+
     if not _HAS_HTTPX:
         return []
 
     try:
         r = _HTTP_CLIENT.post(
             GRAPHQL_URL,
-            json={"query": QUERY, "variables": {"word": ord.lower()}},
+            json={"query": QUERY, "variables": {"word": key}},
         )
         r.raise_for_status()
         data = r.json()
 
         word_data = data.get("data", {}).get("word")
         if not word_data:
+            _alle_def_cache[key] = []
             return []
 
         result = []
@@ -248,6 +257,7 @@ def hent_alle_definisjoner(ord: str) -> list[dict]:
                 "pos": pos,
                 "definisjoner": defs,
             })
+        _alle_def_cache[key] = result
         return result
     except Exception:
         return []

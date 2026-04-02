@@ -499,6 +499,7 @@ def api_arsenal(
     maks_synonymer: int = Query(10, ge=1, le=50),
     maks_synonymrim: int = Query(5, ge=1, le=20),
     dialekt: str = Query("øst", description="Dialektregion"),
+    variant: Optional[str] = Query(None, description="Rimsuffiks for disambiguering"),
 ):
     """Alt kreativt materiale for ett ord i ett kall.
 
@@ -512,10 +513,10 @@ def api_arsenal(
         })
     start = time.perf_counter()
 
-    info = slaa_opp(ord, dialekt=dialekt)
-    rim_result = finn_perfekte_rim(ord, maks=maks_rim, dialekt=dialekt, grupper=False)
+    info = slaa_opp(ord, dialekt=dialekt, rimsuffiks_override=variant)
+    rim_result = finn_perfekte_rim(ord, maks=maks_rim, dialekt=dialekt, grupper=False, rimsuffiks=variant)
     rim = rim_result.get("resultater", [])
-    nesten = finn_nesten_rim(ord, maks=maks_nesten, terskel=0.7, dialekt=dialekt)
+    nesten = finn_nesten_rim(ord, maks=maks_nesten, terskel=0.7, dialekt=dialekt, rimsuffiks=variant)
     syns = finn_synonymer(ord, maks=maks_synonymer)
     defn = hent_definisjon(ord)
 
