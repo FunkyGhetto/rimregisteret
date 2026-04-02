@@ -947,18 +947,19 @@ def finn_rimsti(
     min_frekvens: float = 1.0,
     dialekt: str = "øst",
 ) -> dict:
-    """Build a rhyme path — suffix drifts via consonant equivalence.
+    """Build a rhyme path — one continuous chain where each word
+    rhymes with or near-rhymes the previous word.
 
-    Each step is a rhyme family. The bridge between steps changes one
-    consonant to an equivalent (l→r, t→p→k, m→n→ŋ) or extends/reduces
-    the suffix structure (uːl → uː.lə → uː.rə). This creates gradual
-    drift through sound-space.
+    Each word looks at the PREVIOUS word's suffix and finds either:
+    - A helrim (same suffix) to stay in the family
+    - A neighbor suffix (one consonant drift) to shift gradually
+
+    The chain is split into visual groups of ord_per_steg for display.
 
     Example for "sol":
-      Step 1: sol, stol, alkohol, domstol    /uːl/
-      Step 2: for, stor, tror, fjor          /uːr/   (l→r, both LIQ)
-      Step 3: store, gjorde, tore, bordet    /uː.rə/ (extend r→.rə)
-      Step 4: skole, stole, vinmonopolet     /uː.lə/ (swap r→l)
+      sol, stol, stole, skole, klore
+      bore, hore, more, store, spore
+      spare, klare, svare, snare, trave
     """
     empty = {"ord": ord, "rimsuffiks": None, "steg": [], "antall_steg": 0}
 
@@ -970,64 +971,86 @@ def finn_rimsti(
     if not suffix:
         return empty
 
+    total_words = maks_steg * ord_per_steg
     used_words: set[str] = {ord.lower()}
-    used_suffixes: set[str] = set()
-    all_steg: list[dict] = []
+    chain: list[str] = [ord.lower()]
     cur_suffix = suffix
 
-    for step_i in range(maks_steg):
-        # Fill step with helrim words
-        step_words = []
-        if step_i == 0:
-            step_words.append(ord.lower())
+    for _ in range(total_words - 1):
+        # Find candidates: helrim (same suffix) + neighbor suffixes
+        helrim_cands = []
+        drift_cands = []
 
+        # Helrim candidates from current suffix
         rim = hent_rim_for_suffiks(
             suffiks=cur_suffix, ord_lower="|",
-            db_path=db_path, maks=500, ekskluder_propn=True,
+            db_path=db_path, maks=200, ekskluder_propn=True,
         )
-        rim.sort(key=lambda r: -(r.get("frekvens", 0) or 0))
         for r in rim:
             w = r["ord"]
-            if w in used_words or len(w) > 12:
+            if w not in used_words and len(w) <= 12 and len(w) >= 2:
+                helrim_cands.append((w, cur_suffix, r.get("frekvens", 0) or 0))
+
+        # Neighbor suffix candidates (consonant drift)
+        neighbors = _suffix_neighbors(cur_suffix)
+        for neighbor_sfx, _change in neighbors:
+            # Don't drift to shorter suffixes (prevents collapse to /uː/, /ɑː/ etc)
+            if len(neighbor_sfx) < len(cur_suffix) - 1:
                 continue
-            step_words.append(w)
-            used_words.add(w)
-            if len(step_words) >= ord_per_steg:
+            n_rim = hent_rim_for_suffiks(
+                suffiks=neighbor_sfx, ord_lower="|",
+                db_path=db_path, maks=30, ekskluder_propn=True,
+            )
+            for r in n_rim:
+                w = r["ord"]
+                if w not in used_words and len(w) <= 12 and len(w) >= 2:
+                    drift_cands.append((w, neighbor_sfx, r.get("frekvens", 0) or 0))
+
+        if not helrim_cands and not drift_cands:
+            break
+
+        # Strategy: stay in family for a few words, then force drift.
+        # Count consecutive helrim words
+        consec = 0
+        for w in reversed(chain):
+            w_info = _get_word_info(w, db_path=db_path, dialekt=dialekt)
+            if w_info and w_info.get("rimsuffiks") == cur_suffix:
+                consec += 1
+            else:
                 break
 
-        if not step_words:
+        # After 3-4 words in same family, force drift
+        force_drift = consec >= 4 and drift_cands
+        if force_drift:
+            drift_cands.sort(key=lambda c: -c[2])
+            chosen_word, chosen_suffix, _ = drift_cands[0]
+        elif helrim_cands:
+            helrim_cands.sort(key=lambda c: -c[2])
+            chosen_word, chosen_suffix, _ = helrim_cands[0]
+        elif drift_cands:
+            drift_cands.sort(key=lambda c: -c[2])
+            chosen_word, chosen_suffix, _ = drift_cands[0]
+        else:
             break
 
+        chain.append(chosen_word)
+        used_words.add(chosen_word)
+        cur_suffix = chosen_suffix
+
+    # Split chain into visual groups of ord_per_steg
+    all_steg = []
+    for i in range(0, len(chain), ord_per_steg):
+        chunk = chain[i:i + ord_per_steg]
+        if not chunk:
+            break
+        # Get suffix of last word in chunk
+        last_info = _get_word_info(chunk[-1], db_path=db_path, dialekt=dialekt)
+        chunk_suffix = last_info.get("rimsuffiks", "") if last_info else ""
         all_steg.append({
-            "rimsuffiks": cur_suffix,
-            "ord": step_words,
-            "aktiv": step_i == 0,
+            "rimsuffiks": chunk_suffix,
+            "ord": chunk,
+            "aktiv": i == 0,
         })
-        used_suffixes.add(cur_suffix)
-
-        if len(all_steg) >= maks_steg:
-            break
-
-        # Bridge: find neighbor suffix via consonant drift
-        neighbors = _suffix_neighbors(cur_suffix)
-        neighbors = [(n, t) for n, t in neighbors if n not in used_suffixes]
-        if not neighbors:
-            break
-
-        # Pick neighbor with most common words available
-        best_sfx = None
-        best_count = 0
-        for n, _t in neighbors:
-            words = hent_rim_for_suffiks(n, "|", db_path=db_path, maks=10, ekskluder_propn=True)
-            count = sum(1 for w in words if w["ord"] not in used_words)
-            if count > best_count:
-                best_count = count
-                best_sfx = n
-
-        if not best_sfx or best_count == 0:
-            break
-
-        cur_suffix = best_sfx
 
     return {
         "ord": ord,
