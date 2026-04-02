@@ -1407,7 +1407,7 @@ async function doSearch(word, variant) {
     let items = resData.resultater || [];
     // For grouped responses, count total words across groups
     const totalCount = resData.antall != null ? resData.antall
-      : (items.length > 0 && items[0].dybde != null)
+      : (items.length > 0 && items[0].stavelser != null && Array.isArray(items[0].ord))
         ? items.reduce((sum, g) => sum + (g.ord ? g.ord.length : 0), 0)
         : items.length;
 
@@ -1489,15 +1489,11 @@ function renderGrouped(items) {
     for (const group of items) {
       const g = document.createElement('div');
       g.className = 'syl-group';
-      if (group.dybde != null) {
-        // Depth-based format: [{dybde, suffiks, ord: [...]}]
-        const d = group.dybde;
-        const sfx = group.suffiks || '';
-        g.innerHTML = `<h3>Dybde ${d} <span class="syl-suffix">/${sfx}/</span> <span class="syl-count">${group.ord.length} ord</span></h3>`;
-      } else if (group.stavelser != null) {
-        // Syllable-based format: [{stavelser, ord: [...]}]
+      if (group.stavelser != null) {
         const syl = group.stavelser;
-        g.innerHTML = `<h3>${syl} stavelse${syl === 1 ? '' : 'r'} <span class="syl-count">${group.ord.length} ord</span></h3>`;
+        const sfx = group.suffiks || '';
+        const sfxHtml = sfx ? ` <span class="syl-suffix">/${sfx}/</span>` : '';
+        g.innerHTML = `<h3>${syl} stavelse${syl === 1 ? '' : 'r'}${sfxHtml} <span class="syl-count">${group.ord.length} ord</span></h3>`;
       }
       const list = document.createElement('div');
       list.className = 'word-list';

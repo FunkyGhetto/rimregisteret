@@ -650,7 +650,7 @@ def _grupper_etter_dybde(
         grupper[d].sort(key=lambda r: -r.get("frekvens", 0))
 
     return [
-        {"dybde": d, "suffiks": dybde_suffikser[d], "ord": grupper[d]}
+        {"stavelser": d, "suffiks": dybde_suffikser[d], "ord": grupper[d]}
         for d in sorted(grupper.keys())
         if grupper[d]  # skip empty groups
     ]
@@ -1075,7 +1075,7 @@ def finn_halvrim(
         else:
             result_groups = [
                 {
-                    "dybde": d,
+                    "stavelser": d,
                     "suffiks": dybde_suffikser.get(d, suffix),
                     "ord": grupper_dict[d],
                 }
