@@ -635,7 +635,7 @@ def finn_rimsti(
             pass
 
         # Max vowel distance — families beyond this are too far to glide to
-        MAX_DISTANCE = 0.8
+        MAX_DISTANCE = 0.6
 
         if use_index:
             row = conn.execute(
@@ -655,18 +655,30 @@ def finn_rimsti(
                 dist = _suffix_vowel_distance(suffix, r["rimsuffiks"])
                 if dist > MAX_DISTANCE and r["rimsuffiks"] != suffix:
                     continue
-                # Fetch examples: common, short, no compounds
-                # Get common words, excluding proper nouns (PM)
+                # Only include suffixes with same syllable structure
+                if r["rimsuffiks"].count(".") != suffix.count("."):
+                    continue
+                # Fetch examples: common, not too long, no proper nouns
+                ord_lower = ord.lower()
                 cur2 = conn.execute(
                     "SELECT LOWER(o.ord) as ord, MAX(o.frekvens) as f FROM ord o "
                     "WHERE o.rimsuffiks = ? AND o.frekvens >= 5.0 "
                     "AND length(o.ord) BETWEEN 3 AND 10 "
                     "AND o.ord NOT LIKE '%-%' "
                     "AND o.pos NOT LIKE 'PM%%' "
-                    "GROUP BY LOWER(o.ord) ORDER BY f DESC LIMIT 15",
+                    "GROUP BY LOWER(o.ord) ORDER BY f DESC LIMIT 20",
                     (r["rimsuffiks"],),
                 )
-                eks = [row2["ord"] for row2 in cur2][:5]
+                # Filter: no compounds containing the search word
+                eks = []
+                for row2 in cur2:
+                    w = row2["ord"]
+                    # Skip if word contains the search term as a substring (compounds)
+                    if len(w) > len(ord_lower) + 2 and ord_lower in w:
+                        continue
+                    eks.append(w)
+                    if len(eks) >= 5:
+                        break
                 if len(eks) < 2:
                     cur2 = conn.execute(
                         "SELECT LOWER(ord) as ord, MAX(frekvens) as f FROM ord "
