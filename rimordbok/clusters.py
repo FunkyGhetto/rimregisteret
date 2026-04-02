@@ -212,24 +212,10 @@ def _klynger_par_bred(
     cluster_size = _CLUSTER_SIZE[modus]
     klynger = []
 
-    if ord:
-        # Brukeren ga et startord — bruk rim-motoren for presise resultater
-        rim, rimsuffiks = _hent_rim_for_ord(
-            ord, maks=cluster_size * antall,
-            rimtype=rimtype, terskel=terskel,
-            dialekt=dialekt, db_path=db_path,
-        )
-        random.shuffle(rim)
-        for i in range(0, len(rim) - cluster_size + 1, cluster_size):
-            klynger.append({
-                "startord": ord,
-                "rimsuffiks": rimsuffiks,
-                "rimtype": rimtype,
-                "ord": rim[i:i + cluster_size],
-            })
-            if len(klynger) >= antall:
-                break
-    else:
+    # Always use random rhyme families — each cluster gets its own.
+    # The 'ord' parameter is ignored for par/bred (it's only meaningful
+    # for dyp mode where you drill one word's rhyme family).
+    if True:
         # Rask SQL-basert generering: velg tilfeldige rimsuffikser
         # med nok ord, og hent ordene direkte fra indeksen.
         conn = _connect(db_path)
@@ -264,15 +250,29 @@ def _klynger_par_bred(
                 f"SELECT DISTINCT LOWER(ord) as ord FROM ord "
                 f"WHERE rimsuffiks = ? AND {where_sql} "
                 f"ORDER BY RANDOM() LIMIT ?",
-                [suffix] + params + [cluster_size],
+                [suffix] + params + [cluster_size * 3],
             ).fetchall()
-            if len(words) < cluster_size:
+            # Filter morphological duplicates (varsle/varslet, bruk/bruker)
+            filtered = []
+            for w in words:
+                word = w["ord"]
+                is_dup = False
+                for existing in filtered:
+                    if (len(existing) >= 3 and len(word) >= 3
+                            and (existing in word or word in existing)):
+                        is_dup = True
+                        break
+                if not is_dup:
+                    filtered.append(word)
+                if len(filtered) >= cluster_size:
+                    break
+            if len(filtered) < cluster_size:
                 continue
             klynger.append({
-                "startord": words[0]["ord"],
+                "startord": filtered[0],
                 "rimsuffiks": suffix,
                 "rimtype": "helrim",
-                "ord": [w["ord"] for w in words],
+                "ord": filtered[:cluster_size],
             })
 
     return klynger
