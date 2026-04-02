@@ -24,3 +24,4 @@ pyproject.toml
 .railwayignore
 .mcp.json
 serve.py
+nixpacks.toml
