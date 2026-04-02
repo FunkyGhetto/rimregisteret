@@ -115,7 +115,7 @@ def generer_rimklynger(
     min_frekvens: float = 1.0,
     dialekt: str = "øst",
     ord: Optional[str] = None,
-    rimtype: str = "helrim",
+    rimtype: str = "begge",
     terskel: float = 0.5,
     db_path: Optional[Path] = None,
 ) -> list[dict]:

@@ -775,11 +775,21 @@ def finn_perfekte_rim(
 
     if grupper:
         sokeord_ipa = info.get("ipa_ren", "")
-        if sokeord_ipa:
+        maks_dybde = len(sokeord_ipa.split(".")) if sokeord_ipa else 1
+        if sokeord_ipa and maks_dybde > 1:
             response["resultater"] = _grupper_etter_dybde(
                 sokeord_ipa, results, sokeord_lower=ord_lower,
             )
         else:
+            # For single-syllable words, depth grouping is meaningless
+            # (all results are depth 1). Group by syllable count instead.
+            # First apply morphological variant filter
+            if len(ord_lower) >= 3:
+                results = [
+                    r for r in results
+                    if not (ord_lower in r.get("ord", "").lower()
+                            or r.get("ord", "").lower() in ord_lower)
+                ]
             response["resultater"] = _grupper_etter_stavelser(results)
     else:
         # Flat mode: also filter morphological variants
@@ -1054,15 +1064,24 @@ def finn_halvrim(
         grupper_dict[d] = grupper_dict[d][:maks]
 
     if grupper:
-        result_groups = [
-            {
-                "dybde": d,
-                "suffiks": dybde_suffikser.get(d, suffix),
-                "ord": grupper_dict[d],
-            }
-            for d in sorted(grupper_dict.keys())
-            if grupper_dict[d]
-        ]
+        if maks_dybde == 1:
+            # Single-syllable search word: depth grouping is meaningless.
+            # Reformat into syllable-count groups instead.
+            flat_all = []
+            for d in sorted(grupper_dict.keys()):
+                flat_all.extend(grupper_dict[d])
+            flat_all.sort(key=lambda r: (-r["score"], -r.get("frekvens", 0)))
+            result_groups = _grupper_etter_stavelser(flat_all[:maks])
+        else:
+            result_groups = [
+                {
+                    "dybde": d,
+                    "suffiks": dybde_suffikser.get(d, suffix),
+                    "ord": grupper_dict[d],
+                }
+                for d in sorted(grupper_dict.keys())
+                if grupper_dict[d]
+            ]
     else:
         # Flat mode: merge all groups
         flat = []
@@ -1195,25 +1214,28 @@ def finn_rimsti(
     ord: str,
     db_path: Optional[Path] = None,
     min_familiestr: int = 3,
-    maks_steg: int = 20,
+    maks_steg: int = 8,
+    ord_per_steg: int = 5,
     min_frekvens: float = 1.0,
     dialekt: str = "øst",
 ) -> dict:
-    """Find the rhyme path — rimfamilier sorted by incremental vowel distance.
+    """Build a rhyme chain — each word leads to the next through rhyme.
 
-    Each step is a RHYME FAMILY (group of words sharing a suffix).
-    Families are sorted by greedy nearest-neighbor walk through vowel space,
-    starting from the input word's family. Each step is one small vowel shift.
+    The chain evolves organically: each word is the anchor for the next.
+    The suffix drifts naturally as the chain progresses, creating a
+    freestyle training path that escalates step by step.
 
-    Example for "hus" (/ʉːs/):
-      1. hus, brus, rus, sus  (/ʉːs/) — start
-      2. lys, nordlys  (/yːs/) — small vowel shift
-      3. pris, is, vis  (/ɪːs/) — next step
-      ...
+    Example for "sol":
+      Step 1: sol, pol, monopol, parabol
+      Step 2: anabol, abstraksjon, busstasjon, telefon
+      Step 3: ...
 
-    Returns dict with steg[] where each steg has rimsuffiks, ord[] (examples), aktiv.
+    Each word rhymes with or connects to the previous word.
+    Steps are groups where each step's last word bridges to the next.
+
+    Returns dict with steg[] where each steg has ord[] and rimsuffiks.
     """
-    empty = {"ord": ord, "rimsuffiks": None, "konsonantskjelett": None, "steg": [], "antall_steg": 0}
+    empty = {"ord": ord, "rimsuffiks": None, "steg": [], "antall_steg": 0}
 
     info = _get_word_info(ord, db_path=db_path, dialekt=dialekt)
     if info is None:
@@ -1221,133 +1243,215 @@ def finn_rimsti(
 
     suffix = info.get("rimsuffiks")
     if not suffix:
-        from scripts.build_rhyme_index import compute_rhyme_suffix
-        fonemer = info.get("fonemer")
-        stress = info.get("stress")
-        if fonemer and stress:
-            suffix = compute_rhyme_suffix(fonemer, stress)
-    if not suffix:
         return empty
 
-    skeleton = _consonant_skeleton(suffix)
-    skeleton_str = ".".join(skeleton) if skeleton else "(tom)"
-    syl_count = suffix.count(".")
+    # --- Chain-building algorithm ---
+    # Single continuous chain: each word leads to the next through
+    # rhyme (perfect or near). The suffix drifts naturally.
+    # Steps are created when the suffix CHANGES — that's the boundary.
+    #
+    # Example: sol → pol → monopol → parabol | anabol → abstraksjon →
+    #          busstasjon | telefon → mikrofon → ...
+    # The | marks where the suffix shifted, creating a new step.
 
-    conn = _connect(db_path)
-    try:
-        # Get all candidate suffixes with same skeleton and syllable structure
-        try:
-            conn.execute("SELECT 1 FROM rimsti_indeks LIMIT 1")
-            row = conn.execute(
-                "SELECT konsonantskjelett FROM rimsti_indeks WHERE rimsuffiks = ?",
-                (suffix,),
-            ).fetchone()
-            if row:
-                skeleton_str = row["konsonantskjelett"]
-            cur = conn.execute(
-                "SELECT rimsuffiks, familiestr FROM rimsti_indeks "
-                "WHERE konsonantskjelett = ? AND familiestr >= ?",
-                (skeleton_str, min_familiestr),
+    used_words: set[str] = {ord.lower()}
+    chain: list[tuple[str, str]] = [(ord.lower(), suffix)]  # (word, suffix)
+    anchor = ord
+
+    total_words = maks_steg * ord_per_steg
+    anchor_info_cur = _get_word_info(anchor, db_path=db_path, dialekt=dialekt)
+    anchor_syl_cur = (anchor_info_cur.get("stavelser", 1) or 1) if anchor_info_cur else 1
+
+    for _ in range(total_words):
+        # Get ALL candidates: helrim + halvrim
+        candidates = _rimsti_candidates(
+            anchor, used_words, mode="helrim",
+            db_path=db_path, dialekt=dialekt,
+        )
+        halv_candidates = _rimsti_candidates(
+            anchor, used_words, mode="bro",
+            db_path=db_path, dialekt=dialekt,
+        )
+        candidates.extend(halv_candidates)
+
+        # Filter: max ±1 syllable from current anchor
+        candidates = [
+            c for c in candidates
+            if abs((c.get("stavelser", 1) or 1) - anchor_syl_cur) <= 1
+        ]
+
+        if not candidates:
+            break
+
+        # Prefer staying in the same suffix family (natural flow)
+        # but allow drift when it's the best option
+        chosen = _rimsti_pick(candidates, anchor, [], prefer_drift=False)
+        if chosen is None:
+            break
+
+        word = chosen["ord"]
+        word_info = _get_word_info(word, db_path=db_path, dialekt=dialekt)
+        word_suffix = word_info.get("rimsuffiks", "") if word_info else ""
+        anchor_syl_cur = (word_info.get("stavelser", 1) or 1) if word_info else 1
+
+        chain.append((word, word_suffix))
+        used_words.add(word)
+        anchor = word
+
+    # --- Split chain into fixed-size steps ---
+    # Each step has ord_per_steg words. The suffix of the last word
+    # represents where the step "landed".
+    all_steg: list[dict] = []
+    words_only = [w for w, _s in chain]
+
+    for i in range(0, len(words_only), ord_per_steg):
+        chunk = words_only[i:i + ord_per_steg]
+        if not chunk:
+            break
+        if len(all_steg) >= maks_steg:
+            break
+        # Get suffix of last word in chunk
+        last_word = chunk[-1]
+        last_info = _get_word_info(last_word, db_path=db_path, dialekt=dialekt)
+        chunk_suffix = last_info.get("rimsuffiks", "") if last_info else ""
+        all_steg.append({
+            "rimsuffiks": chunk_suffix,
+            "ord": chunk,
+            "aktiv": i == 0,
+        })
+
+    return {
+        "ord": ord,
+        "rimsuffiks": suffix,
+        "steg": all_steg,
+        "antall_steg": len(all_steg),
+    }
+
+
+def _rimsti_candidates(
+    anchor: str,
+    used_words: set[str],
+    mode: str = "helrim",
+    db_path: Optional[Path] = None,
+    dialekt: str = "øst",
+) -> list[dict]:
+    """Find candidate next words for the rimsti chain.
+
+    mode="helrim": perfect rhymes (for within-step chaining).
+                   No morphological filter — pol → monopol is desired.
+    mode="bro":    halvrim, for bridging to new suffix territory.
+    """
+    candidates = []
+    seen = set()
+    anchor_lower = anchor.lower()
+
+    if mode == "helrim":
+        # Use the DB directly to bypass the morphological filter.
+        # In rimsti, words containing the anchor ARE desired (pol → monopol).
+        info = _get_word_info(anchor, db_path=db_path, dialekt=dialekt)
+        if info and info.get("rimsuffiks"):
+            suffix = info["rimsuffiks"]
+            from rimordbok.db import hent_rim_for_suffiks
+            results = hent_rim_for_suffiks(
+                suffiks=suffix,
+                ord_lower=anchor_lower,
+                db_path=db_path,
+                maks=500,
+                ekskluder_propn=True,
             )
-        except Exception:
-            cur = conn.execute(
-                "SELECT DISTINCT rimsuffiks, 0 as familiestr FROM ord"
-            )
+            for r in results:
+                w = r["ord"]
+                if w not in used_words and w not in seen:
+                    r["score"] = 1.0
+                    seen.add(w)
+                    candidates.append(r)
 
-        # Build family pool: suffix → familiestr (same syllable structure only)
-        families = {}
-        for r in cur:
-            sfx = r["rimsuffiks"]
-            if sfx.count(".") == syl_count:
-                families[sfx] = r["familiestr"]
+    elif mode == "bro":
+        halvrim = finn_halvrim(
+            anchor, maks=100, terskel=0.6, grupper=False,
+            db_path=db_path, dialekt=dialekt, ekskluder_propn=True,
+        )
+        for r in halvrim.get("resultater", []):
+            w = r["ord"]
+            if w not in used_words and w not in seen and r.get("score", 0) >= 0.7:
+                seen.add(w)
+                candidates.append(r)
 
-        if not families:
-            return empty
+    return candidates
 
-        # Merge length variants (ɑːs and ɑs are effectively the same family)
-        merged = {}
-        for sfx, size in families.items():
-            key = sfx.replace("ː", "")
-            if key not in merged or size > merged[key][1]:
-                merged[key] = (sfx, size)
-        # Map: canonical suffix → (display suffix, size)
 
-        # --- Greedy nearest-neighbor walk through families ---
-        visited_keys = set()
-        steg = []
-        current_sfx = suffix
-        current_key = suffix.replace("ː", "")
-        ord_lower = ord.lower()
+def _rimsti_pick(
+    candidates: list[dict],
+    anchor: str,
+    step_words: list[str],
+    prefer_drift: bool = False,
+) -> Optional[dict]:
+    """Pick the best next word for the chain.
 
-        for _ in range(maks_steg):
-            # Find the display suffix for current key
-            display_sfx = current_sfx
-            for sfx in families:
-                if sfx.replace("ː", "") == current_key:
-                    if families[sfx] >= families.get(display_sfx, 0):
-                        display_sfx = sfx
+    Within a step (prefer_drift=False):
+    - Prefer common, multi-syllable words that stay in the rhyme family
+    - Longer words contain the suffix and add new material (pol → monopol)
 
-            visited_keys.add(current_key)
+    As bridge (prefer_drift=True):
+    - Prefer words whose suffix differs from anchor (opens new territory)
+    - Still must score well as halvrim
+    """
+    if not candidates:
+        return None
 
-            # Fetch example words for ALL suffixes in this family (long + short)
-            example_suffixes = [s for s in families if s.replace("ː", "") == current_key]
-            eks = []
-            for esfx in example_suffixes:
-                cur2 = conn.execute(
-                    "SELECT LOWER(o.ord) as ord, MAX(o.frekvens) as f FROM ord o "
-                    "WHERE o.rimsuffiks = ? AND o.frekvens >= 5.0 "
-                    "AND length(o.ord) BETWEEN 3 AND 8 "
-                    "AND o.ord NOT LIKE '%-%' "
-                    "AND o.pos NOT LIKE 'PM%%' "
-                    "GROUP BY LOWER(o.ord) ORDER BY f DESC LIMIT 10",
-                    (esfx,),
-                )
-                for row2 in cur2:
-                    w = row2["ord"]
-                    # Skip compounds of search word
-                    if len(w) > len(ord_lower) + 2 and ord_lower in w:
-                        continue
-                    if w not in eks:
-                        eks.append(w)
+    import math
+    anchor_lower = anchor.lower()
+    anchor_suffix = None
+    anchor_info = _get_word_info(anchor)
+    if anchor_info:
+        anchor_suffix = anchor_info.get("rimsuffiks", "")
 
-            # Sort by frequency (already mostly sorted from SQL)
-            eks = eks[:5]
+    # Track syllable count of current anchor for rhythm matching
+    anchor_syl = None
+    anchor_info_full = _get_word_info(anchor)
+    if anchor_info_full:
+        anchor_syl = anchor_info_full.get("stavelser", 1) or 1
 
-            if len(eks) < 2 and current_key != suffix.replace("ː", ""):
-                # Skip empty families, but find next neighbor from here
-                pass
-            else:
-                steg.append({
-                    "rimsuffiks": display_sfx,
-                    "ord": eks,
-                    "aktiv": current_key == suffix.replace("ː", ""),
-                })
+    def score(c: dict) -> float:
+        s = 0.0
+        freq = c.get("frekvens", 0)
+        syl = c.get("stavelser", 1) or 1
+        word = c.get("ord", "")
+        c_suffix = c.get("rimsuffiks", "")
+        rhyme_score = c.get("score", 1.0)
 
-            # Find nearest unvisited family
-            best_key = None
-            best_dist = float("inf")
-            best_sfx = None
-            for sfx in families:
-                key = sfx.replace("ː", "")
-                if key in visited_keys:
-                    continue
-                d = _suffix_vowel_distance(current_sfx, sfx)
-                if d < best_dist:
-                    best_dist = d
-                    best_key = key
-                    best_sfx = sfx
+        # Base rhyme quality
+        s += rhyme_score * 2.0
 
-            if best_key is None:
-                break
-            current_key = best_key
-            current_sfx = best_sfx
+        # Frequency: prefer recognizable, common words
+        if freq > 0:
+            s += min(math.log(freq + 1), 4.0) * 1.2
 
-        return {
-            "ord": ord,
-            "rimsuffiks": suffix,
-            "konsonantskjelett": skeleton_str,
-            "steg": steg,
-            "antall_steg": len(steg),
-        }
-    finally:
-        pass
+        # Penalty: very short words (less interesting for freestyle)
+        if len(word) <= 2:
+            s -= 3.0
+        # Penalty: very long compounds (impractical to rap)
+        if len(word) > 12:
+            s -= 2.0
+
+        # Rhythm: prefer words with similar or escalating syllable count
+        # (sol → monopol → parabol all feel rhythmically related)
+        if anchor_syl and syl >= anchor_syl:
+            s += 0.3  # mild preference for same or more syllables
+
+        if prefer_drift:
+            # Bridge mode: reward suffix change (new territory)
+            if anchor_suffix and c_suffix and c_suffix != anchor_suffix:
+                s += 3.0
+            # Prefer multi-syllable bridges (they carry more rhythm)
+            if syl >= 3:
+                s += 1.0
+        else:
+            # Within-step: penalize suffix change (stay in family)
+            if anchor_suffix and c_suffix and c_suffix != anchor_suffix:
+                s -= 2.0
+
+        return s
+
+    ranked = sorted(candidates, key=score, reverse=True)
+    return ranked[0] if ranked else None

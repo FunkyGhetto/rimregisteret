@@ -1291,7 +1291,7 @@ async function doGenerateCluster() {
     return;
   }
 
-  let url = `${API}/api/v1/rimklynger/${currentModus}?min_frekvens=1.0&dialekt=${encodeURIComponent(currentDialekt)}`;
+  let url = `${API}/api/v1/rimklynger/${currentModus}?min_frekvens=1.0&rimtype=begge&dialekt=${encodeURIComponent(currentDialekt)}`;
   if (word) url += `&ord=${encodeURIComponent(word)}`;
   if (syl) url += `&stavelser=${syl}`;
   if (currentModus !== 'dyp') url += `&antall=${antall}`;
@@ -1396,7 +1396,7 @@ async function doSearch(word, variant) {
   const endpoint = {
     rim: 'rim', halvrim: 'halvrim', synonymer: 'synonymer'
   }[currentTab] || 'rim';
-  const maksParam = (currentTab === 'rim' || currentTab === 'halvrim') ? 100000 : 1000;
+  const maksParam = (currentTab === 'rim' || currentTab === 'halvrim') ? 10000 : 1000;
 
   try {
     const [resData, infoData] = await Promise.all([
@@ -1413,7 +1413,7 @@ async function doSearch(word, variant) {
 
     // Fallback: if no perfect rhymes found, fetch near-rhymes with score >= 1.0
     if (totalCount === 0 && currentTab === 'rim') {
-      const nearData = await fetch(`${API}/api/v1/halvrim/${encodeURIComponent(word)}?maks=100000&terskel=0.9${dParam}${vParam}`).then(r => r.json());
+      const nearData = await fetch(`${API}/api/v1/halvrim/${encodeURIComponent(word)}?maks=10000&terskel=0.9${dParam}${vParam}`).then(r => r.json());
       const nearItems = (nearData.resultater || []).filter(r => r.score >= 1.0);
       if (nearItems.length > 0) {
         items = nearItems;
@@ -1484,15 +1484,21 @@ function renderInfo(data) {
 }
 
 function renderGrouped(items) {
-  // Check if items are pre-grouped (depth-based from API) or flat (legacy)
-  if (items.length > 0 && items[0].dybde != null && items[0].ord != null) {
-    // Pre-grouped depth-based format: [{dybde, suffiks, ord: [...]}]
+  // Check if items are pre-grouped from API
+  if (items.length > 0 && items[0].ord != null && Array.isArray(items[0].ord)) {
     for (const group of items) {
       const g = document.createElement('div');
       g.className = 'syl-group';
-      const d = group.dybde;
-      const sfx = group.suffiks || '';
-      g.innerHTML = `<h3>Dybde ${d} <span class="syl-suffix">/${sfx}/</span> <span class="syl-count">${group.ord.length} ord</span></h3>`;
+      if (group.dybde != null) {
+        // Depth-based format: [{dybde, suffiks, ord: [...]}]
+        const d = group.dybde;
+        const sfx = group.suffiks || '';
+        g.innerHTML = `<h3>Dybde ${d} <span class="syl-suffix">/${sfx}/</span> <span class="syl-count">${group.ord.length} ord</span></h3>`;
+      } else if (group.stavelser != null) {
+        // Syllable-based format: [{stavelser, ord: [...]}]
+        const syl = group.stavelser;
+        g.innerHTML = `<h3>${syl} stavelse${syl === 1 ? '' : 'r'} <span class="syl-count">${group.ord.length} ord</span></h3>`;
+      }
       const list = document.createElement('div');
       list.className = 'word-list';
       for (const item of group.ord) {

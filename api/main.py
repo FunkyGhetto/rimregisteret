@@ -368,7 +368,7 @@ def api_rimklynger_par(
     min_frekvens: float = Query(1.0, ge=0.0, description="Minimum ordfrekvens per million"),
     dialekt: str = Query("øst", description="Dialektregion"),
     ord: Optional[str] = Query(None, description="Startord — bruk dette ordets rimfamilie"),
-    rimtype: str = Query("helrim", description="helrim, halvrim eller begge"),
+    rimtype: str = Query("begge", description="helrim, halvrim eller begge"),
     terskel: float = Query(0.5, ge=0.0, le=1.0, description="Terskel for halvrim"),
 ):
     if dialekt not in GYLDIGE_DIALEKTER:
@@ -396,7 +396,7 @@ def api_rimklynger_bred(
     min_frekvens: float = Query(1.0, ge=0.0, description="Minimum ordfrekvens per million"),
     dialekt: str = Query("øst", description="Dialektregion"),
     ord: Optional[str] = Query(None, description="Startord — bruk dette ordets rimfamilie"),
-    rimtype: str = Query("helrim", description="helrim, halvrim eller begge"),
+    rimtype: str = Query("begge", description="helrim, halvrim eller begge"),
     terskel: float = Query(0.5, ge=0.0, le=1.0, description="Terskel for halvrim"),
 ):
     if dialekt not in GYLDIGE_DIALEKTER:
@@ -424,7 +424,7 @@ def api_rimklynger_dyp(
     min_frekvens: float = Query(1.0, ge=0.0, description="Minimum ordfrekvens per million"),
     maks: int = Query(0, ge=0, le=1000, description="Maks antall ord (0 = alle)"),
     dialekt: str = Query("øst", description="Dialektregion"),
-    rimtype: str = Query("helrim", description="helrim, halvrim eller begge"),
+    rimtype: str = Query("begge", description="helrim, halvrim eller begge"),
     terskel: float = Query(0.5, ge=0.0, le=1.0, description="Terskel for halvrim"),
 ):
     if dialekt not in GYLDIGE_DIALEKTER:
