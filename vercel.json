@@ -3,6 +3,7 @@
   "buildCommand": "",
   "outputDirectory": "frontend",
   "framework": null,
+  "trailingSlash": false,
   "rewrites": [
     {
       "source": "/om",

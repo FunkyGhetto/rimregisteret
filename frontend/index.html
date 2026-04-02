@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Rimregisteret — Norges største rimordbok</title>
 <meta name="description" content="Norges største rimordbok. 684 000 norske ord med uttale, rim, nesten-rim, synonymer og støtte for fem dialekter. Gratis og uten registrering.">
+<link rel="canonical" href="https://www.rimregisteret.no/">
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
@@ -909,11 +910,42 @@ function pushURL(word) {
   }
 }
 
-function updateSEO(word, count) {
-  document.title = `Hva rimer på ${word}? ${count} rim — Rimregisteret`;
+function updateSEO(word, count, items) {
+  // Top 3-5 rhyme words for title/description
+  const topWords = (items || []).slice(0, 5).map(r => r.ord).join(', ');
+  const topThree = (items || []).slice(0, 3).map(r => r.ord).join(', ');
+
+  // Title with top rhymes
+  document.title = topThree
+    ? `Rim på ${word} — ${topThree} | Rimregisteret`
+    : `Hva rimer på ${word}? — Rimregisteret`;
+
+  // Meta description with count and examples
   let meta = document.querySelector('meta[name="description"]');
   if (!meta) { meta = document.createElement('meta'); meta.name = 'description'; document.head.appendChild(meta); }
-  meta.content = `Finn ${count} rim og nesten-rim for «${word}». Norges største rimordbok med 684 000 ord, fonetikk og fem dialekter.`;
+  meta.content = topWords
+    ? `Finn ${count} ord som rimer på ${word}. Perfekte rim: ${topWords}. Norges største rimordbok med 684 000 ord.`
+    : `Finn rim og nesten-rim for «${word}». Norges største rimordbok med 684 000 ord, fonetikk og fem dialekter.`;
+
+  // Canonical URL (always clean, no query params)
+  let canon = document.querySelector('link[rel="canonical"]');
+  if (!canon) { canon = document.createElement('link'); canon.rel = 'canonical'; document.head.appendChild(canon); }
+  canon.href = `https://www.rimregisteret.no/${encodeURIComponent(word)}`;
+
+  // JSON-LD structured data
+  let jsonld = document.getElementById('jsonld-word');
+  if (!jsonld) { jsonld = document.createElement('script'); jsonld.id = 'jsonld-word'; jsonld.type = 'application/ld+json'; document.head.appendChild(jsonld); }
+  jsonld.textContent = JSON.stringify({
+    "@context": "https://schema.org",
+    "@type": "DefinedTerm",
+    "name": word,
+    "description": `Rimord og fonetikk for «${word}» på norsk. ${count} perfekte rim.`,
+    "inDefinedTermSet": {
+      "@type": "DefinedTermSet",
+      "name": "Rimregisteret",
+      "url": "https://www.rimregisteret.no"
+    }
+  });
 }
 
 function dialektURLParam() {
@@ -990,6 +1022,12 @@ logoLink.addEventListener('click', e => {
   landingEl.style.display = '';
   history.pushState(null, '', '/');
   document.title = 'Rimregisteret — Norges st\u00f8rste rimordbok';
+  const canon = document.querySelector('link[rel="canonical"]');
+  if (canon) canon.href = 'https://www.rimregisteret.no/';
+  const meta = document.querySelector('meta[name="description"]');
+  if (meta) meta.content = 'Norges st\u00f8rste rimordbok. 684 000 norske ord med uttale, rim, nesten-rim, synonymer og st\u00f8tte for fem dialekter. Gratis og uten registrering.';
+  const jsonld = document.getElementById('jsonld-word');
+  if (jsonld) jsonld.remove();
 });
 
 // --- Dice: random word ---
@@ -1262,7 +1300,7 @@ async function doSearch(word) {
     }
 
     statusEl.textContent = `${items.length} ${tabLabel()} for "${word}"`;
-    updateSEO(word, items.length);
+    updateSEO(word, items.length, items);
     renderInfo(infoData);
 
     if (currentTab === 'synonymer') {
