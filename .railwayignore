@@ -21,3 +21,6 @@ __pycache__/
 vercel.json
 node_modules/
 .DS_Store
+scripts/
+serve.py
+.mcp.json

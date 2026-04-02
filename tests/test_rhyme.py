@@ -9,7 +9,7 @@ import pytest
 
 from rimordbok.rhyme import (
     finn_perfekte_rim,
-    finn_nesten_rim,
+    finn_halvrim,
     finn_homofoner,
     match_konsonanter,
     _score_near_rhyme,
@@ -111,15 +111,15 @@ class TestFinnPerfekteRim:
             assert r["tonelag"] == 1
 
 
-class TestFinnNestenRim:
+class TestFinnHalvrim:
     def test_dag_finds_tak(self):
         """dag (ɑːg) → near-rhyme 'tak' (ɑːk) via g/k equivalence."""
-        results = finn_nesten_rim("dag", db_path=DB_PATH, terskel=0.5)
+        results = finn_halvrim("dag", db_path=DB_PATH, terskel=0.5)
         words = {r["ord"] for r in results}
         assert "tak" in words
 
     def test_score_range(self):
-        results = finn_nesten_rim("dag", db_path=DB_PATH, terskel=0.5)
+        results = finn_halvrim("dag", db_path=DB_PATH, terskel=0.5)
         for r in results:
             assert 0.0 <= r["score"] <= 1.5  # max 1.0 + 0.1 tonelag bonus
 
@@ -128,7 +128,7 @@ class TestFinnNestenRim:
         exact = finn_perfekte_rim("dag", db_path=DB_PATH, maks=500)
         exact_words = {r["ord"] for r in exact}
 
-        near = finn_nesten_rim("dag", db_path=DB_PATH, terskel=0.5)
+        near = finn_halvrim("dag", db_path=DB_PATH, terskel=0.5)
         near_words = {r["ord"] for r in near}
 
         # Near-rhymes should not overlap with perfect rhymes

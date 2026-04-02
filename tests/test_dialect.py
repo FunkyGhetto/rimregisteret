@@ -189,8 +189,8 @@ class TestAPIDialekt:
         assert r.status_code == 400
         assert "Ugyldig dialekt" in r.json()["feil"]
 
-    def test_nestenrim_with_dialekt(self):
-        r = client.get("/api/v1/nestenrim/dag?dialekt=vest")
+    def test_halvrim_with_dialekt(self):
+        r = client.get("/api/v1/halvrim/dag?dialekt=vest")
         assert r.status_code == 200
         assert r.json()["dialekt"] == "vest"
 

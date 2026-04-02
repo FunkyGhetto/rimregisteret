@@ -111,15 +111,13 @@ pre .nl { color: #888; }
   <a href="#params">Felles parametere</a>
   <h3>Rim</h3>
   <a href="#rim"><span class="s-method">GET</span>/rim/{ord}</a>
-  <a href="#nestenrim"><span class="s-method">GET</span>/nestenrim/{ord}</a>
-  <a href="#rimsti"><span class="s-method">GET</span>/rimsti/{ord}</a>
+  <a href="#halvrim"><span class="s-method">GET</span>/halvrim/{ord}</a>
   <h3>Semantikk</h3>
   <a href="#synonymer"><span class="s-method">GET</span>/synonymer/{ord}</a>
-  <a href="#antonymer"><span class="s-method">GET</span>/antonymer/{ord}</a>
   <a href="#relaterte"><span class="s-method">GET</span>/relaterte/{ord}</a>
-  <h3>Fonetikk</h3>
+  <h3>Fonetikk og ordinfo</h3>
   <a href="#info"><span class="s-method">GET</span>/info/{ord}</a>
-  <a href="#homofoner"><span class="s-method">GET</span>/homofoner/{ord}</a>
+  <a href="#varianter"><span class="s-method">GET</span>/varianter/{ord}</a>
   <a href="#konsonanter"><span class="s-method">GET</span>/konsonanter/{ord}</a>
   <h3>Dialekter</h3>
   <a href="#dialekter"><span class="s-method">GET</span>/rim/{ord}/dialekter</a>
@@ -127,13 +125,15 @@ pre .nl { color: #888; }
   <a href="#klynger-par"><span class="s-method">GET</span>/rimklynger/par</a>
   <a href="#klynger-bred"><span class="s-method">GET</span>/rimklynger/bred</a>
   <a href="#klynger-dyp"><span class="s-method">GET</span>/rimklynger/dyp</a>
+  <a href="#klynger-sti"><span class="s-method">GET</span>/rimklynger/sti</a>
   <h3>Kreativt</h3>
   <a href="#arsenal"><span class="s-method">GET</span>/arsenal/{ord}</a>
   <a href="#rimer"><span class="s-method">GET</span>/rimer/{ord1}/{ord2}</a>
   <h3>Batch</h3>
   <a href="#batch"><span class="s-method">POST</span>/batch</a>
-  <h3>S&oslash;k</h3>
+  <h3>S&oslash;k og tilfeldig</h3>
   <a href="#sok"><span class="s-method">GET</span>/sok</a>
+  <a href="#tilfeldig"><span class="s-method">GET</span>/tilfeldig</a>
   <h3>Annet</h3>
   <a href="#swagger">Swagger / ReDoc</a>
   <a href="#datakilder">Datakilder</a>
@@ -183,12 +183,16 @@ pre .nl { color: #888; }
 <table>
   <thead><tr><th>Parameter</th><th>Type</th><th>Default</th><th>Gjelder</th><th>Beskrivelse</th></tr></thead>
   <tbody>
-    <tr><td>dialekt</td><td>string</td><td>"&oslash;st"</td><td>rim, nestenrim, info, klynger</td><td>Dialektregion: &oslash;st, nord, midt, vest, s&oslash;rvest</td></tr>
-    <tr><td>maks</td><td>int</td><td>100</td><td>rim, nestenrim, synonymer, antonymer, relaterte, konsonanter, sok</td><td>Maks antall resultater (1&ndash;1000)</td></tr>
-    <tr><td>stavelser</td><td>int</td><td>&mdash;</td><td>rim, nestenrim, klynger</td><td>Filtrer p&aring; antall stavelser</td></tr>
-    <tr><td>tonelag</td><td>int</td><td>&mdash;</td><td>rim, nestenrim</td><td>Filtrer p&aring; tonelag: 1 eller 2</td></tr>
+    <tr><td>dialekt</td><td>string</td><td>"&oslash;st"</td><td>rim, halvrim, info, klynger</td><td>Dialektregion: &oslash;st, nord, midt, vest, s&oslash;rvest</td></tr>
+    <tr><td>maks</td><td>int</td><td>varierer</td><td>rim, halvrim, synonymer, relaterte, konsonanter, sok</td><td>Maks antall resultater (1&ndash;1000). Default: 200 for rim/halvrim, 50 for synonymer/relaterte, 100 for konsonanter, 20 for sok</td></tr>
+    <tr><td>stavelser</td><td>int</td><td>&mdash;</td><td>rim, halvrim, klynger</td><td>Filtrer p&aring; antall stavelser</td></tr>
+    <tr><td>tonelag</td><td>int</td><td>&mdash;</td><td>rim, halvrim</td><td>Filtrer p&aring; tonelag: 1 eller 2</td></tr>
     <tr><td>samme_tonelag</td><td>bool</td><td>false</td><td>rim</td><td>Kun rim med samme tonelag som s&oslash;keordet</td></tr>
-    <tr><td>terskel</td><td>float</td><td>0.5</td><td>nestenrim</td><td>Minimum likhetsscore (0.0&ndash;1.0)</td></tr>
+    <tr><td>terskel</td><td>float</td><td>0.5</td><td>halvrim, klynger</td><td>Minimum likhetsscore (0.0&ndash;1.0)</td></tr>
+    <tr><td>variant</td><td>string</td><td>&mdash;</td><td>rim, halvrim, arsenal</td><td>Rimsuffiks for disambiguering av homografer (fra /varianter/)</td></tr>
+    <tr><td>grupper</td><td>bool</td><td>false</td><td>rim, halvrim</td><td>Grupper resultater (etter stavelser for rim, rimdybde for halvrim)</td></tr>
+    <tr><td>ekskluder_propn</td><td>bool</td><td>true</td><td>rim, halvrim</td><td>Ekskluder proprium (egennavn)</td></tr>
+    <tr><td>rimtype</td><td>string</td><td>"helrim"</td><td>klynger (par, bred, dyp)</td><td>helrim, halvrim eller begge</td></tr>
     <tr><td>ord</td><td>string</td><td>&mdash;</td><td>klynger</td><td>L&aring;s alle klynger til dette ordets rimfamilie</td></tr>
     <tr><td>min_frekvens</td><td>float</td><td>1.0</td><td>klynger</td><td>Minimum bruksfrekvens per million ord</td></tr>
     <tr><td>antall</td><td>int</td><td>10</td><td>klynger (par, bred)</td><td>Antall klynger &aring; generere</td></tr>
@@ -208,11 +212,14 @@ pre .nl { color: #888; }
   <table>
     <thead><tr><th>Parameter</th><th>Type</th><th>Default</th><th>Beskrivelse</th></tr></thead>
     <tbody>
-      <tr><td>maks</td><td>int</td><td>100</td><td>Maks antall resultater</td></tr>
+      <tr><td>maks</td><td>int</td><td>200</td><td>Maks antall resultater (1&ndash;1000)</td></tr>
       <tr><td>stavelser</td><td>int</td><td>&mdash;</td><td>Filtrer p&aring; stavelsestall</td></tr>
       <tr><td>tonelag</td><td>int</td><td>&mdash;</td><td>Filtrer p&aring; tonelag (1 eller 2)</td></tr>
       <tr><td>samme_tonelag</td><td>bool</td><td>false</td><td>Kun rim med samme tonelag som s&oslash;keordet</td></tr>
-      <tr><td>dialekt</td><td>string</td><td>"&oslash;st"</td><td>Dialektregion</td></tr>
+      <tr><td>dialekt</td><td>string</td><td>"&oslash;st"</td><td>Dialektregion: &oslash;st, nord, midt, vest, s&oslash;rvest</td></tr>
+      <tr><td>variant</td><td>string</td><td>&mdash;</td><td>Rimsuffiks for disambiguering (fra /varianter/)</td></tr>
+      <tr><td>grupper</td><td>bool</td><td>false</td><td>Grupper resultater etter stavelser</td></tr>
+      <tr><td>ekskluder_propn</td><td>bool</td><td>true</td><td>Ekskluder proprium (egennavn)</td></tr>
     </tbody>
   </table>
 
@@ -252,20 +259,23 @@ pre .nl { color: #888; }
   <span class="k">"antall"</span>: <span class="n">3</span>, <span class="k">"soketid_ms"</span>: <span class="n">2.7</span>, <span class="k">"dialekt"</span>: <span class="s">"&oslash;st"</span>
 }</pre>
 
-<!-- nestenrim -->
-<div class="ep" id="nestenrim">
-  <div class="ep-head"><span class="ep-method">GET</span><span class="ep-path">/api/v1/nestenrim/{ord}</span></div>
-  <div class="ep-desc">Finn nesten-rim (slant rhymes). Scorer vokal-likhet (+0.6) og konsonant-likhet (+0.3) i rimsuffiksen. Score over 1.0 mulig ved tonelag-bonus (+0.1).</div>
+<!-- halvrim -->
+<div class="ep" id="halvrim">
+  <div class="ep-head"><span class="ep-method">GET</span><span class="ep-path">/api/v1/halvrim/{ord}</span></div>
+  <div class="ep-desc">Finn halvrim (slant rhymes). Scorer vokallikhet med kvadratisk kurve (vekt 0.75) og konsonantlikhet via recall-normalisering (vekt 0.25). Score 0.0&ndash;1.0, pluss eventuell tonelag-bonus (+0.1).</div>
 
   <div class="tbl-label">Parametere</div>
   <table>
     <thead><tr><th>Parameter</th><th>Type</th><th>Default</th><th>Beskrivelse</th></tr></thead>
     <tbody>
       <tr><td>terskel</td><td>float</td><td>0.5</td><td>Minimum likhetsscore (0.0&ndash;1.0)</td></tr>
-      <tr><td>maks</td><td>int</td><td>100</td><td>Maks antall resultater</td></tr>
+      <tr><td>maks</td><td>int</td><td>200</td><td>Maks antall resultater (1&ndash;1000)</td></tr>
       <tr><td>stavelser</td><td>int</td><td>&mdash;</td><td>Filtrer p&aring; stavelsestall</td></tr>
       <tr><td>tonelag</td><td>int</td><td>&mdash;</td><td>Filtrer p&aring; tonelag</td></tr>
-      <tr><td>dialekt</td><td>string</td><td>"&oslash;st"</td><td>Dialektregion</td></tr>
+      <tr><td>dialekt</td><td>string</td><td>"&oslash;st"</td><td>Dialektregion: &oslash;st, nord, midt, vest, s&oslash;rvest</td></tr>
+      <tr><td>variant</td><td>string</td><td>&mdash;</td><td>Rimsuffiks for disambiguering (fra /varianter/)</td></tr>
+      <tr><td>grupper</td><td>bool</td><td>false</td><td>Grupper resultater etter rimdybde</td></tr>
+      <tr><td>ekskluder_propn</td><td>bool</td><td>true</td><td>Ekskluder proprium (egennavn)</td></tr>
     </tbody>
   </table>
 
@@ -273,7 +283,7 @@ pre .nl { color: #888; }
   <table>
     <thead><tr><th>Felt</th><th>Type</th><th>Beskrivelse</th></tr></thead>
     <tbody>
-      <tr><td>ord</td><td>string</td><td>Nesten-rimordet</td></tr>
+      <tr><td>ord</td><td>string</td><td>Halvrimordet</td></tr>
       <tr><td>rimsuffiks</td><td>string</td><td>IPA-suffiks</td></tr>
       <tr><td>tonelag</td><td>int|null</td><td>Tonelag</td></tr>
       <tr><td>stavelser</td><td>int</td><td>Antall stavelser</td></tr>
@@ -282,39 +292,7 @@ pre .nl { color: #888; }
     </tbody>
   </table>
 </div>
-<pre>curl "<span class="u">https://www.rimregisteret.no/api/v1/nestenrim/dag?terskel=0.6&amp;maks=3</span>"</pre>
-
-<!-- rimsti -->
-<div class="ep" id="rimsti">
-  <div class="ep-head"><span class="ep-method">GET</span><span class="ep-path">/api/v1/rimsti/{ord}</span></div>
-  <div class="ep-desc">Finn rimstien &mdash; alle rimfamilier som deler konsonantskjelett med ordets rimsuffiks. Viser hvordan du kan gli mellom rimfamilier ved &aring; skifte vokal mens konsonantstrukturen holdes fast. Hver familie inkluderer de 5 mest brukte ordene og antall kvalifiserte ord.</div>
-
-  <div class="tbl-label">Parametere</div>
-  <table><thead><tr><th>Parameter</th><th>Type</th><th>Default</th><th>Beskrivelse</th></tr></thead>
-    <tbody>
-      <tr><td>maks_steg</td><td>int</td><td>20</td><td>Maks antall rimfamilier &aring; returnere (1&ndash;50)</td></tr>
-      <tr><td>min_familiestr</td><td>int</td><td>3</td><td>Minimum antall ord i en rimfamilie for &aring; inkludere den</td></tr>
-      <tr><td>min_frekvens</td><td>float</td><td>1.0</td><td>Minimum ordfrekvens per million for &aring; telle i familiest&oslash;rrelse</td></tr>
-      <tr><td>dialekt</td><td>string</td><td>"&oslash;st"</td><td>Dialektregion</td></tr>
-    </tbody>
-  </table>
-
-  <div class="tbl-label">Respons-felter</div>
-  <table><thead><tr><th>Felt</th><th>Type</th><th>Beskrivelse</th></tr></thead>
-    <tbody>
-      <tr><td>ord</td><td>string</td><td>S&oslash;keordet</td></tr>
-      <tr><td>rimsuffiks</td><td>string</td><td>Ordets fonetiske rimsuffiks</td></tr>
-      <tr><td>konsonantskjelett</td><td>string</td><td>Konsonantene i suffikset (f.eks. &laquo;&nacute;&raquo; for sang-familien)</td></tr>
-      <tr><td>steg[].rimsuffiks</td><td>string</td><td>Rimsuffikset for denne familien</td></tr>
-      <tr><td>steg[].eksempler</td><td>array</td><td>Topp 5 ord etter frekvens</td></tr>
-      <tr><td>steg[].familiestr</td><td>int</td><td>Antall kvalifiserte ord i familien</td></tr>
-      <tr><td>steg[].aktiv</td><td>bool</td><td>true hvis dette er s&oslash;keordets egen rimfamilie</td></tr>
-      <tr><td>antall_steg</td><td>int</td><td>Antall rimfamilier returnert</td></tr>
-      <tr><td>soketid_ms</td><td>float</td><td>Responstid</td></tr>
-    </tbody>
-  </table>
-</div>
-<pre>curl "<span class="u">https://www.rimregisteret.no/api/v1/rimsti/sang?maks_steg=5</span>"</pre>
+<pre>curl "<span class="u">https://www.rimregisteret.no/api/v1/halvrim/dag?terskel=0.6&amp;maks=3</span>"</pre>
 
 <!-- ═══════════════ SEMANTIKK ═══════════════ -->
 
@@ -340,22 +318,6 @@ pre .nl { color: #888; }
   </table>
 </div>
 <pre>curl "<span class="u">https://www.rimregisteret.no/api/v1/synonymer/glad?maks=5</span>"</pre>
-
-<div class="ep" id="antonymer">
-  <div class="ep-head"><span class="ep-method">GET</span><span class="ep-path">/api/v1/antonymer/{ord}</span></div>
-  <div class="ep-desc">Antonymer (motsetningsord) fra Norwegian WordNet, Bokm&aring;lsordboka og Synonymordboka.</div>
-
-  <div class="tbl-label">Respons-felter</div>
-  <table><thead><tr><th>Felt</th><th>Type</th><th>Beskrivelse</th></tr></thead>
-    <tbody>
-      <tr><td>ord</td><td>string</td><td>Antonymet</td></tr>
-      <tr><td>relasjon</td><td>string</td><td>Alltid "antonym"</td></tr>
-      <tr><td>kilde</td><td>string</td><td>"wordnet" eller "bokmaalsordboka"</td></tr>
-      <tr><td>frekvens</td><td>float</td><td>Bruksfrekvens per million</td></tr>
-    </tbody>
-  </table>
-</div>
-<pre>curl "<span class="u">https://www.rimregisteret.no/api/v1/antonymer/billig</span>"</pre>
 
 <div class="ep" id="relaterte">
   <div class="ep-head"><span class="ep-method">GET</span><span class="ep-path">/api/v1/relaterte/{ord}</span></div>
@@ -401,6 +363,7 @@ pre .nl { color: #888; }
       <tr><td>fonetikk.fonemer</td><td>string</td><td>Fonemer med stavelsesseparator (.)</td></tr>
       <tr><td>leksikon</td><td>array</td><td>Alle leksikonoppf&oslash;ringer (kan ha flere ordklasser)</td></tr>
       <tr><td>rim</td><td>array</td><td>Topp 10 perfekte rim (samme format som /rim)</td></tr>
+      <tr><td>varianter</td><td>array</td><td>Uttalevarianter med rimsuffiks, IPA og ordklasse (for homografer)</td></tr>
       <tr><td>synonymer</td><td>array</td><td>Topp 10 synonymer (samme format som /synonymer)</td></tr>
       <tr><td>soketid_ms</td><td>float</td><td>Responstid</td></tr>
     </tbody>
@@ -420,22 +383,26 @@ pre .nl { color: #888; }
   <span class="k">"soketid_ms"</span>: <span class="n">288.2</span>
 }</pre>
 
-<div class="ep" id="homofoner">
-  <div class="ep-head"><span class="ep-method">GET</span><span class="ep-path">/api/v1/homofoner/{ord}</span></div>
-  <div class="ep-desc">Ord med identisk IPA-transkripsjon men ulik stavem&aring;te.</div>
+<div class="ep" id="varianter">
+  <div class="ep-head"><span class="ep-method">GET</span><span class="ep-path">/api/v1/varianter/{ord}</span></div>
+  <div class="ep-desc">Finn uttalevarianter (homografer) av et ord. Brukes til disambiguering &mdash; f.eks. &laquo;stolt&raquo; kan v&aelig;re adjektiv (/stu&#720;lt/) eller verb (/stɔlt/).</div>
 
   <div class="tbl-label">Respons-felter</div>
   <table><thead><tr><th>Felt</th><th>Type</th><th>Beskrivelse</th></tr></thead>
     <tbody>
-      <tr><td>ord</td><td>string</td><td>Homofonen</td></tr>
-      <tr><td>rimsuffiks</td><td>string</td><td>IPA-suffiks</td></tr>
-      <tr><td>tonelag</td><td>int|null</td><td>Tonelag</td></tr>
-      <tr><td>stavelser</td><td>int</td><td>Antall stavelser</td></tr>
-      <tr><td>fonemer</td><td>string</td><td>Fullstendig fonemsekvens</td></tr>
+      <tr><td>ord</td><td>string</td><td>S&oslash;keordet</td></tr>
+      <tr><td>varianter</td><td>array</td><td>Liste av varianter</td></tr>
+      <tr><td>varianter[].rimsuffiks</td><td>string</td><td>IPA-rimsuffiks for denne varianten</td></tr>
+      <tr><td>varianter[].ipa</td><td>string</td><td>Full IPA-transkripsjon</td></tr>
+      <tr><td>varianter[].ordklasse</td><td>string|null</td><td>Ordklasse: Substantiv, Verb, Adjektiv, etc.</td></tr>
+      <tr><td>varianter[].definisjon</td><td>string|null</td><td>Definisjon fra Bokm&aring;lsordboka</td></tr>
+      <tr><td>antall</td><td>int</td><td>Antall varianter</td></tr>
+      <tr><td>flertydig</td><td>bool</td><td>true hvis ordet har flere uttalevarianter</td></tr>
+      <tr><td>soketid_ms</td><td>float</td><td>Responstid</td></tr>
     </tbody>
   </table>
 </div>
-<pre>curl "<span class="u">https://www.rimregisteret.no/api/v1/homofoner/sol</span>"</pre>
+<pre>curl "<span class="u">https://www.rimregisteret.no/api/v1/varianter/stolt</span>"</pre>
 
 <div class="ep" id="konsonanter">
   <div class="ep-head"><span class="ep-method">GET</span><span class="ep-path">/api/v1/konsonanter/{ord}</span></div>
@@ -478,7 +445,7 @@ pre .nl { color: #888; }
 <!-- ═══════════════ RIMKLYNGER ═══════════════ -->
 
 <h2>Rimklynger</h2>
-<p>Generer tilfeldige rimklynger for freestyle-trening. Tre moduser:</p>
+<p>Generer tilfeldige rimklynger for freestyle-trening. Fire moduser:</p>
 
 <div class="kv">
   <div class="kv-card">
@@ -493,11 +460,15 @@ pre .nl { color: #888; }
     <div class="kv-words">at &middot; tatt &middot; fortsatt &middot; hatt &middot; satt &middot; natt &middot; ...</div>
     <div class="kv-label">Dyp &mdash; alle ord, &eacute;n familie</div>
   </div>
+  <div class="kv-card">
+    <div class="kv-words">hus, rus &rarr; lys &rarr; pris, is &rarr; oss, foss</div>
+    <div class="kv-label">Sti &mdash; gli mellom familier via vokalskift</div>
+  </div>
 </div>
 
 <div class="note">Send <code>ord</code> for &aring; l&aring;se alle klynger til &eacute;n rimfamilie. Uten <code>ord</code>: tilfeldig valg av rimfamilier.</div>
 
-<div class="tbl-label">Felles respons-felter (alle tre moduser)</div>
+<div class="tbl-label">Felles respons-felter (par, bred, dyp)</div>
 <table><thead><tr><th>Felt</th><th>Type</th><th>Beskrivelse</th></tr></thead>
   <tbody>
     <tr><td>modus</td><td>string</td><td>"par", "bred" eller "dyp"</td></tr>
@@ -506,7 +477,19 @@ pre .nl { color: #888; }
     <tr><td>klynger[].stavelser</td><td>int|null</td><td>Stavelsestall (null hvis blandet)</td></tr>
     <tr><td>klynger[].ord</td><td>array</td><td>Ordliste i klyngen</td></tr>
     <tr><td>antall</td><td>int</td><td>Antall klynger</td></tr>
-    <tr><td>filter</td><td>object</td><td>Brukte filtre: stavelser, min_frekvens, dialekt, ord</td></tr>
+    <tr><td>filter</td><td>object</td><td>Brukte filtre: stavelser, min_frekvens, dialekt, ord, rimtype</td></tr>
+    <tr><td>soketid_ms</td><td>float</td><td>Responstid</td></tr>
+  </tbody>
+</table>
+
+<div class="tbl-label">Respons-felter for sti</div>
+<table><thead><tr><th>Felt</th><th>Type</th><th>Beskrivelse</th></tr></thead>
+  <tbody>
+    <tr><td>modus</td><td>string</td><td>Alltid "sti"</td></tr>
+    <tr><td>stier</td><td>array</td><td>Liste av rimstier (ikke <code>klynger</code>)</td></tr>
+    <tr><td>stier[].steg</td><td>array</td><td>Liste av steg med rimsuffiks og ord</td></tr>
+    <tr><td>antall_stier</td><td>int</td><td>Antall stier returnert</td></tr>
+    <tr><td>filter</td><td>object</td><td>Brukte filtre: maks_steg, min_familiestr, min_frekvens, dialekt, ord</td></tr>
     <tr><td>soketid_ms</td><td>float</td><td>Responstid</td></tr>
   </tbody>
 </table>
@@ -523,6 +506,8 @@ pre .nl { color: #888; }
       <tr><td>min_frekvens</td><td>float</td><td>1.0</td><td>Minimum bruksfrekvens per million</td></tr>
       <tr><td>ord</td><td>string</td><td>&mdash;</td><td>L&aring;s til dette ordets rimfamilie</td></tr>
       <tr><td>dialekt</td><td>string</td><td>"&oslash;st"</td><td>Dialektregion</td></tr>
+      <tr><td>rimtype</td><td>string</td><td>"helrim"</td><td>helrim, halvrim eller begge</td></tr>
+      <tr><td>terskel</td><td>float</td><td>0.5</td><td>Terskel for halvrim (kun n&aring;r rimtype != helrim)</td></tr>
     </tbody>
   </table>
 </div>
@@ -544,11 +529,32 @@ pre .nl { color: #888; }
       <tr><td>ord</td><td>string</td><td>&mdash;</td><td>Startord. Uten: tilfeldig stor rimfamilie</td></tr>
       <tr><td>stavelser</td><td>int</td><td>&mdash;</td><td>Filtrer p&aring; stavelsestall</td></tr>
       <tr><td>min_frekvens</td><td>float</td><td>1.0</td><td>Minimum bruksfrekvens per million</td></tr>
+      <tr><td>maks</td><td>int</td><td>0</td><td>Maks antall ord (0 = alle)</td></tr>
       <tr><td>dialekt</td><td>string</td><td>"&oslash;st"</td><td>Dialektregion</td></tr>
+      <tr><td>rimtype</td><td>string</td><td>"helrim"</td><td>helrim, halvrim eller begge</td></tr>
+      <tr><td>terskel</td><td>float</td><td>0.5</td><td>Terskel for halvrim</td></tr>
     </tbody>
   </table>
 </div>
 <pre>curl "<span class="u">https://www.rimregisteret.no/api/v1/rimklynger/dyp?ord=natt&amp;min_frekvens=5</span>"</pre>
+
+<div class="ep" id="klynger-sti">
+  <div class="ep-head"><span class="ep-method">GET</span><span class="ep-path">/api/v1/rimklynger/sti</span></div>
+  <div class="ep-desc">Rimstier &mdash; gli mellom rimfamilier via vokalskift. Hvert steg er en rimfamilie med fast konsonantskjelett og gradvis vokalendring. Returnerer en liste med stier, hver med sine steg.</div>
+
+  <div class="tbl-label">Parametere</div>
+  <table><thead><tr><th>Parameter</th><th>Type</th><th>Default</th><th>Beskrivelse</th></tr></thead>
+    <tbody>
+      <tr><td>ord</td><td>string</td><td>&mdash;</td><td>Startord. Uten: tilfeldige ord velges</td></tr>
+      <tr><td>antall_stier</td><td>int</td><td>3</td><td>Antall rimstier &aring; generere (1&ndash;20)</td></tr>
+      <tr><td>maks_steg</td><td>int</td><td>8</td><td>Maks steg per sti (3&ndash;30)</td></tr>
+      <tr><td>min_familiestr</td><td>int</td><td>3</td><td>Minimum ord per rimfamilie</td></tr>
+      <tr><td>min_frekvens</td><td>float</td><td>1.0</td><td>Minimum bruksfrekvens per million</td></tr>
+      <tr><td>dialekt</td><td>string</td><td>"&oslash;st"</td><td>Dialektregion</td></tr>
+    </tbody>
+  </table>
+</div>
+<pre>curl "<span class="u">https://www.rimregisteret.no/api/v1/rimklynger/sti?ord=hus&amp;maks_steg=5</span>"</pre>
 
 <!-- ═══════════════ KREATIVT ═══════════════ -->
 
@@ -556,16 +562,17 @@ pre .nl { color: #888; }
 
 <div class="ep" id="arsenal">
   <div class="ep-head"><span class="ep-method">GET</span><span class="ep-path">/api/v1/arsenal/{ord}</span></div>
-  <div class="ep-desc">Alt kreativt materiale for ett ord i &eacute;tt kall. Returnerer rim, nesten-rim, synonymer, og rim for hvert synonym. Erstatter 10&ndash;15 separate API-kall i kreativ skriving.</div>
+  <div class="ep-desc">Alt kreativt materiale for ett ord i &eacute;tt kall. Returnerer rim, halvrim, synonymer, og rim for hvert synonym. Erstatter 10&ndash;15 separate API-kall i kreativ skriving.</div>
 
   <div class="tbl-label">Parametere</div>
   <table><thead><tr><th>Parameter</th><th>Type</th><th>Default</th><th>Beskrivelse</th></tr></thead>
     <tbody>
       <tr><td>maks_rim</td><td>int</td><td>15</td><td>Maks antall perfekte rim</td></tr>
-      <tr><td>maks_nesten</td><td>int</td><td>10</td><td>Maks antall nesten-rim</td></tr>
+      <tr><td>maks_halvrim</td><td>int</td><td>10</td><td>Maks antall halvrim</td></tr>
       <tr><td>maks_synonymer</td><td>int</td><td>10</td><td>Maks antall synonymer</td></tr>
       <tr><td>maks_synonymrim</td><td>int</td><td>5</td><td>Maks antall rim per synonym</td></tr>
       <tr><td>dialekt</td><td>string</td><td>"&oslash;st"</td><td>Dialektregion</td></tr>
+      <tr><td>variant</td><td>string</td><td>&mdash;</td><td>Rimsuffiks for disambiguering (fra /varianter/)</td></tr>
     </tbody>
   </table>
 
@@ -579,8 +586,9 @@ pre .nl { color: #888; }
       <tr><td>info.rimsuffiks</td><td>string</td><td>Fonetisk rimsuffiks</td></tr>
       <tr><td>info.definisjon</td><td>string|null</td><td>Definisjon fra Bokm&aring;lsordboka</td></tr>
       <tr><td>info.ordklasse</td><td>string|null</td><td>Ordklasse</td></tr>
+      <tr><td>varianter</td><td>array</td><td>Uttalevarianter (fra rimsuffiks-motoren)</td></tr>
       <tr><td>rim</td><td>array&lt;string&gt;</td><td>Perfekte rimord</td></tr>
-      <tr><td>nesten_rim</td><td>array</td><td>Nesten-rim med <code>ord</code> og <code>score</code></td></tr>
+      <tr><td>halvrim</td><td>array</td><td>Halvrim med <code>ord</code> og <code>score</code></td></tr>
       <tr><td>synonymer</td><td>array</td><td>Hvert synonym med <code>ord</code> og <code>rim</code> (liste av rimord)</td></tr>
       <tr><td>dialekt</td><td>string</td><td>Brukt dialekt</td></tr>
       <tr><td>soketid_ms</td><td>float</td><td>Responstid</td></tr>
@@ -591,7 +599,7 @@ pre .nl { color: #888; }
 
 <div class="ep" id="rimer">
   <div class="ep-head"><span class="ep-method">GET</span><span class="ep-path">/api/v1/rimer/{ord1}/{ord2}</span></div>
-  <div class="ep-desc">Sjekk om to ord rimer, med fonetisk begrunnelse og score. Returnerer om de har perfekt rim, nesten-rim, eller ikke rimer, med forklaring p&aring; norsk.</div>
+  <div class="ep-desc">Sjekk om to ord rimer. Bruker de samme motorene som /rim/ og /halvrim/ &mdash; sjekker om ord2 dukker opp i helrim- eller halvrim-resultatene for ord1. Returnerer type rim, score og forklaring p&aring; norsk.</div>
 
   <div class="tbl-label">Parametere</div>
   <table><thead><tr><th>Parameter</th><th>Type</th><th>Default</th><th>Beskrivelse</th></tr></thead>
@@ -609,7 +617,7 @@ pre .nl { color: #888; }
       <tr><td>ord1.tonelag</td><td>int|null</td><td>Tonelag</td></tr>
       <tr><td>ord2.*</td><td></td><td>Samme felter for andre ord</td></tr>
       <tr><td>resultat.perfekt_rim</td><td>bool</td><td>Identisk rimsuffiks</td></tr>
-      <tr><td>resultat.nesten_rim</td><td>bool</td><td>Score &ge; 0.5 men ikke perfekt</td></tr>
+      <tr><td>resultat.halvrim</td><td>bool</td><td>Score &ge; 0.5 men ikke perfekt</td></tr>
       <tr><td>resultat.score</td><td>float</td><td>Likhetsscore 0.0&ndash;1.1</td></tr>
       <tr><td>resultat.samme_tonelag</td><td>bool</td><td>Om begge har likt tonelag</td></tr>
       <tr><td>resultat.forklaring</td><td>string</td><td>Norsk forklaring av resultatet</td></tr>
@@ -623,9 +631,9 @@ pre .nl { color: #888; }
   <span class="k">"ord1"</span>: {<span class="k">"ord"</span>: <span class="s">"krone"</span>, <span class="k">"ipa"</span>: <span class="s">"kru&#720;.n&#601;"</span>, <span class="k">"rimsuffiks"</span>: <span class="s">"u&#720;.n&#601;"</span>, <span class="k">"tonelag"</span>: <span class="n">2</span>},
   <span class="k">"ord2"</span>: {<span class="k">"ord"</span>: <span class="s">"tone"</span>, <span class="k">"ipa"</span>: <span class="s">"tu&#720;.n&#601;"</span>, <span class="k">"rimsuffiks"</span>: <span class="s">"u&#720;.n&#601;"</span>, <span class="k">"tonelag"</span>: <span class="n">2</span>},
   <span class="k">"resultat"</span>: {
-    <span class="k">"perfekt_rim"</span>: <span class="n">true</span>, <span class="k">"nesten_rim"</span>: <span class="n">false</span>, <span class="k">"score"</span>: <span class="n">1.0</span>,
+    <span class="k">"perfekt_rim"</span>: <span class="n">true</span>, <span class="k">"halvrim"</span>: <span class="n">false</span>, <span class="k">"score"</span>: <span class="n">1.0</span>,
     <span class="k">"samme_tonelag"</span>: <span class="n">true</span>,
-    <span class="k">"forklaring"</span>: <span class="s">"Identisk rimsuffiks /u&#720;.n&#601;/, begge tonelag 2"</span>
+    <span class="k">"forklaring"</span>: <span class="s">"Helrim &mdash; identisk rimsuffiks /u&#720;.n&#601;/, begge tonelag 2"</span>
   }
 }</pre>
 
@@ -641,7 +649,7 @@ pre .nl { color: #888; }
   <table><thead><tr><th>Felt</th><th>Type</th><th>Default</th><th>Beskrivelse</th></tr></thead>
     <tbody>
       <tr><td>ord</td><td>array&lt;string&gt;</td><td>&mdash;</td><td>Liste med ord (p&aring;krevd, maks 50)</td></tr>
-      <tr><td>operasjoner</td><td>array&lt;string&gt;</td><td>["rim"]</td><td>rim, nestenrim, synonymer, antonymer, info, arsenal, rimer</td></tr>
+      <tr><td>operasjoner</td><td>array&lt;string&gt;</td><td>["rim"]</td><td>rim, halvrim, synonymer, info, arsenal, rimer</td></tr>
       <tr><td>maks</td><td>int</td><td>10</td><td>Maks resultater per ord per operasjon</td></tr>
       <tr><td>dialekt</td><td>string</td><td>"&oslash;st"</td><td>Dialektregion</td></tr>
     </tbody>
@@ -653,7 +661,7 @@ pre .nl { color: #888; }
       <tr><td>ord</td><td>array</td><td>Innsendte ord</td></tr>
       <tr><td>operasjoner</td><td>array</td><td>Brukte operasjoner</td></tr>
       <tr><td>resultater</td><td>object</td><td>Hvert ord som n&oslash;kkel med resultat per operasjon</td></tr>
-      <tr><td>resultater._rimpar</td><td>array</td><td>Alle ordpar med perfekt_rim, nesten_rim, score (kun med &laquo;rimer&raquo;)</td></tr>
+      <tr><td>resultater._rimpar</td><td>array</td><td>Alle ordpar med perfekt_rim, halvrim, score (kun med &laquo;rimer&raquo;)</td></tr>
       <tr><td>dialekt</td><td>string</td><td>Brukt dialekt</td></tr>
       <tr><td>soketid_ms</td><td>float</td><td>Responstid</td></tr>
     </tbody>
@@ -663,9 +671,9 @@ pre .nl { color: #888; }
   -H "Content-Type: application/json" \
   -d '{"ord": ["sol", "natt"], "operasjoner": ["rim", "info", "rimer"], "maks": 5}'</pre>
 
-<!-- ═══════════════ SØK ═══════════════ -->
+<!-- ═══════════════ SØK OG TILFELDIG ═══════════════ -->
 
-<h2>S&oslash;k</h2>
+<h2>S&oslash;k og tilfeldig</h2>
 
 <div class="ep" id="sok">
   <div class="ep-head"><span class="ep-method">GET</span><span class="ep-path">/api/v1/sok</span></div>
@@ -696,6 +704,23 @@ pre .nl { color: #888; }
   <span class="k">"antall"</span>: <span class="n">5</span>, <span class="k">"soketid_ms"</span>: <span class="n">0.4</span>
 }</pre>
 
+<!-- ═══════════════ TILFELDIG ═══════════════ -->
+
+<div class="ep" id="tilfeldig">
+  <div class="ep-head"><span class="ep-method">GET</span><span class="ep-path">/api/v1/tilfeldig</span></div>
+  <div class="ep-desc">Hent et tilfeldig vanlig norsk ord. Filtrerer p&aring; frekvens &gt; 5 per million, 3&ndash;10 bokstaver, uten bindestrek.</div>
+
+  <div class="tbl-label">Respons-felter</div>
+  <table><thead><tr><th>Felt</th><th>Type</th><th>Beskrivelse</th></tr></thead>
+    <tbody>
+      <tr><td>ord</td><td>string</td><td>Et tilfeldig norsk ord</td></tr>
+      <tr><td>soketid_ms</td><td>float</td><td>Responstid</td></tr>
+    </tbody>
+  </table>
+</div>
+<pre>curl "<span class="u">https://www.rimregisteret.no/api/v1/tilfeldig</span>"</pre>
+<pre>{<span class="k">"ord"</span>: <span class="s">"fjell"</span>, <span class="k">"soketid_ms"</span>: <span class="n">0.3</span>}</pre>
+
 <!-- ═══════════════ SWAGGER ═══════════════ -->
 
 <h2 id="swagger">Swagger / ReDoc</h2>
@@ -709,8 +734,8 @@ pre .nl { color: #888; }
   <a href="https://www.nb.no/sprakbanken/ressurskatalog/oai-nb-no-sbr-56/">NB Uttale</a> (fonetikk, 5 dialekter) &bull;
   <a href="https://www.nb.no/sprakbanken/ressurskatalog/oai-nb-no-sbr-27/">Norwegian WordNet</a> (semantikk) &bull;
   <a href="https://www.nb.no/sprakbanken/ressurskatalog/oai-nb-no-sbr-32/">Spr&aring;kbanken N-gram</a> (frekvens) &bull;
-  <a href="https://ordbokene.no">Bokm&aring;lsordboka</a> via <a href="https://ordbokapi.org">ordbokapi.org</a> (definisjoner, synonymer, antonymer) &bull;
-  <a href="https://www.synonymordboka.no">Synonymordboka</a> (synonymer, antonymer)
+  <a href="https://ordbokene.no">Bokm&aring;lsordboka</a> via <a href="https://ordbokapi.org">ordbokapi.org</a> (definisjoner, synonymer) &bull;
+  <a href="https://www.synonymordboka.no">Synonymordboka</a> (synonymer)
 </p>
 
 </div><!-- .main -->

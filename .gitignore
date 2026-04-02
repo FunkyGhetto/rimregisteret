@@ -12,6 +12,11 @@ data/processed/*.jsonl
 data/processed/*.log
 data/raw/
 # Note: data/db/*.db are tracked in Git for Railway deploy
+# SQLite temp/journal files and FUSE artifacts — never track
+*.db-wal
+*.db-shm
+*.db-journal
+data/db/.fuse_hidden*
 
 # Environment
 .env

@@ -7,9 +7,8 @@ MCP-server (Model Context Protocol) som gir LLM-er tilgang til Rimregisteret —
 | Verktøy | Beskrivelse |
 |---------|-------------|
 | `finn_rim` | Finn perfekte rim for et norsk ord |
-| `finn_nesten_rim` | Finn nesten-rim med likhetsscore |
+| `finn_halvrim` | Finn halvrim med likhetsscore |
 | `finn_synonymer` | Finn synonymer (Norwegian WordNet) |
-| `finn_antonymer` | Finn antonymer (motsetningsord) |
 | `ordinfo` | IPA, stavelser, tonelag, rimsuffiks |
 | `generer_rimklynger` | Tilfeldige rimklynger for freestyle-trening |
 | `sok_ord` | Autocomplete for norske ord |

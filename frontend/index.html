@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Rimregisteret — Norges største rimordbok</title>
-<meta name="description" content="Norges største rimordbok. 684 000 norske ord med uttale, rim, nesten-rim, synonymer og støtte for fem dialekter. Gratis og uten registrering.">
+<meta name="description" content="Norges største rimordbok. 684 000 norske ord med uttale, rim, halvrim, synonymer og støtte for fem dialekter. Gratis og uten registrering.">
 <link rel="canonical" href="https://www.rimregisteret.no/">
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
@@ -304,6 +304,19 @@ body {
   text-transform: uppercase;
   letter-spacing: 0.05em;
   margin-bottom: 0.4rem;
+}
+.syl-suffix {
+  font-family: 'Crimson Pro', serif;
+  text-transform: none;
+  letter-spacing: 0;
+  color: #888;
+  font-size: 0.9rem;
+}
+.syl-count {
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+  color: #999;
   padding-bottom: 0.2rem;
   border-bottom: 1px solid #2a2a2a;
 }
@@ -706,8 +719,7 @@ body {
 
 <div class="tabs" id="tabs">
   <button class="tab active" data-tab="rim">Rim</button>
-  <button class="tab" data-tab="nestenrim">Nesten-rim</button>
-  <button class="tab" data-tab="rimstier">Rimstier</button>
+  <button class="tab" data-tab="halvrim">Halvrim</button>
   <button class="tab" data-tab="synonymer">Synonymer</button>
   <button class="tab" data-tab="rimklynger">Rimklynger</button>
   <button class="tab" data-tab="laer">Lær</button>
@@ -720,6 +732,7 @@ body {
       <button class="modus-pill active" data-modus="par">Par (2-og-2)</button>
       <button class="modus-pill" data-modus="bred">Bred (4-og-4)</button>
       <button class="modus-pill" data-modus="dyp">Dyp</button>
+      <button class="modus-pill" data-modus="sti">Rimsti</button>
     </div>
   </div>
   <div class="modus-desc" id="modusDesc">Tilfeldige rimpar &mdash; tren overganger</div>
@@ -739,6 +752,14 @@ body {
     <span id="dypMaksWrap" style="display:none">
       <label>Maks ord</label>
       <input type="number" class="cluster-number" id="dypMaks" value="50" min="5" max="500">
+    </span>
+    <span id="stiAntallWrap" style="display:none">
+      <label>Antall stier</label>
+      <input type="number" class="cluster-number" id="stiAntall" value="3" min="1" max="20">
+    </span>
+    <span id="stiLengdeWrap" style="display:none">
+      <label>Steg per sti</label>
+      <input type="number" class="cluster-number" id="stiLengde" value="8" min="3" max="30">
     </span>
   </div>
   <button class="generate-btn" id="generateBtn">&#x27F3; Generer nye klynger</button>
@@ -772,7 +793,7 @@ body {
   <div class="landing-actions">
     <div class="landing-action">
       <h4>Skriv tekst</h4>
-      <p>Finn rim, nesten-rim og synonymer. Kombiner dem for &aring; finne ord du ikke visste du lette etter.</p>
+      <p>Finn rim, halvrim og synonymer. Kombiner dem for &aring; finne ord du ikke visste du lette etter.</p>
     </div>
     <div class="landing-action">
       <h4>Tren freestyle</h4>
@@ -818,7 +839,7 @@ body {
 
       <div class="learn-level">
         <div class="learn-level-tag">Avansert</div>
-        <p>3+ stavelser, nesten-rim, bland par og brede</p>
+        <p>3+ stavelser, halvrim, bland par og brede</p>
         <p>Daglig freestyle, klynger som oppvarming</p>
         <div class="goal">Mål: automatisert rimhenting, fokus på narrativ</div>
         <button class="learn-try-btn" data-try="bred,3,10">Prøv nå</button>
@@ -875,7 +896,7 @@ body {
       <li><b>Bøyningsformer utvider rimfamilier:</b> hus/mus &rarr; huset/muset &rarr; husene/musene. Tre for én.</li>
       <li><b>Tonelag:</b> I skrift spiller det ingen rolle, men i freestyle merkes forskjellen. "bønder" (tonelag 1) og "bønner" (tonelag 2) rimer visuelt, men høres litt annerledes ut.</li>
       <li><b>Retroflekser:</b> "barn"/"garn" rimer perfekt i østnorsk (begge har /ɑːɳ/), men i vestnorsk uttales r-en separat. Bruk dialektvelgeren for å sjekke.</li>
-      <li><b>Norsk har færre enstavelsesord enn engelsk.</b> Kompenser ved å bruke flerstavelsesrim og nesten-rim &mdash; det er ofte mer imponerende uansett.</li>
+      <li><b>Norsk har færre enstavelsesord enn engelsk.</b> Kompenser ved å bruke flerstavelsesrim og halvrim &mdash; det er ofte mer imponerende uansett.</li>
     </ul>
   </div>
 
@@ -918,6 +939,10 @@ const clusterAntall = document.getElementById('clusterAntall');
 const antallWrap = document.getElementById('antallWrap');
 const dypMaksWrap = document.getElementById('dypMaksWrap');
 const dypMaksEl = document.getElementById('dypMaks');
+const stiAntallWrap = document.getElementById('stiAntallWrap');
+const stiAntallEl = document.getElementById('stiAntall');
+const stiLengdeWrap = document.getElementById('stiLengdeWrap');
+const stiLengdeEl = document.getElementById('stiLengde');
 const generateBtn = document.getElementById('generateBtn');
 const dialektSelect = document.getElementById('dialekt');
 const learnContent = document.getElementById('learnContent');
@@ -935,6 +960,7 @@ const MODUS_DESCS = {
   par: 'Tilfeldige rimpar \u2014 tren overganger',
   bred: '4 ord per klynge \u2014 tren bredde',
   dyp: '\u00c9n rimfamilie, alle ord \u2014 tren dybde',
+  sti: 'Rimstier \u2014 gli mellom rimfamilier via vokalskift',
 };
 
 // --- URL state ---
@@ -974,7 +1000,7 @@ function updateSEO(word, count, items) {
   if (!meta) { meta = document.createElement('meta'); meta.name = 'description'; document.head.appendChild(meta); }
   meta.content = topWords
     ? `Finn ${count} ord som rimer på ${word}. Perfekte rim: ${topWords}. Norges største rimordbok med 684 000 ord.`
-    : `Finn rim og nesten-rim for «${word}». Norges største rimordbok med 684 000 ord, fonetikk og fem dialekter.`;
+    : `Finn rim og halvrim for «${word}». Norges største rimordbok med 684 000 ord, fonetikk og fem dialekter.`;
 
   // Canonical URL (always clean, no query params)
   let canon = document.querySelector('link[rel="canonical"]');
@@ -1040,8 +1066,10 @@ modusPills.addEventListener('click', e => {
   pill.classList.add('active');
   currentModus = pill.dataset.modus;
   modusDesc.innerHTML = MODUS_DESCS[currentModus];
-  antallWrap.style.display = currentModus === 'dyp' ? 'none' : '';
+  antallWrap.style.display = (currentModus === 'dyp' || currentModus === 'sti') ? 'none' : '';
   dypMaksWrap.style.display = currentModus === 'dyp' ? '' : 'none';
+  stiAntallWrap.style.display = currentModus === 'sti' ? '' : 'none';
+  stiLengdeWrap.style.display = currentModus === 'sti' ? '' : 'none';
 });
 
 // --- Dialect selector ---
@@ -1074,7 +1102,7 @@ logoLink.addEventListener('click', e => {
   const canon = document.querySelector('link[rel="canonical"]');
   if (canon) canon.href = 'https://www.rimregisteret.no/';
   const meta = document.querySelector('meta[name="description"]');
-  if (meta) meta.content = 'Norges st\u00f8rste rimordbok. 684 000 norske ord med uttale, rim, nesten-rim, synonymer og st\u00f8tte for fem dialekter. Gratis og uten registrering.';
+  if (meta) meta.content = 'Norges st\u00f8rste rimordbok. 684 000 norske ord med uttale, rim, halvrim, synonymer og st\u00f8tte for fem dialekter. Gratis og uten registrering.';
   const jsonld = document.getElementById('jsonld-word');
   if (jsonld) jsonld.remove();
 });
@@ -1118,7 +1146,10 @@ function switchToClusterTab(modus, stavelser, antall) {
   if (pill) pill.classList.add('active');
   currentModus = modus;
   modusDesc.innerHTML = MODUS_DESCS[modus];
-  antallWrap.style.display = modus === 'dyp' ? 'none' : '';
+  antallWrap.style.display = (modus === 'dyp' || modus === 'sti') ? 'none' : '';
+  dypMaksWrap.style.display = modus === 'dyp' ? '' : 'none';
+  stiAntallWrap.style.display = modus === 'sti' ? '' : 'none';
+  stiLengdeWrap.style.display = modus === 'sti' ? '' : 'none';
   // Set filters
   clusterSyl.value = stavelser || '';
   clusterAntall.value = antall || 10;
@@ -1225,6 +1256,41 @@ async function doGenerateCluster() {
   const syl = clusterSyl.value;
   const antall = parseInt(clusterAntall.value) || 10;
 
+  if (currentModus === 'sti') {
+    // Rimsti mode — different endpoint and rendering
+    const stiAntall = parseInt(stiAntallEl.value) || 3;
+    const stiLengde = parseInt(stiLengdeEl.value) || 8;
+    let url = `${API}/api/v1/rimklynger/sti?maks_steg=${stiLengde}&antall_stier=${stiAntall}&dialekt=${encodeURIComponent(currentDialekt)}`;
+    if (word) url += `&ord=${encodeURIComponent(word)}`;
+
+    try {
+      const r = await fetch(url);
+      const data = await r.json();
+
+      generateBtn.disabled = false;
+      generateBtn.textContent = '\u27F3 Generer nye klynger';
+
+      const stier = data.stier || [];
+      if (stier.length === 0) {
+        statusEl.textContent = word
+          ? `Ingen rimstier funnet for "${word}"`
+          : 'Ingen rimstier funnet med disse filtrene';
+        return;
+      }
+
+      const totalSteg = stier.reduce((s, sti) => s + (sti.steg || []).length, 0);
+      statusEl.textContent = `${stier.length} rimsti${stier.length > 1 ? 'er' : ''}, ${totalSteg} steg`;
+
+      renderRimstier(stier);
+    } catch (err) {
+      generateBtn.disabled = false;
+      generateBtn.textContent = '\u27F3 Generer nye klynger';
+      statusEl.textContent = 'Feil: Kunne ikke koble til API-et.';
+      console.error(err);
+    }
+    return;
+  }
+
   let url = `${API}/api/v1/rimklynger/${currentModus}?min_frekvens=1.0&dialekt=${encodeURIComponent(currentDialekt)}`;
   if (word) url += `&ord=${encodeURIComponent(word)}`;
   if (syl) url += `&stavelser=${syl}`;
@@ -1272,6 +1338,7 @@ function renderClusters(klynger) {
     wordsDiv.className = 'cluster-words';
 
     const separator = currentModus === 'par' ? ' / ' : currentModus === 'bred' ? ', ' : ' \u00b7 ';
+    // (sti mode uses renderRimstier, not this function)
 
     klynge.ord.forEach((w, i) => {
       if (i > 0) {
@@ -1326,65 +1393,50 @@ async function doSearch(word, variant) {
   const dParam = `&dialekt=${encodeURIComponent(currentDialekt)}`;
   const vParam = currentVariant ? `&variant=${encodeURIComponent(currentVariant)}` : '';
 
-  // Rimstier has its own endpoint and rendering
-  if (currentTab === 'rimstier') {
-    try {
-      const [stiData, infoData] = await Promise.all([
-        fetch(`${API}/api/v1/rimsti/${encodeURIComponent(word)}?maks_steg=20${dParam}`).then(r => r.json()),
-        fetch(`${API}/api/v1/info/${encodeURIComponent(word)}?x=1${dParam}`).then(r => r.json()),
-      ]);
-      const steg = stiData.steg || [];
-      if (steg.length === 0) {
-        statusEl.textContent = `Ingen rimstier funnet for "${word}"`;
-        return;
-      }
-      statusEl.textContent = `${steg.length} rimfamilier for "${word}"`;
-      renderRimstier(stiData);
-    } catch (err) {
-      statusEl.textContent = 'Feil: Kunne ikke koble til API-et.';
-      console.error(err);
-    }
-    return;
-  }
-
   const endpoint = {
-    rim: 'rim', nestenrim: 'nestenrim', synonymer: 'synonymer'
+    rim: 'rim', halvrim: 'halvrim', synonymer: 'synonymer'
   }[currentTab] || 'rim';
+  const maksParam = (currentTab === 'rim' || currentTab === 'halvrim') ? 100000 : 1000;
 
   try {
     const [resData, infoData] = await Promise.all([
-      fetch(`${API}/api/v1/${endpoint}/${encodeURIComponent(word)}?maks=1000${dParam}${vParam}`).then(r => r.json()),
+      fetch(`${API}/api/v1/${endpoint}/${encodeURIComponent(word)}?maks=${maksParam}&grupper=true${dParam}${vParam}`).then(r => r.json()),
       fetch(`${API}/api/v1/info/${encodeURIComponent(word)}?x=1${dParam}`).then(r => r.json()),
     ]);
 
     let items = resData.resultater || [];
+    // For grouped responses, count total words across groups
+    const totalCount = resData.antall != null ? resData.antall
+      : (items.length > 0 && items[0].dybde != null)
+        ? items.reduce((sum, g) => sum + (g.ord ? g.ord.length : 0), 0)
+        : items.length;
 
     // Fallback: if no perfect rhymes found, fetch near-rhymes with score >= 1.0
-    if (items.length === 0 && currentTab === 'rim') {
-      const nearData = await fetch(`${API}/api/v1/nestenrim/${encodeURIComponent(word)}?maks=1000&terskel=0.9${dParam}${vParam}`).then(r => r.json());
+    if (totalCount === 0 && currentTab === 'rim') {
+      const nearData = await fetch(`${API}/api/v1/halvrim/${encodeURIComponent(word)}?maks=100000&terskel=0.9${dParam}${vParam}`).then(r => r.json());
       const nearItems = (nearData.resultater || []).filter(r => r.score >= 1.0);
       if (nearItems.length > 0) {
         items = nearItems;
-        statusEl.textContent = `${items.length} rim for "${word}"`;
+        statusEl.textContent = `${nearItems.length} rim for "${word}"`;
         renderInfo(infoData);
         renderGrouped(items);
         return;
       }
     }
 
-    if (items.length === 0) {
+    if (totalCount === 0) {
       statusEl.textContent = `Ingen ${tabLabel()} funnet for "${word}"`;
       renderInfo(infoData);
       return;
     }
 
-    statusEl.textContent = `${items.length} ${tabLabel()} for "${word}"`;
-    updateSEO(word, items.length, items);
+    statusEl.textContent = `${totalCount} ${tabLabel()} for "${word}"`;
+    updateSEO(word, totalCount, items);
     renderInfo(infoData);
 
     // Show variant disambiguation bar if word has multiple pronunciations
     const varianter = resData.varianter || [];
-    if (varianter.length > 1 && (currentTab === 'rim' || currentTab === 'nestenrim')) {
+    if (varianter.length > 1 && (currentTab === 'rim' || currentTab === 'halvrim')) {
       renderVariantBar(word, varianter, resData.rimsuffiks);
     }
 
@@ -1400,7 +1452,7 @@ async function doSearch(word, variant) {
 }
 
 function tabLabel() {
-  return { rim: 'rim', nestenrim: 'nesten-rim', rimstier: 'rimstier', synonymer: 'synonymer' }[currentTab] || 'resultater';
+  return { rim: 'rim', halvrim: 'halvrim', synonymer: 'synonymer' }[currentTab] || 'resultater';
 }
 
 // --- Rendering ---
@@ -1432,6 +1484,27 @@ function renderInfo(data) {
 }
 
 function renderGrouped(items) {
+  // Check if items are pre-grouped (depth-based from API) or flat (legacy)
+  if (items.length > 0 && items[0].dybde != null && items[0].ord != null) {
+    // Pre-grouped depth-based format: [{dybde, suffiks, ord: [...]}]
+    for (const group of items) {
+      const g = document.createElement('div');
+      g.className = 'syl-group';
+      const d = group.dybde;
+      const sfx = group.suffiks || '';
+      g.innerHTML = `<h3>Dybde ${d} <span class="syl-suffix">/${sfx}/</span> <span class="syl-count">${group.ord.length} ord</span></h3>`;
+      const list = document.createElement('div');
+      list.className = 'word-list';
+      for (const item of group.ord) {
+        list.appendChild(makeWordEl(item));
+      }
+      g.appendChild(list);
+      resultsEl.appendChild(g);
+    }
+    return;
+  }
+
+  // Flat list fallback: group by stavelser client-side
   const groups = {};
   for (const item of items) {
     const syl = item.stavelser ?? '?';
@@ -1477,51 +1550,56 @@ function renderFlat(items) {
   resultsEl.appendChild(list);
 }
 
-function renderRimstier(data) {
-  const steg = data.steg || [];
+function renderRimstier(stier) {
+  for (const sti of stier) {
+    // Header for each sti
+    const header = document.createElement('div');
+    header.style.cssText = 'margin:1rem 0 0.4rem;font-size:0.85rem;color:#888';
+    const skeleton = sti.konsonantskjelett || '?';
+    header.textContent = `${sti.ord} \u2014 /${skeleton}/`;
+    resultsEl.appendChild(header);
 
-  for (let i = 0; i < steg.length; i++) {
-    const s = steg[i];
-    const words = s.ord || s.eksempler || [];
-    if (!words.length) continue;
+    const steg = sti.steg || [];
+    for (let i = 0; i < steg.length; i++) {
+      const s = steg[i];
+      const words = s.ord || s.eksempler || [];
+      if (!words.length) continue;
 
-    const row = document.createElement('div');
-    row.style.cssText = 'display:flex;align-items:baseline;gap:0.5rem;padding:0.4rem 0.6rem;border-radius:6px;margin-bottom:0.2rem';
-    if (s.aktiv) {
-      row.style.background = 'rgba(232,146,13,0.08)';
-      row.style.borderLeft = '3px solid #e8920d';
+      const row = document.createElement('div');
+      row.style.cssText = 'display:flex;align-items:baseline;gap:0.5rem;padding:0.4rem 0.6rem;border-radius:6px;margin-bottom:0.2rem';
+      if (s.aktiv) {
+        row.style.background = 'rgba(232,146,13,0.08)';
+        row.style.borderLeft = '3px solid #e8920d';
+      }
+
+      if (i > 0) {
+        const num = document.createElement('span');
+        num.style.cssText = 'color:#555;font-size:0.7rem;min-width:16px';
+        num.textContent = i + '.';
+        row.appendChild(num);
+      }
+
+      const wordsEl = document.createElement('span');
+      wordsEl.style.cssText = 'font-size:0.95rem;flex:1';
+      for (let j = 0; j < words.length; j++) {
+        if (j > 0) wordsEl.appendChild(document.createTextNode(', '));
+        const a = document.createElement('a');
+        a.textContent = words[j];
+        a.style.cssText = 'color:#e8920d;cursor:pointer;text-decoration:none';
+        a.addEventListener('mouseenter', () => { a.style.color = '#f5a623'; });
+        a.addEventListener('mouseleave', () => { a.style.color = '#e8920d'; });
+        a.addEventListener('click', e => { e.preventDefault(); searchWord(words[j]); });
+        wordsEl.appendChild(a);
+      }
+      row.appendChild(wordsEl);
+
+      const sfxEl = document.createElement('span');
+      sfxEl.style.cssText = 'font-size:0.75rem;color:#555;font-family:"Lucida Sans Unicode",sans-serif;white-space:nowrap';
+      sfxEl.textContent = '/' + s.rimsuffiks + '/';
+      row.appendChild(sfxEl);
+
+      resultsEl.appendChild(row);
     }
-
-    // Step number
-    if (i > 0) {
-      const num = document.createElement('span');
-      num.style.cssText = 'color:#555;font-size:0.7rem;min-width:16px';
-      num.textContent = i + '.';
-      row.appendChild(num);
-    }
-
-    // Words
-    const wordsEl = document.createElement('span');
-    wordsEl.style.cssText = 'font-size:0.95rem;flex:1';
-    for (let j = 0; j < words.length; j++) {
-      if (j > 0) wordsEl.appendChild(document.createTextNode(', '));
-      const a = document.createElement('a');
-      a.textContent = words[j];
-      a.style.cssText = 'color:#e8920d;cursor:pointer;text-decoration:none';
-      a.addEventListener('mouseenter', () => { a.style.color = '#f5a623'; });
-      a.addEventListener('mouseleave', () => { a.style.color = '#e8920d'; });
-      a.addEventListener('click', e => { e.preventDefault(); searchWord(words[j]); });
-      wordsEl.appendChild(a);
-    }
-    row.appendChild(wordsEl);
-
-    // Suffix
-    const sfxEl = document.createElement('span');
-    sfxEl.style.cssText = 'font-size:0.75rem;color:#555;font-family:"Lucida Sans Unicode",sans-serif;white-space:nowrap';
-    sfxEl.textContent = '/' + s.rimsuffiks + '/';
-    row.appendChild(sfxEl);
-
-    resultsEl.appendChild(row);
   }
 }
 

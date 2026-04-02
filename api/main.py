@@ -24,20 +24,16 @@ from rimordbok.phonetics import slaa_opp
 from rimordbok.rhyme import _berik_varianter_med_definisjoner
 from rimordbok.rhyme import (
     finn_perfekte_rim,
-    finn_nesten_rim,
-    finn_homofoner,
+    finn_halvrim,
     match_konsonanter,
     finn_rim_alle_dialekter,
-    finn_rimsti,
-    _score_near_rhyme,
 )
 from rimordbok.semantics import (
     finn_synonymer,
-    finn_antonymer,
     finn_relaterte,
 )
 from rimordbok.definitions import hent_definisjon
-from rimordbok.clusters import generer_rimklynger
+from rimordbok.clusters import generer_rimklynger, generer_rimstier
 
 # Dialect enum for API validation
 DIALEKT_ENUM = list(GYLDIGE_DIALEKTER)
@@ -126,8 +122,8 @@ async def global_exception_handler(request: Request, exc: Exception):
 # --- Hjelpefunksjoner ---
 
 
-def _clamp_maks(maks: int) -> int:
-    return max(1, min(maks, 1000))
+def _clamp_maks(maks: int, ceiling: int = 1000) -> int:
+    return max(1, min(maks, ceiling))
 
 
 def _filter_results(
@@ -182,7 +178,7 @@ def api_varianter(ord: str):
 @app.get("/api/v1/rim/{ord}", summary="Finn perfekte rim")
 def api_rim(
     ord: str,
-    maks: int = Query(200, ge=1, le=1000, description="Maks antall resultater"),
+    maks: int = Query(200, ge=1, le=100000, description="Maks antall resultater (0 for ingen grense)"),
     stavelser: Optional[int] = Query(None, description="Filtrer på antall stavelser"),
     tonelag: Optional[int] = Query(None, description="Filtrer på tonelag (1 eller 2)"),
     samme_tonelag: bool = Query(False, description="Kun rim med samme tonelag"),
@@ -198,7 +194,7 @@ def api_rim(
         })
     start = time.perf_counter()
     result = finn_perfekte_rim(
-        ord, maks=_clamp_maks(maks), samme_tonelag=samme_tonelag,
+        ord, maks=maks, samme_tonelag=samme_tonelag,
         dialekt=dialekt, rimsuffiks=variant, grupper=grupper,
         ekskluder_propn=ekskluder_propn,
     )
@@ -217,16 +213,17 @@ def api_rim(
     return result
 
 
-@app.get("/api/v1/nestenrim/{ord}", summary="Finn nesten-rim")
-def api_nestenrim(
+@app.get("/api/v1/halvrim/{ord}", summary="Finn halvrim")
+def api_halvrim(
     ord: str,
-    maks: int = Query(100, ge=1, le=1000),
+    maks: int = Query(200, ge=1, le=100000),
     terskel: float = Query(0.5, ge=0.0, le=1.0, description="Minimum likhetsscore"),
     stavelser: Optional[int] = Query(None),
     tonelag: Optional[int] = Query(None),
     dialekt: str = Query("øst", description="Dialektregion: øst, nord, midt, vest, sørvest"),
     variant: Optional[str] = Query(None, description="Rimsuffiks for disambiguering"),
-    grupper: bool = Query(False, description="Grupper resultater etter stavelser"),
+    grupper: bool = Query(False, description="Grupper resultater etter rimdybde"),
+    ekskluder_propn: bool = Query(True, description="Ekskluder proprium (egennavn)"),
 ):
     if dialekt not in GYLDIGE_DIALEKTER:
         return JSONResponse(status_code=400, content={
@@ -235,29 +232,28 @@ def api_nestenrim(
         })
     start = time.perf_counter()
 
-    # Check for homograph variants (same as /rim/ endpoint)
-    varianter = hent_varianter(ord)
-    berikede = (
-        _berik_varianter_med_definisjoner(ord, varianter)
-        if len(varianter) > 1 else []
+    result = finn_halvrim(
+        ord, maks=maks, terskel=terskel,
+        dialekt=dialekt, rimsuffiks=variant, grupper=grupper,
+        ekskluder_propn=ekskluder_propn,
     )
 
-    results = finn_nesten_rim(
-        ord, maks=_clamp_maks(maks), terskel=terskel,
-        dialekt=dialekt, rimsuffiks=variant, grupper=grupper,
-    )
-    if not grupper:
-        results = _filter_results(results, stavelser, tonelag)
+    items = result.get("resultater", [])
+
+    # Apply post-filters if not grouped
+    if not grupper and stavelser is not None:
+        items = [r for r in items if r.get("stavelser") == stavelser]
+        result["resultater"] = items
+
     elapsed = (time.perf_counter() - start) * 1000
-    resp = _wrap(ord, results, elapsed)
-    resp["dialekt"] = dialekt
-    resp["varianter"] = berikede
-    # Include which suffix was used
-    if variant:
-        resp["rimsuffiks"] = variant
-    elif varianter:
-        resp["rimsuffiks"] = varianter[0].get("rimsuffiks")
-    return resp
+    result["dialekt"] = dialekt
+    result["antall"] = (
+        sum(len(g["ord"]) for g in items)
+        if grupper and items and isinstance(items[0], dict) and "ord" in items[0]
+        else len(items)
+    )
+    result["soketid_ms"] = round(elapsed, 1)
+    return result
 
 
 @app.get("/api/v1/rim/{ord}/dialekter", summary="Rim i alle dialekter")
@@ -284,17 +280,6 @@ def api_synonymer(
     return _wrap(ord, results, elapsed)
 
 
-@app.get("/api/v1/antonymer/{ord}", summary="Finn antonymer")
-def api_antonymer(
-    ord: str,
-    maks: int = Query(50, ge=1, le=1000),
-):
-    start = time.perf_counter()
-    results = finn_antonymer(ord, maks=_clamp_maks(maks))
-    elapsed = (time.perf_counter() - start) * 1000
-    return _wrap(ord, results, elapsed)
-
-
 @app.get("/api/v1/relaterte/{ord}", summary="Finn relaterte ord (hypernymer, hyponymer)")
 def api_relaterte(
     ord: str,
@@ -302,14 +287,6 @@ def api_relaterte(
 ):
     start = time.perf_counter()
     results = finn_relaterte(ord, maks=_clamp_maks(maks))
-    elapsed = (time.perf_counter() - start) * 1000
-    return _wrap(ord, results, elapsed)
-
-
-@app.get("/api/v1/homofoner/{ord}", summary="Finn homofoner")
-def api_homofoner(ord: str):
-    start = time.perf_counter()
-    results = finn_homofoner(ord)
     elapsed = (time.perf_counter() - start) * 1000
     return _wrap(ord, results, elapsed)
 
@@ -391,6 +368,8 @@ def api_rimklynger_par(
     min_frekvens: float = Query(1.0, ge=0.0, description="Minimum ordfrekvens per million"),
     dialekt: str = Query("øst", description="Dialektregion"),
     ord: Optional[str] = Query(None, description="Startord — bruk dette ordets rimfamilie"),
+    rimtype: str = Query("helrim", description="helrim, halvrim eller begge"),
+    terskel: float = Query(0.5, ge=0.0, le=1.0, description="Terskel for halvrim"),
 ):
     if dialekt not in GYLDIGE_DIALEKTER:
         return JSONResponse(status_code=400, content={
@@ -401,11 +380,12 @@ def api_rimklynger_par(
     klynger = generer_rimklynger(
         modus="par", antall=antall, stavelser=stavelser,
         min_frekvens=min_frekvens, dialekt=dialekt, ord=ord,
+        rimtype=rimtype, terskel=terskel,
     )
     elapsed = (time.perf_counter() - start) * 1000
     return _klynge_response("par", klynger, elapsed, {
         "stavelser": stavelser, "min_frekvens": min_frekvens,
-        "dialekt": dialekt, "ord": ord,
+        "dialekt": dialekt, "ord": ord, "rimtype": rimtype,
     })
 
 
@@ -416,6 +396,8 @@ def api_rimklynger_bred(
     min_frekvens: float = Query(1.0, ge=0.0, description="Minimum ordfrekvens per million"),
     dialekt: str = Query("øst", description="Dialektregion"),
     ord: Optional[str] = Query(None, description="Startord — bruk dette ordets rimfamilie"),
+    rimtype: str = Query("helrim", description="helrim, halvrim eller begge"),
+    terskel: float = Query(0.5, ge=0.0, le=1.0, description="Terskel for halvrim"),
 ):
     if dialekt not in GYLDIGE_DIALEKTER:
         return JSONResponse(status_code=400, content={
@@ -426,11 +408,12 @@ def api_rimklynger_bred(
     klynger = generer_rimklynger(
         modus="bred", antall=antall, stavelser=stavelser,
         min_frekvens=min_frekvens, dialekt=dialekt, ord=ord,
+        rimtype=rimtype, terskel=terskel,
     )
     elapsed = (time.perf_counter() - start) * 1000
     return _klynge_response("bred", klynger, elapsed, {
         "stavelser": stavelser, "min_frekvens": min_frekvens,
-        "dialekt": dialekt, "ord": ord,
+        "dialekt": dialekt, "ord": ord, "rimtype": rimtype,
     })
 
 
@@ -441,6 +424,8 @@ def api_rimklynger_dyp(
     min_frekvens: float = Query(1.0, ge=0.0, description="Minimum ordfrekvens per million"),
     maks: int = Query(0, ge=0, le=1000, description="Maks antall ord (0 = alle)"),
     dialekt: str = Query("øst", description="Dialektregion"),
+    rimtype: str = Query("helrim", description="helrim, halvrim eller begge"),
+    terskel: float = Query(0.5, ge=0.0, le=1.0, description="Terskel for halvrim"),
 ):
     if dialekt not in GYLDIGE_DIALEKTER:
         return JSONResponse(status_code=400, content={
@@ -451,6 +436,7 @@ def api_rimklynger_dyp(
     klynger = generer_rimklynger(
         modus="dyp", stavelser=stavelser,
         min_frekvens=min_frekvens, dialekt=dialekt, ord=ord,
+        rimtype=rimtype, terskel=terskel,
     )
     # Truncate if maks is set
     if maks > 0 and klynger and len(klynger[0]["ord"]) > maks:
@@ -458,18 +444,16 @@ def api_rimklynger_dyp(
     elapsed = (time.perf_counter() - start) * 1000
     return _klynge_response("dyp", klynger, elapsed, {
         "stavelser": stavelser, "min_frekvens": min_frekvens,
-        "dialekt": dialekt, "ord": ord,
+        "dialekt": dialekt, "ord": ord, "rimtype": rimtype,
     })
 
 
-# --- Rimsti ---
-
-
-@app.get("/api/v1/rimsti/{ord}", summary="Finn rimsti — rimfamilier med samme konsonantskjelett")
-def api_rimsti(
-    ord: str,
-    maks_steg: int = Query(20, ge=1, le=50, description="Maks antall rimfamilier"),
-    min_familiestr: int = Query(3, ge=1, le=100, description="Minimum ord i en rimfamilie"),
+@app.get("/api/v1/rimklynger/sti", summary="Rimklynger: sti-modus (rimstier via vokalskift)")
+def api_rimklynger_sti(
+    ord: Optional[str] = Query(None, description="Startord (tilfeldige hvis utelatt)"),
+    antall_stier: int = Query(3, ge=1, le=20, description="Antall rimstier å generere"),
+    maks_steg: int = Query(8, ge=3, le=30, description="Maks steg per sti"),
+    min_familiestr: int = Query(3, ge=1, le=100, description="Minimum ord per rimfamilie"),
     min_frekvens: float = Query(1.0, ge=0.0, description="Minimum ordfrekvens per million"),
     dialekt: str = Query("øst", description="Dialektregion: øst, nord, midt, vest, sørvest"),
 ):
@@ -479,23 +463,32 @@ def api_rimsti(
             "gyldige": sorted(GYLDIGE_DIALEKTER),
         })
     start = time.perf_counter()
-    result = finn_rimsti(
-        ord, maks_steg=maks_steg, min_familiestr=min_familiestr,
-        min_frekvens=min_frekvens, dialekt=dialekt,
+    stier = generer_rimstier(
+        antall_stier=antall_stier, maks_steg=maks_steg,
+        min_familiestr=min_familiestr, min_frekvens=min_frekvens,
+        dialekt=dialekt, ord=ord,
     )
     elapsed = (time.perf_counter() - start) * 1000
-    result["soketid_ms"] = round(elapsed, 1)
-    return result
+    return {
+        "modus": "sti",
+        "stier": stier,
+        "antall_stier": len(stier),
+        "filter": {
+            "maks_steg": maks_steg, "min_familiestr": min_familiestr,
+            "min_frekvens": min_frekvens, "dialekt": dialekt, "ord": ord,
+        },
+        "soketid_ms": round(elapsed, 1),
+    }
 
 
 # --- Arsenal & Rimer ---
 
 
-@app.get("/api/v1/arsenal/{ord}", summary="Kreativt arsenal — rim, nesten-rim, synonymer med rim")
+@app.get("/api/v1/arsenal/{ord}", summary="Kreativt arsenal — rim, halvrim, synonymer med rim")
 def api_arsenal(
     ord: str,
     maks_rim: int = Query(15, ge=1, le=100),
-    maks_nesten: int = Query(10, ge=1, le=100),
+    maks_halvrim: int = Query(10, ge=1, le=100),
     maks_synonymer: int = Query(10, ge=1, le=50),
     maks_synonymrim: int = Query(5, ge=1, le=20),
     dialekt: str = Query("øst", description="Dialektregion"),
@@ -503,7 +496,7 @@ def api_arsenal(
 ):
     """Alt kreativt materiale for ett ord i ett kall.
 
-    Returnerer rim, nesten-rim, synonymer, og rim for hvert synonym.
+    Returnerer rim, halvrim, synonymer, og rim for hvert synonym.
     Erstatter 10-15 separate API-kall i kreativ skriving.
     """
     if dialekt not in GYLDIGE_DIALEKTER:
@@ -516,7 +509,8 @@ def api_arsenal(
     info = slaa_opp(ord, dialekt=dialekt, rimsuffiks_override=variant)
     rim_result = finn_perfekte_rim(ord, maks=maks_rim, dialekt=dialekt, grupper=False, rimsuffiks=variant)
     rim = rim_result.get("resultater", [])
-    nesten = finn_nesten_rim(ord, maks=maks_nesten, terskel=0.7, dialekt=dialekt, rimsuffiks=variant)
+    halvrim_result = finn_halvrim(ord, maks=maks_halvrim, terskel=0.7, dialekt=dialekt, rimsuffiks=variant)
+    halvrim_liste = halvrim_result.get("resultater", [])
     syns = finn_synonymer(ord, maks=maks_synonymer)
     defn = hent_definisjon(ord)
 
@@ -544,7 +538,7 @@ def api_arsenal(
         },
         "varianter": rim_result.get("varianter", []),
         "rim": [r["ord"] for r in rim],
-        "nesten_rim": [{"ord": r["ord"], "score": r["score"]} for r in nesten],
+        "halvrim": [{"ord": r["ord"], "score": r["score"]} for r in halvrim_liste],
         "synonymer": syn_med_rim,
         "dialekt": dialekt,
         "soketid_ms": round(elapsed, 1),
@@ -557,7 +551,11 @@ def api_rimer(
     ord2: str,
     dialekt: str = Query("øst", description="Dialektregion"),
 ):
-    """Sammenlign to ord og si om de rimer, med fonetisk begrunnelse."""
+    """Sammenlign to ord og si om de rimer.
+
+    Bruker de samme motorene som /rim/ og /halvrim/ — sjekker om ord2
+    dukker opp i helrim- eller halvrim-resultatene for ord1.
+    """
     if dialekt not in GYLDIGE_DIALEKTER:
         return JSONResponse(status_code=400, content={
             "feil": f"Ugyldig dialekt: {dialekt}",
@@ -572,24 +570,38 @@ def api_rimer(
     s2 = info2.get("rimsuffiks") or ""
     t1 = info1.get("tonelag")
     t2 = info2.get("tonelag")
-
-    perfekt = s1 == s2 and s1 != ""
-    score = 1.0 if perfekt else (_score_near_rhyme(s1, s2) if s1 and s2 else 0.0)
-    nesten = not perfekt and score >= 0.5
     samme_tonelag = t1 is not None and t1 == t2
+    ord2_lower = ord2.lower()
 
-    # Generer forklaring
-    if perfekt:
-        forklaring = f"Identisk rimsuffiks /{s1}/"
+    # Sjekk helrim via motoren
+    rim_result = finn_perfekte_rim(ord1, maks=1000, dialekt=dialekt, grupper=False)
+    er_helrim = any(
+        r.get("ord", "").lower() == ord2_lower
+        for r in rim_result.get("resultater", [])
+    )
+
+    # Sjekk halvrim via motoren
+    er_halvrim = False
+    halvrim_score = 0.0
+    if not er_helrim:
+        halvrim_result = finn_halvrim(ord1, maks=1000, terskel=0.5, dialekt=dialekt)
+        for r in halvrim_result.get("resultater", []):
+            if r.get("ord", "").lower() == ord2_lower:
+                er_halvrim = True
+                halvrim_score = r.get("score", 0.0)
+                break
+
+    # Resultat
+    if er_helrim:
+        score = 1.0
+        forklaring = f"Helrim — identisk rimsuffiks /{s1}/"
         if samme_tonelag:
             forklaring += f", begge tonelag {t1}"
-    elif nesten:
-        # Finn hva som er forskjellig
-        if s1.replace("\u02D0", "") == s2.replace("\u02D0", ""):
-            forklaring = f"Nesten-rim: vokallengde-forskjell /{s1}/ vs /{s2}/"
-        else:
-            forklaring = f"Nesten-rim (score {score:.1f}): /{s1}/ vs /{s2}/"
+    elif er_halvrim:
+        score = halvrim_score
+        forklaring = f"Halvrim (score {score:.2f}): /{s1}/ vs /{s2}/"
     else:
+        score = 0.0
         forklaring = f"Rimer ikke: /{s1}/ vs /{s2}/"
 
     elapsed = (time.perf_counter() - start) * 1000
@@ -598,8 +610,8 @@ def api_rimer(
         "ord1": {"ord": ord1, "ipa": info1.get("ipa_ren"), "rimsuffiks": s1, "tonelag": t1},
         "ord2": {"ord": ord2, "ipa": info2.get("ipa_ren"), "rimsuffiks": s2, "tonelag": t2},
         "resultat": {
-            "perfekt_rim": perfekt,
-            "nesten_rim": nesten,
+            "perfekt_rim": er_helrim,
+            "halvrim": er_halvrim,
             "score": round(score, 2),
             "samme_tonelag": samme_tonelag,
             "forklaring": forklaring,
@@ -616,7 +628,7 @@ def api_rimer(
 def api_batch(
     ord: list[str] = Body(..., min_length=1, max_length=50, description="Liste med ord"),
     operasjoner: list[str] = Body(
-        ["rim"], description="Operasjoner: rim, nestenrim, synonymer, antonymer, info, arsenal, rimer"
+        ["rim"], description="Operasjoner: rim, halvrim, synonymer, info, arsenal, rimer"
     ),
     maks: int = Body(10, ge=1, le=100, description="Maks resultater per ord"),
     dialekt: str = Body("øst", description="Dialektregion"),
@@ -654,23 +666,21 @@ def api_batch(
             rim_result = finn_perfekte_rim(word, maks=maks, dialekt=dialekt, grupper=False)
             entry["rim"] = [r["ord"] for r in rim_result.get("resultater", [])]
 
-        if "nestenrim" in operasjoner:
-            nesten = finn_nesten_rim(word, maks=maks, terskel=0.7, dialekt=dialekt)
-            entry["nestenrim"] = [{"ord": r["ord"], "score": r["score"]} for r in nesten]
+        if "halvrim" in operasjoner:
+            halvrim_res = finn_halvrim(word, maks=maks, terskel=0.7, dialekt=dialekt)
+            halvrim_items = halvrim_res.get("resultater", [])
+            entry["halvrim"] = [{"ord": r["ord"], "score": r["score"]} for r in halvrim_items]
 
         if "synonymer" in operasjoner:
             syns = finn_synonymer(word, maks=maks)
             entry["synonymer"] = [s["ord"] for s in syns]
 
-        if "antonymer" in operasjoner:
-            ants = finn_antonymer(word, maks=maks)
-            entry["antonymer"] = [a["ord"] for a in ants]
-
         if "arsenal" in operasjoner:
             info = slaa_opp(word, dialekt=dialekt)
             rim_result = finn_perfekte_rim(word, maks=maks, dialekt=dialekt, grupper=False)
             rim = rim_result.get("resultater", [])
-            nesten = finn_nesten_rim(word, maks=min(maks, 10), terskel=0.7, dialekt=dialekt)
+            halvrim_res2 = finn_halvrim(word, maks=min(maks, 10), terskel=0.7, dialekt=dialekt)
+            halvrim_liste2 = halvrim_res2.get("resultater", [])
             syns = finn_synonymer(word, maks=min(maks, 10))
             syn_rim = []
             for s in syns:
@@ -679,27 +689,43 @@ def api_batch(
                 syn_rim.append({"ord": s["ord"], "rim": [r["ord"] for r in sr]})
             entry["arsenal"] = {
                 "rim": [r["ord"] for r in rim],
-                "nestenrim": [{"ord": r["ord"], "score": r["score"]} for r in nesten],
+                "halvrim": [{"ord": r["ord"], "score": r["score"]} for r in halvrim_liste2],
                 "synonymer": syn_rim,
             }
 
         resultater[word] = entry
 
-    # Handle "rimer" operation: check all pairs
+    # Handle "rimer" operation: check all pairs via motorene
     if "rimer" in operasjoner and len(ord) >= 2:
+        # Forhåndshent rim og halvrim for alle ord
+        rim_cache = {}
+        halvrim_cache = {}
+        for w in ord:
+            rim_res = finn_perfekte_rim(w, maks=1000, dialekt=dialekt, grupper=False)
+            rim_cache[w] = {r["ord"].lower() for r in rim_res.get("resultater", [])}
+            halvrim_res = finn_halvrim(w, maks=1000, terskel=0.5, dialekt=dialekt)
+            halvrim_cache[w] = {
+                r["ord"].lower(): r.get("score", 0.0)
+                for r in halvrim_res.get("resultater", [])
+            }
+
         par = []
         for i in range(len(ord)):
             for j in range(i + 1, len(ord)):
-                info1 = slaa_opp(ord[i], dialekt=dialekt)
-                info2 = slaa_opp(ord[j], dialekt=dialekt)
-                s1 = info1.get("rimsuffiks") or ""
-                s2 = info2.get("rimsuffiks") or ""
-                perfekt = s1 == s2 and s1 != ""
-                score = 1.0 if perfekt else (_score_near_rhyme(s1, s2) if s1 and s2 else 0.0)
+                w1, w2 = ord[i], ord[j]
+                w2_lower = w2.lower()
+                er_helrim = w2_lower in rim_cache.get(w1, set())
+                er_halvrim = False
+                score = 0.0
+                if er_helrim:
+                    score = 1.0
+                elif w2_lower in halvrim_cache.get(w1, {}):
+                    er_halvrim = True
+                    score = halvrim_cache[w1][w2_lower]
                 par.append({
-                    "ord1": ord[i], "ord2": ord[j],
-                    "perfekt_rim": perfekt,
-                    "nesten_rim": not perfekt and score >= 0.5,
+                    "ord1": w1, "ord2": w2,
+                    "perfekt_rim": er_helrim,
+                    "halvrim": er_halvrim,
                     "score": round(score, 2),
                 })
         resultater["_rimpar"] = par

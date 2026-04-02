@@ -140,36 +140,56 @@ class TestFinnRimsti:
 # ===================================================================
 
 
-class TestAPIRimsti:
+class TestAPIRimklyngerSti:
+    """Tests for /api/v1/rimklynger/sti endpoint (replaced /api/v1/rimsti/)."""
+
     def test_basic(self):
-        r = client.get("/api/v1/rimsti/sang")
+        r = client.get("/api/v1/rimklynger/sti?ord=sang")
         assert r.status_code == 200
         data = r.json()
-        assert "steg" in data
-        assert "konsonantskjelett" in data
+        assert "stier" in data
+        assert data["modus"] == "sti"
         assert "soketid_ms" in data
-        assert data["antall_steg"] > 0
+        assert data["antall_stier"] > 0
 
     def test_parameters(self):
-        r = client.get("/api/v1/rimsti/sang?maks_steg=3")
+        r = client.get("/api/v1/rimklynger/sti?ord=sang&maks_steg=3")
         data = r.json()
-        assert len(data["steg"]) <= 3
+        for sti in data["stier"]:
+            assert len(sti["steg"]) <= 3
 
     def test_invalid_dialekt(self):
-        r = client.get("/api/v1/rimsti/sang?dialekt=invalid")
+        r = client.get("/api/v1/rimklynger/sti?ord=sang&dialekt=invalid")
         assert r.status_code == 400
 
     def test_unknown_word(self):
-        r = client.get("/api/v1/rimsti/xyznonexistent")
+        r = client.get("/api/v1/rimklynger/sti?ord=xyznonexistent")
         assert r.status_code == 200
-        assert r.json()["antall_steg"] == 0
+        assert data_or_empty(r) == 0
 
     def test_response_format(self):
-        r = client.get("/api/v1/rimsti/sol")
+        r = client.get("/api/v1/rimklynger/sti?ord=sol")
         data = r.json()
-        assert data["ord"] == "sol"
-        if data["steg"]:
-            s = data["steg"][0]
-            assert "rimsuffiks" in s
-            assert "ord" in s
-            assert "aktiv" in s
+        stier = data["stier"]
+        if stier:
+            sti = stier[0]
+            assert sti["ord"] == "sol"
+            assert "konsonantskjelett" in sti
+            if sti["steg"]:
+                s = sti["steg"][0]
+                assert "rimsuffiks" in s
+                assert "ord" in s
+                assert "aktiv" in s
+
+    def test_random_stier(self):
+        """Without ord param, random stier are generated."""
+        r = client.get("/api/v1/rimklynger/sti?antall_stier=2&maks_steg=5")
+        assert r.status_code == 200
+        data = r.json()
+        # May get 0-2 stier depending on random words
+        assert isinstance(data["stier"], list)
+
+
+def data_or_empty(r):
+    """Helper: return antall_stier from response."""
+    return r.json().get("antall_stier", 0)

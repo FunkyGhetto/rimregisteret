@@ -15,8 +15,8 @@ from fastapi.testclient import TestClient
 from api.main import app
 from rimordbok.db import hent_fonetikk, hent_rim
 from rimordbok.phonetics import slaa_opp
-from rimordbok.rhyme import finn_perfekte_rim, finn_nesten_rim
-from rimordbok.semantics import finn_synonymer, finn_antonymer, finn_relaterte
+from rimordbok.rhyme import finn_perfekte_rim, finn_halvrim
+from rimordbok.semantics import finn_synonymer, finn_relaterte
 from rimordbok.clusters import generer_rimklynger
 
 DB_PATH = Path(__file__).resolve().parent.parent / "data/db/rimindeks.db"
@@ -119,16 +119,16 @@ class TestRimFrekvensordning:
 
 
 # ===================================================================
-# 2. Nesten-rim-tester
+# 2. Halvrim-tester
 # ===================================================================
 
 
-class TestNestenRim:
+class TestHalvrim:
     """Verify near-rhyme matching with phoneme equivalence classes."""
 
     def test_dag_tak_voiced_voiceless(self):
         """dag (ɑːg) ~ tak (ɑːk): g/k equivalence."""
-        results = finn_nesten_rim("dag", db_path=DB_PATH, terskel=0.5)
+        results = finn_halvrim("dag", db_path=DB_PATH, terskel=0.5)
         words = {r["ord"] for r in results}
         assert "tak" in words
 
@@ -139,7 +139,7 @@ class TestNestenRim:
         assert "lang" in {r["ord"] for r in perfect}
 
     def test_near_rhyme_has_score(self):
-        results = finn_nesten_rim("dag", db_path=DB_PATH, terskel=0.5)
+        results = finn_halvrim("dag", db_path=DB_PATH, terskel=0.5)
         for r in results:
             assert "score" in r
             assert 0.0 < r["score"] <= 1.1  # up to 1.0 + 0.1 tonelag bonus
@@ -147,7 +147,7 @@ class TestNestenRim:
     def test_no_perfect_overlap(self):
         """Near-rhymes should not include perfect rhymes."""
         perfect = {r["ord"] for r in finn_perfekte_rim("dag", db_path=DB_PATH, maks=500)}
-        near = {r["ord"] for r in finn_nesten_rim("dag", db_path=DB_PATH, terskel=0.5)}
+        near = {r["ord"] for r in finn_halvrim("dag", db_path=DB_PATH, terskel=0.5)}
         overlap = perfect & near
         assert len(overlap) == 0, f"Overlap: {overlap}"
 
@@ -223,18 +223,6 @@ class TestSemantikk:
         words = {r["ord"] for r in results}
         assert "betydelig" in words or "diger" in words or "stor" not in words
 
-    def test_billig_antonym_dyr(self):
-        """billig → antonym 'dyr' (from WordNet nearAntonymOf)."""
-        results = finn_antonymer("billig", db_path=SEM_DB)
-        words = {r["ord"] for r in results}
-        assert "dyr" in words
-
-    def test_dyr_antonym_billig(self):
-        """Reverse: dyr → antonym 'billig'."""
-        results = finn_antonymer("dyr", db_path=SEM_DB)
-        words = {r["ord"] for r in results}
-        assert "billig" in words
-
     def test_hund_relaterte(self):
         results = finn_relaterte("hund", db_path=SEM_DB)
         assert len(results) > 0
@@ -264,11 +252,9 @@ class TestAPIResponstid:
         "/api/v1/rim/sol",
         "/api/v1/rim/dag",
         "/api/v1/rim/hjerte",
-        "/api/v1/nestenrim/dag",
+        "/api/v1/halvrim/dag",
         "/api/v1/synonymer/glad",
-        "/api/v1/antonymer/billig",
         "/api/v1/relaterte/hund",
-        "/api/v1/homofoner/sol",
         "/api/v1/konsonanter/sol",
         "/api/v1/info/sol",
         "/api/v1/sok?q=sol",

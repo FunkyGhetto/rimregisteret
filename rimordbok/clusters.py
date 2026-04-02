@@ -2,10 +2,16 @@ from __future__ import annotations
 
 """Rimklynge-generering for freestyle-trening.
 
-Tre moduser:
-- PAR:  Rimpar (2 ord per klynge) fra tilfeldige eller angitte rimfamilier.
-- BRED: Brede klynger (4 ord per klynge) fra tilfeldige eller angitte rimfamilier.
-- DYP:  Alle ord fra én rimfamilie, sortert etter frekvens.
+Bruker rim-motoren (finn_perfekte_rim / finn_halvrim) slik at alle
+filtre (morfologisk, stavelsevekt, egennavn) gjelder automatisk.
+
+Fire moduser:
+- PAR:  Rimpar (2 ord per klynge) fra ulike tilfeldige rimfamilier.
+- BRED: Brede klynger (4 ord per klynge) fra tilfeldige rimfamilier.
+- DYP:  Mange ord fra én rimfamilie, sortert etter frekvens.
+- STI:  Rimstier — gli mellom rimfamilier via vokalskift.
+
+Klyngene kan inneholde helrim, halvrim eller begge, styrt av `rimtype`.
 """
 
 import random
@@ -13,10 +19,10 @@ import sqlite3
 from pathlib import Path
 from typing import Optional
 
+from rimordbok.rhyme import finn_perfekte_rim, finn_halvrim, finn_rimsti
+
 DEFAULT_DB = Path(__file__).resolve().parent.parent / "data/db/rimindeks.db"
 
-# Minimum family sizes per mode
-_MIN_FAMILY = {"par": 2, "bred": 4, "dyp": 8}
 _CLUSTER_SIZE = {"par": 2, "bred": 4}
 
 
@@ -27,82 +33,79 @@ def _connect(db_path: Optional[Path] = None) -> sqlite3.Connection:
     return conn
 
 
-def hent_kvalifiserte_suffikser(
-    min_ord: int,
+def _velg_tilfeldig_ord(
     stavelser: Optional[int] = None,
-    min_frekvens: float = 1.0,
-    dialekt: str = "øst",
+    min_frekvens: float = 5.0,
     db_path: Optional[Path] = None,
-) -> list[str]:
-    """Return rhyme suffixes that have at least `min_ord` qualifying words."""
-    conn = _connect(db_path)
-    try:
-        where = ["frekvens >= ?", "length(ord) >= 2", "length(ord) <= 15"]
-        params: list = [min_frekvens]
+) -> Optional[str]:
+    """Velg et tilfeldig, vanlig ord fra databasen.
 
-        if stavelser is not None:
-            where.append("stavelser = ?")
-            params.append(stavelser)
-
-        having_param = min_ord
-        query = (
-            f"SELECT rimsuffiks FROM ord "
-            f"WHERE {' AND '.join(where)} "
-            f"GROUP BY rimsuffiks HAVING COUNT(*) >= ? "
-            f"ORDER BY rimsuffiks"
-        )
-        params.append(having_param)
-
-        cur = conn.execute(query, params)
-        return [row["rimsuffiks"] for row in cur]
-    finally:
-        pass
-
-
-def hent_rimfamilie(
-    rimsuffiks: str,
-    min_frekvens: float = 1.0,
-    stavelser: Optional[int] = None,
-    dialekt: str = "øst",
-    maks: Optional[int] = None,
-    tilfeldig: bool = False,
-    db_path: Optional[Path] = None,
-) -> list[dict]:
-    """Get qualifying words for a given rhyme suffix.
-
-    Args:
-        tilfeldig: If True, use ORDER BY RANDOM() (for par/bred).
-                   If False, ORDER BY frekvens DESC (for dyp).
-        maks: Max words to return. None = all.
+    Filtrerer på frekvens og ordlengde for å unngå obskure ord.
     """
     conn = _connect(db_path)
-    try:
-        where = [
-            "rimsuffiks = ?",
-            "frekvens >= ?",
-            "length(ord) >= 2",
-            "length(ord) <= 15",
-        ]
-        params: list = [rimsuffiks, min_frekvens]
+    where = [
+        "frekvens >= ?",
+        "length(ord) BETWEEN 3 AND 10",
+        "pos NOT LIKE 'PM%'",       # ikke egennavn
+        "ord NOT LIKE '%-%'",        # ikke bindestrek-ord
+    ]
+    params: list = [min_frekvens]
 
-        if stavelser is not None:
-            where.append("stavelser = ?")
-            params.append(stavelser)
+    if stavelser is not None:
+        where.append("stavelser = ?")
+        params.append(stavelser)
 
-        order = "RANDOM()" if tilfeldig else "frekvens DESC"
-        limit_clause = f"LIMIT {int(maks)}" if maks else ""
+    # Hent et tilfeldig ord — ORDER BY RANDOM() med LIMIT
+    query = (
+        f"SELECT LOWER(ord) as ord FROM ord "
+        f"WHERE {' AND '.join(where)} "
+        f"GROUP BY LOWER(ord) "
+        f"ORDER BY RANDOM() LIMIT 1"
+    )
+    row = conn.execute(query, params).fetchone()
+    return row["ord"] if row else None
 
-        query = (
-            f"SELECT LOWER(ord) as ord, MAX(stavelser) as stavelser, "
-            f"tonelag, MAX(frekvens) as frekvens "
-            f"FROM ord WHERE {' AND '.join(where)} "
-            f"GROUP BY LOWER(ord) ORDER BY {order} {limit_clause}"
+
+def _hent_rim_for_ord(
+    ord: str,
+    maks: int,
+    rimtype: str = "helrim",
+    terskel: float = 0.5,
+    dialekt: str = "øst",
+    db_path: Optional[Path] = None,
+) -> tuple[list[str], str | None]:
+    """Hent rim for et ord via rim-motoren.
+
+    Args:
+        rimtype: "helrim", "halvrim", eller "begge"
+
+    Returns:
+        (liste med rimord, rimsuffiks) — rimord sortert etter relevans.
+    """
+    resultater = []
+    rimsuffiks = None
+
+    if rimtype in ("helrim", "begge"):
+        helrim = finn_perfekte_rim(
+            ord, maks=maks, dialekt=dialekt, grupper=False,
+            db_path=db_path, ekskluder_propn=True,
         )
+        rimsuffiks = rimsuffiks or helrim.get("rimsuffiks")
+        for r in helrim.get("resultater", []):
+            if r["ord"] not in resultater:
+                resultater.append(r["ord"])
 
-        cur = conn.execute(query, params)
-        return [dict(row) for row in cur]
-    finally:
-        pass
+    if rimtype in ("halvrim", "begge"):
+        halvrim = finn_halvrim(
+            ord, maks=maks, terskel=terskel, dialekt=dialekt,
+            db_path=db_path, ekskluder_propn=True,
+        )
+        rimsuffiks = rimsuffiks or halvrim.get("rimsuffiks")
+        for r in halvrim.get("resultater", []):
+            if r["ord"] not in resultater:
+                resultater.append(r["ord"])
+
+    return resultater, rimsuffiks
 
 
 def generer_rimklynger(
@@ -112,192 +115,205 @@ def generer_rimklynger(
     min_frekvens: float = 1.0,
     dialekt: str = "øst",
     ord: Optional[str] = None,
+    rimtype: str = "helrim",
+    terskel: float = 0.5,
     db_path: Optional[Path] = None,
 ) -> list[dict]:
-    """Generate rhyme clusters for freestyle training.
+    """Generer rimklynger for freestyle-trening.
+
+    Bruker rim-motoren (finn_perfekte_rim / finn_halvrim) for å
+    finne rim, slik at alle filtre gjelder automatisk.
 
     Args:
-        modus: "par" (2 words), "bred" (4 words), or "dyp" (all words).
-        antall: Number of clusters to generate (ignored for "dyp").
-        stavelser: Filter on syllable count (None = all).
-        min_frekvens: Minimum word frequency per million.
-        dialekt: Dialect region (default "øst").
-        ord: Optional seed word — use its rhyme family instead of random.
-        db_path: Optional database path override.
+        modus: "par" (2 ord), "bred" (4 ord), eller "dyp" (mange ord).
+        antall: Antall klynger å generere (ignoreres for "dyp").
+        stavelser: Filtrer på antall stavelser (None = alle).
+        min_frekvens: Minimum ordfrekvens for seed-ord.
+        dialekt: Dialektregion (default "øst").
+        ord: Valgfritt startord — bruk dette i stedet for tilfeldig.
+        rimtype: "helrim", "halvrim" eller "begge" (default "helrim").
+        terskel: Minimum likhetsscore for halvrim (default 0.5).
+        db_path: Database-sti (None = default).
 
     Returns:
-        List of cluster dicts: {rimsuffiks, stavelser, ord: [str, ...]}
-        For "dyp", always returns a single-element list.
+        Liste med klynge-dicts: {startord, rimtype, ord: [str, ...]}
+        For "dyp": alltid én klynge med mange ord.
     """
-    if modus not in ("par", "bred", "dyp"):
-        raise ValueError(f"Ugyldig modus: {modus!r}. Bruk 'par', 'bred' eller 'dyp'.")
+    if modus not in ("par", "bred", "dyp", "sti"):
+        raise ValueError(f"Ugyldig modus: {modus!r}. Bruk 'par', 'bred', 'dyp' eller 'sti'.")
 
-    if ord is not None:
-        return _klynger_med_ord(
-            modus=modus,
-            startord=ord,
-            antall=antall,
-            stavelser=stavelser,
-            min_frekvens=min_frekvens,
-            dialekt=dialekt,
+    if modus == "dyp":
+        return _klynge_dyp(
+            ord=ord, stavelser=stavelser, min_frekvens=min_frekvens,
+            dialekt=dialekt, rimtype=rimtype, terskel=terskel,
             db_path=db_path,
         )
 
-    return _klynger_tilfeldig(
-        modus=modus,
-        antall=antall,
-        stavelser=stavelser,
-        min_frekvens=min_frekvens,
-        dialekt=dialekt,
+    if modus == "sti":
+        raise ValueError("Bruk generer_rimstier() for sti-modus.")
+
+    return _klynger_par_bred(
+        modus=modus, antall=antall, ord=ord,
+        stavelser=stavelser, min_frekvens=min_frekvens,
+        dialekt=dialekt, rimtype=rimtype, terskel=terskel,
         db_path=db_path,
     )
 
 
-def _klynger_med_ord(
-    modus: str,
-    startord: str,
-    antall: int,
+def _klynge_dyp(
+    ord: Optional[str],
     stavelser: Optional[int],
     min_frekvens: float,
     dialekt: str,
+    rimtype: str,
+    terskel: float,
     db_path: Optional[Path],
 ) -> list[dict]:
-    """Generate clusters using a specific word's rhyme family."""
-    # Look up the word's rhyme suffix
-    conn = _connect(db_path)
-    try:
-        row = conn.execute(
-            "SELECT rimsuffiks FROM ord WHERE LOWER(ord) = ? LIMIT 1",
-            (startord.lower(),),
-        ).fetchone()
-    finally:
-        pass
-
-    if row is None:
-        return []
-
-    suffiks = row["rimsuffiks"]
-
-    # Try exact suffix, then merge with length-normalized suffix
-    # e.g. /ɑːŋ.kə/ + /ɑŋ.kə/ -> "tanke" + "banke", "blanke", etc.
-    def _get_familie(tilfeldig: bool, min_size: int = 2, maks=None):
-        fam = hent_rimfamilie(
-            suffiks, min_frekvens=min_frekvens, stavelser=stavelser,
-            dialekt=dialekt, tilfeldig=tilfeldig, db_path=db_path, maks=maks,
-        )
-        # Try merging with vowel-length variant if family is too small
-        normalized = suffiks.replace("\u02D0", "")
-        if normalized != suffiks and len(fam) < min_size:
-            extra = hent_rimfamilie(
-                normalized, min_frekvens=min_frekvens, stavelser=stavelser,
-                dialekt=dialekt, tilfeldig=tilfeldig, db_path=db_path,
-            )
-            if extra:
-                seen = {w["ord"] for w in fam}
-                for w in extra:
-                    if w["ord"] not in seen:
-                        fam.append(w)
-                        seen.add(w["ord"])
-                return fam, normalized
-        if fam:
-            return fam, suffiks
-        return [], suffiks
-
-    if modus == "dyp":
-        familie, used_suffiks = _get_familie(tilfeldig=False, min_size=2)
-        return [{
-            "rimsuffiks": used_suffiks,
-            "stavelser": stavelser,
-            "ord": [w["ord"] for w in familie],
-        }]
-
-    # par or bred
-    cluster_size = _CLUSTER_SIZE[modus]
-    familie, used_suffiks = _get_familie(tilfeldig=True, min_size=cluster_size)
-
-    ord_liste = [w["ord"] for w in familie]
-    if len(ord_liste) < cluster_size:
-        return []
-
-    klynger = []
-    # Shuffle and deal out clusters
-    random.shuffle(ord_liste)
-
-    for i in range(antall):
-        start = i * cluster_size
-        end = start + cluster_size
-        if end > len(ord_liste):
-            break
-        klynger.append({
-            "rimsuffiks": used_suffiks,
-            "stavelser": stavelser,
-            "ord": ord_liste[start:end],
-        })
-
-    return klynger
-
-
-def _klynger_tilfeldig(
-    modus: str,
-    antall: int,
-    stavelser: Optional[int],
-    min_frekvens: float,
-    dialekt: str,
-    db_path: Optional[Path],
-) -> list[dict]:
-    """Generate clusters from random rhyme families."""
-    min_family_size = _MIN_FAMILY[modus]
-
-    suffikser = hent_kvalifiserte_suffikser(
-        min_ord=min_family_size,
-        stavelser=stavelser,
-        min_frekvens=min_frekvens,
-        dialekt=dialekt,
+    """Dyp modus: mange rim fra ett ord."""
+    startord = ord or _velg_tilfeldig_ord(
+        stavelser=stavelser, min_frekvens=max(min_frekvens, 5.0),
         db_path=db_path,
     )
-
-    if not suffikser:
+    if not startord:
         return []
 
-    if modus == "dyp":
-        # Pick one suffix with many words (prefer large families)
-        # Sample from top 20% by selecting a random large family
-        valgt = random.choice(suffikser)
-        familie = hent_rimfamilie(
-            valgt,
-            min_frekvens=min_frekvens,
-            stavelser=stavelser,
-            dialekt=dialekt,
-            tilfeldig=False,
-            db_path=db_path,
-        )
-        return [{
-            "rimsuffiks": valgt,
-            "stavelser": stavelser,
-            "ord": [w["ord"] for w in familie],
-        }]
+    rim, rimsuffiks = _hent_rim_for_ord(
+        startord, maks=200, rimtype=rimtype,
+        terskel=terskel, dialekt=dialekt, db_path=db_path,
+    )
+    if not rim:
+        return []
 
-    # par or bred
+    return [{
+        "startord": startord,
+        "rimsuffiks": rimsuffiks,
+        "rimtype": rimtype,
+        "ord": rim,
+    }]
+
+
+def _klynger_par_bred(
+    modus: str,
+    antall: int,
+    ord: Optional[str],
+    stavelser: Optional[int],
+    min_frekvens: float,
+    dialekt: str,
+    rimtype: str,
+    terskel: float,
+    db_path: Optional[Path],
+) -> list[dict]:
+    """Par/bred modus: flere klynger med 2 eller 4 ord."""
     cluster_size = _CLUSTER_SIZE[modus]
-    valgte = random.sample(suffikser, min(antall, len(suffikser)))
-
     klynger = []
-    for suffiks in valgte:
-        familie = hent_rimfamilie(
-            suffiks,
-            min_frekvens=min_frekvens,
-            stavelser=stavelser,
-            dialekt=dialekt,
-            tilfeldig=True,
-            maks=cluster_size,
-            db_path=db_path,
+
+    if ord:
+        # Brukeren ga et startord — bygg klynger fra det ordets rim
+        rim, rimsuffiks = _hent_rim_for_ord(
+            ord, maks=cluster_size * antall,
+            rimtype=rimtype, terskel=terskel,
+            dialekt=dialekt, db_path=db_path,
         )
-        ord_liste = [w["ord"] for w in familie]
-        if len(ord_liste) >= cluster_size:
+        random.shuffle(rim)
+        for i in range(0, len(rim) - cluster_size + 1, cluster_size):
             klynger.append({
-                "rimsuffiks": suffiks,
-                "stavelser": stavelser,
-                "ord": ord_liste[:cluster_size],
+                "startord": ord,
+                "rimsuffiks": rimsuffiks,
+                "rimtype": rimtype,
+                "ord": rim[i:i + cluster_size],
+            })
+            if len(klynger) >= antall:
+                break
+    else:
+        # Velg tilfeldige startord, ett per klynge
+        forsok = 0
+        while len(klynger) < antall and forsok < antall * 3:
+            forsok += 1
+            startord = _velg_tilfeldig_ord(
+                stavelser=stavelser,
+                min_frekvens=max(min_frekvens, 5.0),
+                db_path=db_path,
+            )
+            if not startord:
+                continue
+
+            rim, rimsuffiks = _hent_rim_for_ord(
+                startord, maks=cluster_size * 2,
+                rimtype=rimtype, terskel=terskel,
+                dialekt=dialekt, db_path=db_path,
+            )
+            if len(rim) < cluster_size:
+                continue
+
+            # Velg tilfeldige ord fra rimene
+            valgte = random.sample(rim, cluster_size)
+            klynger.append({
+                "startord": startord,
+                "rimsuffiks": rimsuffiks,
+                "rimtype": rimtype,
+                "ord": valgte,
             })
 
     return klynger
+
+
+def generer_rimstier(
+    antall_stier: int = 3,
+    maks_steg: int = 8,
+    min_familiestr: int = 3,
+    min_frekvens: float = 1.0,
+    dialekt: str = "øst",
+    ord: Optional[str] = None,
+    db_path: Optional[Path] = None,
+) -> list[dict]:
+    """Generer rimstier for freestyle-trening.
+
+    Hver rimsti er en vandring gjennom vokalrommet med fast
+    konsonantskjelett — hvert steg er en rimfamilie med gradvis
+    vokalforskyvning.
+
+    Args:
+        antall_stier: Antall rimstier å generere.
+        maks_steg: Maks antall steg (rimfamilier) per sti.
+        min_familiestr: Minimum ord per rimfamilie.
+        min_frekvens: Minimum ordfrekvens for seed-ord.
+        dialekt: Dialektregion (default "øst").
+        ord: Valgfritt startord. Hvis None, velges tilfeldige ord.
+        db_path: Database-sti (None = default).
+
+    Returns:
+        Liste med sti-dicts, hver med: ord, rimsuffiks,
+        konsonantskjelett, steg[], antall_steg.
+    """
+    stier = []
+
+    if ord:
+        # Brukeren ga et startord — generer én sti fra det
+        sti = finn_rimsti(
+            ord, maks_steg=maks_steg, min_familiestr=min_familiestr,
+            min_frekvens=min_frekvens, dialekt=dialekt, db_path=db_path,
+        )
+        if sti.get("steg"):
+            stier.append(sti)
+    else:
+        # Generer tilfeldige rimstier
+        forsok = 0
+        while len(stier) < antall_stier and forsok < antall_stier * 5:
+            forsok += 1
+            startord = _velg_tilfeldig_ord(
+                min_frekvens=max(min_frekvens, 5.0),
+                db_path=db_path,
+            )
+            if not startord:
+                continue
+
+            sti = finn_rimsti(
+                startord, maks_steg=maks_steg,
+                min_familiestr=min_familiestr,
+                min_frekvens=min_frekvens, dialekt=dialekt,
+                db_path=db_path,
+            )
+            if sti.get("steg") and len(sti["steg"]) >= 3:
+                stier.append(sti)
+
+    return stier

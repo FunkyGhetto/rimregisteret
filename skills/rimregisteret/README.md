@@ -20,7 +20,7 @@ ln -s /sti/til/rimregisteret/skills/rimregisteret /ditt-prosjekt/.claude/skills/
 
 Når denne skillen er aktiv, kan Claude:
 
-- Slå opp rim, nesten-rim, synonymer og antonymer for norske ord
+- Slå opp rim, halvrim, synonymer og antonymer for norske ord
 - Forklare norsk fonetikk (IPA, tonelag, retroflekser, dialekter)
 - Generere rimklynger for freestyle-trening
 - Analysere rimdensitet i tekster

@@ -7,7 +7,7 @@ Norsk rimordbok og freestyle-treningsverktøy.
 ## Funksjoner
 
 - **Fonetisk rimfinn** med 684K ord fra NB Uttale
-- **Perfekte rim**, nesten-rim, homofoner, konsonantmatching
+- **Perfekte rim**, halvrim, homofoner, konsonantmatching
 - **Synonymer og antonymer** fra Norwegian WordNet
 - **Rimklynger** — tilfeldig genererte treningssett for cypher-drill (par, bred, dyp)
 - **5 dialektregioner** — østnorsk, nordnorsk, trøndersk, vestnorsk, sørvestnorsk
@@ -34,7 +34,7 @@ uvicorn api.main:app --reload
 | Endepunkt | Beskrivelse |
 |-----------|-------------|
 | `GET /api/v1/rim/{ord}` | Perfekte rim |
-| `GET /api/v1/nestenrim/{ord}` | Nesten-rim med scoring |
+| `GET /api/v1/halvrim/{ord}` | Halvrim med scoring |
 | `GET /api/v1/synonymer/{ord}` | Synonymer |
 | `GET /api/v1/antonymer/{ord}` | Antonymer |
 | `GET /api/v1/info/{ord}` | Fonetikk + rim + synonymer |

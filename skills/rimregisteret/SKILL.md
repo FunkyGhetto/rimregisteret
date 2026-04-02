@@ -12,9 +12,8 @@ Du har tilgang til Rimregisteret via MCP-verktøy som du kan kalle direkte. Bruk
 | Verktøy | Hva det gjør | Når du bruker det |
 |---------|-------------|-------------------|
 | `finn_rim(ord)` | Perfekte rim | "Hva rimer på sol?" |
-| `finn_nesten_rim(ord)` | Nesten-rim med score | "Finn nesten-rim for dag" |
+| `finn_halvrim(ord)` | Halvrim med score | "Finn halvrim for dag" |
 | `finn_synonymer(ord)` | Synonymer | "Synonymer for glad" |
-| `finn_antonymer(ord)` | Antonymer | "Motsatt av billig" |
 | `ordinfo(ord)` | IPA, tonelag, definisjon, rim, synonymer | "Fortell meg om ordet kjærlighet" |
 | `arsenal(ord)` | Alt kreativt materiale i ett kall | "Gi meg alt jeg kan bygge med fra krone" |
 | `sjekk_rim(ord1, ord2)` | Sjekk om to ord rimer | "Rimer tanke og banke?" |
@@ -80,9 +79,9 @@ I skrift spiller tonelag ingen rolle, men i freestyle merkes forskjellen. "bønd
 
 Øst/nord/midt deler retroflekser. Vest/sørvest beholder r+konsonant-klynger, noe som gir ulike rimsuffikser og stavelsesstrukturer.
 
-### Nesten-rim
+### Halvrim
 
-Nesten-rim bruker fonem-ekvivalensklasser:
+Halvrim bruker fonem-ekvivalensklasser:
 
 **Vokal-nærhet** (score +0.6 per match):
 - ɑ ↔ ɑː, ɛ ↔ eː, ɪ ↔ iː, ɔ ↔ oː, ʉ ↔ ʉː
@@ -126,7 +125,7 @@ fMRI-forskning (Liu et al., Johns Hopkins 2012) viser at erfarne freestylere **d
 - API: `/rimklynger/bred?antall=10`
 
 **Avansert** (1+ år):
-- 3+ stavelser, nesten-rim, bland par og brede
+- 3+ stavelser, halvrim, bland par og brede
 - Daglig freestyle, klynger som oppvarming
 - Mål: automatisert rimhenting, fokus på narrativ og punchlines
 - API: `/rimklynger/bred?stavelser=3&antall=10`
@@ -160,17 +159,17 @@ curl "https://www.rimregisteret.no/api/v1/rim/hjerte?stavelser=2&dialekt=vest"
 curl "https://www.rimregisteret.no/api/v1/rim/sol?samme_tonelag=true"
 ```
 
-### Nesten-rim
+### Halvrim
 
 ```
-GET /api/v1/nestenrim/{ord}
+GET /api/v1/halvrim/{ord}
 ```
-Finn nesten-rim med likhetsscore (0-1).
+Finn halvrim med likhetsscore (0-1).
 
 Parametere: `maks`, `terskel` (float 0.0-1.0), `stavelser`, `tonelag`, `dialekt`
 
 ```bash
-curl "https://www.rimregisteret.no/api/v1/nestenrim/dag?terskel=0.6&maks=10"
+curl "https://www.rimregisteret.no/api/v1/halvrim/dag?terskel=0.6&maks=10"
 ```
 
 ### Synonymer
@@ -184,17 +183,6 @@ Synonymer fra Norwegian WordNet + norsk synonymordbok.
 curl "https://www.rimregisteret.no/api/v1/synonymer/glad?maks=10"
 ```
 
-### Antonymer
-
-```
-GET /api/v1/antonymer/{ord}
-```
-Antonymer (motsetningsord).
-
-```bash
-curl "https://www.rimregisteret.no/api/v1/antonymer/billig"
-```
-
 ### Relaterte ord
 
 ```
@@ -204,17 +192,6 @@ Hypernymer, hyponymer, meronymer, holonymer fra WordNet.
 
 ```bash
 curl "https://www.rimregisteret.no/api/v1/relaterte/hund"
-```
-
-### Homofoner
-
-```
-GET /api/v1/homofoner/{ord}
-```
-Ord med identisk uttale men ulik stavemåte.
-
-```bash
-curl "https://www.rimregisteret.no/api/v1/homofoner/sol"
 ```
 
 ### Konsonantmatching
@@ -293,7 +270,7 @@ curl "https://www.rimregisteret.no/api/v1/rimklynger/par?dialekt=vest&antall=5"
 ```
 GET /api/v1/arsenal/{ord}
 ```
-Alt kreativt materiale i ett kall: rim, nesten-rim, synonymer med rim for hvert synonym.
+Alt kreativt materiale i ett kall: rim, halvrim, synonymer med rim for hvert synonym.
 Erstatter 10-15 separate kall ved kreativ skriving.
 
 Parametere: `maks_rim`, `maks_synonymer`, `maks_synonymrim`, `dialekt`
@@ -305,7 +282,7 @@ curl "https://www.rimregisteret.no/api/v1/arsenal/krone?maks_rim=10&maks_synonym
 Respons inkluderer:
 - `info`: IPA, stavelser, tonelag, rimsuffiks, definisjon, ordklasse
 - `rim`: liste av perfekte rimord
-- `nesten_rim`: liste av nesten-rim med score
+- `halvrim`: liste av halvrim med score
 - `synonymer`: hvert synonym med en liste av rimord for det synonymet
 
 ### Rimsjekk (to ord)
@@ -326,7 +303,7 @@ curl "https://www.rimregisteret.no/api/v1/rimer/sol/jul"
 Respons inkluderer:
 - `ord1`, `ord2`: IPA og rimsuffiks for begge ord
 - `resultat.perfekt_rim`: bool
-- `resultat.nesten_rim`: bool
+- `resultat.halvrim`: bool
 - `resultat.score`: 0.0-1.1
 - `resultat.forklaring`: norsk tekst som forklarer resultatet
 
@@ -339,7 +316,7 @@ Kjør operasjoner på flere ord i ett kall. Støtter vilkårlig mange ord (maks 
 
 Body (JSON):
 - `ord`: liste med ord (påkrevd)
-- `operasjoner`: liste av operasjoner — "rim", "nestenrim", "synonymer", "antonymer", "info", "arsenal", "rimer"
+- `operasjoner`: liste av operasjoner — "rim", "halvrim", "synonymer", "info", "arsenal", "rimer"
 - `maks`: maks resultater per ord (default 10)
 - `dialekt`: dialektregion (default "øst")
 
@@ -408,7 +385,7 @@ Rimklynger:
 → `GET /rim/{ord}?maks=20`
 
 ### Skriv tekst eller vers
-→ Bruk `/arsenal/{ord}` — gir rim, nesten-rim, synonymer med rim i ett kall.
+→ Bruk `/arsenal/{ord}` — gir rim, halvrim, synonymer med rim i ett kall.
 Eksempel: `/arsenal/kjærlighet` gir rim på "kjærlighet" + synonymer som "lidenskap", "forelskelse" med rim for hver.
 
 ### Sjekk om to ord rimer
@@ -434,7 +411,7 @@ Eksempel: `/arsenal/kjærlighet` gir rim på "kjærlighet" + synonymer som "lide
 
 ### Kreative alternativer (for tekstskriving)
 1. Søk `/rim/{ord}` for perfekte rim
-2. Søk `/nestenrim/{ord}` for nesten-rim (bredere utvalg)
+2. Søk `/halvrim/{ord}` for halvrim (bredere utvalg)
 3. Søk `/synonymer/{ord}` for å finne et synonym som har bedre rimord
 4. Kombiner: finn synonym → finn rim for synonymet
 
@@ -457,5 +434,5 @@ Eksempel: `/arsenal/kjærlighet` gir rim på "kjærlighet" + synonymer som "lide
 - Malmi & Takala (2016), "DopeLearning: A Computational Approach to Rap Lyrics Generation", arXiv
 - NB Uttale — Nasjonalbiblioteket, Språkbanken
 - Norwegian WordNet — Nasjonalbiblioteket, Språkbanken
-- Bokmålsordboka — Språkrådet / Universitetet i Bergen, via ordbokapi.org (definisjoner, synonymer, antonymer)
-- Synonymordboka.no — kryssordsynonymer og antonymer (bredest dekning)
+- Bokmålsordboka — Språkrådet / Universitetet i Bergen, via ordbokapi.org (definisjoner, synonymer)
+- Synonymordboka.no — kryssordsynonymer (bredest dekning)

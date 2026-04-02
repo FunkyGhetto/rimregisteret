@@ -89,12 +89,12 @@ class TestRim:
         assert data["soketid_ms"] < 100
 
 
-# --- Nesten-rim ---
+# --- Halvrim ---
 
 
-class TestNestenRim:
+class TestHalvrim:
     def test_dag(self):
-        r = client.get("/api/v1/nestenrim/dag")
+        r = client.get("/api/v1/halvrim/dag")
         assert r.status_code == 200
         data = r.json()
         assert data["antall"] > 0
@@ -102,7 +102,7 @@ class TestNestenRim:
         assert "tak" in words
 
     def test_terskel(self):
-        r = client.get("/api/v1/nestenrim/dag?terskel=0.8")
+        r = client.get("/api/v1/halvrim/dag?terskel=0.8")
         data = r.json()
         for item in data["resultater"]:
             assert item["score"] >= 0.8
@@ -130,16 +130,6 @@ class TestSynonymer:
         assert item["relasjon"] == "synonym"
 
 
-# --- Antonymer ---
-
-
-class TestAntonymer:
-    def test_returns_list(self):
-        r = client.get("/api/v1/antonymer/glad")
-        assert r.status_code == 200
-        assert isinstance(r.json()["resultater"], list)
-
-
 # --- Relaterte ---
 
 
@@ -149,16 +139,6 @@ class TestRelaterte:
         assert r.status_code == 200
         data = r.json()
         assert data["antall"] > 0
-
-
-# --- Homofoner ---
-
-
-class TestHomofoner:
-    def test_returns_list(self):
-        r = client.get("/api/v1/homofoner/sol")
-        assert r.status_code == 200
-        assert isinstance(r.json()["resultater"], list)
 
 
 # --- Konsonanter ---
@@ -374,10 +354,15 @@ class TestEdgeCases:
         r = client.get("/api/v1/rim/Sol")
         assert r.status_code == 200
 
-    def test_maks_clamped(self):
-        """maks > 1000 should be rejected by validation."""
+    def test_maks_high_accepted(self):
+        """Rim/halvrim accept high maks values (no limit for frontend)."""
         r = client.get("/api/v1/rim/sol?maks=5000")
-        assert r.status_code == 422  # FastAPI validation error
+        assert r.status_code == 200
+
+    def test_maks_too_high_for_synonymer(self):
+        """Synonymer still has le=1000 validation."""
+        r = client.get("/api/v1/synonymer/glad?maks=5000")
+        assert r.status_code == 422
 
     def test_cors_header(self):
         r = client.get("/api/v1/rim/sol", headers={"Origin": "http://localhost:3000"})

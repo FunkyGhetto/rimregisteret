@@ -38,7 +38,7 @@ Verifiserer at ord som **ikke** rimer korrekt avvises.
 ### 3. Frekvensordning (2 tester)
 Rimresultater sorteres etter frekvens synkende. Vanlige ord kommer før sjeldne.
 
-### 4. Nesten-rim (4 tester)
+### 4. Halvrim (4 tester)
 - dag→tak (stemt/ustemt konsonantpar)
 - sang→lang (lik endelse)
 - Score mellom 0 og 1, ingen overlapp med perfekte rim
@@ -56,7 +56,7 @@ Rimresultater sorteres etter frekvens synkende. Vanlige ord kommer før sjeldne.
 
 ### 7. API-responstid (11 endepunkter)
 Alle endepunkter svarer under 150ms etter oppvarming:
-`/rim`, `/nestenrim`, `/synonymer`, `/antonymer`, `/relaterte`, `/homofoner`, `/konsonanter`, `/info`, `/sok`
+`/rim`, `/halvrim`, `/synonymer`, `/antonymer`, `/relaterte`, `/homofoner`, `/konsonanter`, `/info`, `/sok`
 
 ### 8. Edge cases (9 tester)
 - Ukjente ord faller tilbake til G2P
@@ -151,7 +151,7 @@ Alle endepunkter svarer under 150ms etter oppvarming:
 | **G2P** (28) | IPA-transkripsjon, retroflekser, diftonger, stavelsesdeling | Alle regler fungerer |
 | **Parser** (12) | IPA-parsing, Nofabet-stress, filtrering | Korrekt parsing |
 | **Rimindeks** (19) | Rimsuffiks, vokaler, rimoppslag, søk | Suffiks-algoritme fungerer |
-| **Rim** (22) | Perfekte rim, nesten-rim, homofoner, konsonanter | Alle rimtyper fungerer |
+| **Rim** (22) | Perfekte rim, halvrim, homofoner, konsonanter | Alle rimtyper fungerer |
 | **Frekvens** (9) | Frekvensfil, DB-frekvenser, sortering | 323K ord med frekvens |
 | **Semantikk** (16) | Synonymer, antonymer, relaterte, meronymer | 436K relasjoner |
 | **Klynger** (45) | Par/bred/dyp, filtre, tilfeldighet, DB-konsistens | Alle moduser fungerer |

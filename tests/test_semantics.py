@@ -8,7 +8,6 @@ import pytest
 
 from rimordbok.semantics import (
     finn_synonymer,
-    finn_antonymer,
     finn_relaterte,
     finn_meronymer,
     finn_holonymer,
@@ -61,16 +60,6 @@ class TestFinnSynonymer:
     def test_stor_has_synonyms(self):
         results = finn_synonymer("stor", db_path=SEM_DB, rhyme_db=RHYME_DB)
         assert len(results) > 0
-
-
-class TestFinnAntonymer:
-    def test_returns_list(self):
-        results = finn_antonymer("glad", db_path=SEM_DB, rhyme_db=RHYME_DB)
-        assert isinstance(results, list)
-
-    def test_unknown_word(self):
-        results = finn_antonymer("xyznonexistent", db_path=SEM_DB, rhyme_db=RHYME_DB)
-        assert results == []
 
 
 class TestFinnRelaterte:

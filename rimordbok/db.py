@@ -272,6 +272,109 @@ def hent_rim_for_suffiks(
         pass
 
 
+def hent_ord_for_halvrim(
+    suffikser: list[str],
+    ord_lower: str,
+    db_path: Optional[Path] = None,
+    maks: int = 500,
+    ekskluder_propn: bool = True,
+    stavelser_eq: Optional[int] = None,
+    stavelser_gte: Optional[int] = None,
+) -> list[dict]:
+    """Get words matching any of the given suffixes, with IPA data.
+
+    Used by the halvrim engine to fetch candidates for depth-based scoring.
+    Can filter by syllable count: stavelser_eq for exact, stavelser_gte for minimum.
+
+    Returns list of dicts: ord, rimsuffiks, tonelag, stavelser, frekvens, ipa_ren, pos.
+    Deduplicates by LOWER(ord), keeping highest-frequency entry.
+    """
+    if not suffikser:
+        return []
+    conn = _connect(db_path)
+    try:
+        propn_clause = "AND pos NOT LIKE 'PM%'" if ekskluder_propn else ""
+
+        syl_clause = ""
+        syl_params: list = []
+        if stavelser_eq is not None:
+            syl_clause = "AND stavelser = ?"
+            syl_params = [stavelser_eq]
+        elif stavelser_gte is not None:
+            syl_clause = "AND stavelser >= ?"
+            syl_params = [stavelser_gte]
+
+        placeholders = ",".join("?" for _ in suffikser)
+        params: list = list(suffikser) + [ord_lower] + syl_params + [maks]
+
+        cur = conn.execute(
+            f"SELECT LOWER(ord) as ord, rimsuffiks, tonelag, "
+            f"stavelser, frekvens, ipa_ren, pos "
+            f"FROM ord WHERE rimsuffiks IN ({placeholders}) "
+            f"AND LOWER(ord) != ? "
+            f"{propn_clause} {syl_clause} "
+            f"ORDER BY frekvens DESC LIMIT ?",
+            params,
+        )
+        # Deduplicate by word, keeping highest frequency entry
+        seen: dict[str, dict] = {}
+        for r in cur:
+            d = dict(r)
+            key = d["ord"]
+            if key not in seen or (d["frekvens"] or 0) > (seen[key]["frekvens"] or 0):
+                seen[key] = d
+        return list(seen.values())
+    finally:
+        pass
+
+
+def hent_rim_med_ipa(
+    suffiks: str,
+    ord_lower: str,
+    db_path: Optional[Path] = None,
+    maks: int = 500,
+    ekskluder_propn: bool = True,
+    samme_tonelag: bool = False,
+    tonelag_val: Optional[int] = None,
+) -> list[dict]:
+    """Get rhyme candidates with IPA data for syllable-depth filtering.
+
+    Like hent_rim_for_suffiks but also returns ipa_ren, needed for
+    computing multi-syllable suffix matches. Deduplicates by LOWER(ord),
+    keeping the highest-frequency entry.
+
+    Returns list of dicts: ord, rimsuffiks, tonelag, stavelser, frekvens, ipa_ren, pos.
+    """
+    conn = _connect(db_path)
+    try:
+        propn_clause = "AND pos NOT LIKE 'PM%'" if ekskluder_propn else ""
+        tonelag_clause = "AND tonelag = ?" if (samme_tonelag and tonelag_val is not None) else ""
+
+        params: list = [suffiks, ord_lower]
+        if tonelag_clause:
+            params.append(tonelag_val)
+        params.append(maks)
+
+        cur = conn.execute(
+            f"SELECT LOWER(ord) as ord, rimsuffiks, tonelag, "
+            f"stavelser, frekvens, ipa_ren, pos "
+            f"FROM ord WHERE rimsuffiks = ? AND LOWER(ord) != ? "
+            f"{propn_clause} {tonelag_clause} "
+            f"ORDER BY frekvens DESC LIMIT ?",
+            params,
+        )
+        # Deduplicate by word, keeping highest frequency entry
+        seen: dict[str, dict] = {}
+        for r in cur:
+            d = dict(r)
+            key = d["ord"]
+            if key not in seen or (d["frekvens"] or 0) > (seen[key]["frekvens"] or 0):
+                seen[key] = d
+        return list(seen.values())
+    finally:
+        pass
+
+
 def sok_ord(
     prefiks: str, db_path: Optional[Path] = None, maks: int = 20
 ) -> list[str]:
