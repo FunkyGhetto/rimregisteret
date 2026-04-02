@@ -1,4 +1,12 @@
+# Vercel only needs frontend/ — ignore everything else
 data/
+api/
+rimordbok/
+scripts/
+mcp/
+skills/
+tests/
+*.py
 *.db
 *.jsonl
 *.log
@@ -9,8 +17,10 @@ __pycache__/
 *.egg-info/
 .pytest_cache/
 .claude/
-rimordbok/
-scripts/
-tests/
-api/
+requirements.txt
+Procfile
+railway.json
+pyproject.toml
+.railwayignore
+.mcp.json
 serve.py

@@ -7,11 +7,11 @@ dist/
 build/
 .pytest_cache/
 
-# Data (too large for GitHub — rebuild with scripts/)
-data/db/*.db
+# Data (processed intermediates and raw source data)
 data/processed/*.jsonl
 data/processed/*.log
 data/raw/
+# Note: data/db/*.db are tracked in Git for Railway deploy
 
 # Environment
 .env
