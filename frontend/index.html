@@ -1202,9 +1202,12 @@ document.addEventListener('click', e => {
 });
 
 async function fetchAC(q) {
+  const gen = acGeneration;
   try {
     const r = await fetch(`${API}/api/v1/sok?q=${encodeURIComponent(q)}&maks=8`);
+    if (gen !== acGeneration) return;  // hideAC was called while fetching
     const data = await r.json();
+    if (gen !== acGeneration) return;
     acItems = data.resultater || [];
     if (acItems.length === 0) { hideAC(); return; }
     acIndex = -1;
@@ -1215,7 +1218,7 @@ async function fetchAC(q) {
     acEl.querySelectorAll('div').forEach(div => {
       div.addEventListener('click', () => selectAC(div.dataset.word));
     });
-  } catch { hideAC(); }
+  } catch { if (gen === acGeneration) hideAC(); }
 }
 
 function moveAC(dir) {
@@ -1237,9 +1240,11 @@ function selectAC(word) {
   }
 }
 
+let acGeneration = 0;
 function hideAC() {
   acEl.style.display = 'none';
   acIndex = -1;
+  acGeneration++;  // invalidate any in-flight fetchAC
 }
 
 // --- Cluster generation ---
