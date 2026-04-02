@@ -1280,11 +1280,9 @@ async function doSearch(word) {
       const steg = stiData.steg || [];
       if (steg.length === 0) {
         statusEl.textContent = `Ingen rimstier funnet for "${word}"`;
-        renderInfo(infoData);
         return;
       }
       statusEl.textContent = `${steg.length} rimfamilier for "${word}"`;
-      renderInfo(infoData);
       renderRimstier(stiData);
     } catch (err) {
       statusEl.textContent = 'Feil: Kunne ikke koble til API-et.';
