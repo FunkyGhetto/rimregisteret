@@ -766,12 +766,9 @@ body {
       <label>Maks ord</label>
       <input type="number" class="cluster-number" id="dypMaks" value="50" min="5" max="500">
     </span>
-    <span id="stiAntallWrap" style="display:none">
-      <label>Antall stier</label>
-      <input type="number" class="cluster-number" id="stiAntall" value="3" min="1" max="20">
-    </span>
+    <span id="stiAntallWrap" style="display:none"></span>
     <span id="stiLengdeWrap" style="display:none">
-      <label>Steg per sti</label>
+      <label>Antall steg</label>
       <input type="number" class="cluster-number" id="stiLengde" value="8" min="3" max="30">
     </span>
   </div>
@@ -1284,9 +1281,8 @@ async function doGenerateCluster() {
 
   if (currentModus === 'sti') {
     // Rimsti mode — different endpoint and rendering
-    const stiAntall = parseInt(stiAntallEl.value) || 3;
     const stiLengde = parseInt(stiLengdeEl.value) || 8;
-    let url = `${API}/api/v1/rimklynger/sti?maks_steg=${stiLengde}&antall_stier=${stiAntall}&dialekt=${encodeURIComponent(currentDialekt)}`;
+    let url = `${API}/api/v1/rimklynger/sti?maks_steg=${stiLengde}&antall_stier=1&dialekt=${encodeURIComponent(currentDialekt)}`;
     if (word) url += `&ord=${encodeURIComponent(word)}`;
 
     try {
@@ -1305,7 +1301,8 @@ async function doGenerateCluster() {
       }
 
       const totalSteg = stier.reduce((s, sti) => s + (sti.steg || []).length, 0);
-      statusEl.textContent = `${stier.length} rimsti${stier.length > 1 ? 'er' : ''}, ${totalSteg} steg`;
+      const totalOrd = stier.reduce((s, sti) => s + (sti.steg || []).reduce((ss, st) => ss + (st.ord || []).length, 0), 0);
+      statusEl.textContent = `Rimsti: ${totalSteg} steg, ${totalOrd} ord`;
 
       renderRimstier(stier);
     } catch (err) {
