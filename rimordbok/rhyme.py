@@ -973,80 +973,62 @@ def finn_rimsti(
     if not suffix:
         return empty
 
-    # --- Chain-building algorithm ---
-    # Single continuous chain: each word leads to the next through
-    # rhyme (perfect or near). The suffix drifts naturally.
-    # Steps are created when the suffix CHANGES — that's the boundary.
-    #
-    # Example: sol → pol → monopol → parabol | anabol → abstraksjon →
-    #          busstasjon | telefon → mikrofon → ...
-    # The | marks where the suffix shifted, creating a new step.
+    # --- Step-by-step algorithm ---
+    # Each step is a rhyme family. Fill it with helrim words, then
+    # bridge to the nearest vowel-neighbor for the next step.
+    # Last word of each step is the anchor for the bridge.
 
     used_words: set[str] = {ord.lower()}
-    chain: list[tuple[str, str]] = [(ord.lower(), suffix)]  # (word, suffix)
+    all_steg: list[dict] = []
+    cur_suffix = suffix
     anchor = ord
 
-    total_words = maks_steg * ord_per_steg
-    anchor_info_cur = _get_word_info(anchor, db_path=db_path, dialekt=dialekt)
-    anchor_syl_cur = (anchor_info_cur.get("stavelser", 1) or 1) if anchor_info_cur else 1
-
-    for _ in range(total_words):
-        # Get ALL candidates: helrim + halvrim
-        candidates = _rimsti_candidates(
+    for _step_i in range(maks_steg):
+        # Fill this step with helrim words sharing cur_suffix
+        step_words = [anchor.lower()] if _step_i == 0 else []
+        helrim = _rimsti_candidates(
             anchor, used_words, mode="helrim",
             db_path=db_path, dialekt=dialekt,
         )
-        halv_candidates = _rimsti_candidates(
-            anchor, used_words, mode="bro",
-            db_path=db_path, dialekt=dialekt,
-        )
-        candidates.extend(halv_candidates)
+        # Pick top words by frequency
+        helrim.sort(key=lambda c: -(c.get("frekvens", 0) or 0))
+        for c in helrim:
+            w = c["ord"]
+            if w in used_words:
+                continue
+            step_words.append(w)
+            used_words.add(w)
+            if len(step_words) >= ord_per_steg:
+                break
 
-        # Filter: max ±1 syllable from current anchor
-        candidates = [
-            c for c in candidates
-            if abs((c.get("stavelser", 1) or 1) - anchor_syl_cur) <= 1
-        ]
-
-        if not candidates:
+        if not step_words:
             break
 
-        # Prefer staying in the same suffix family (natural flow)
-        # but allow drift when it's the best option
-        chosen = _rimsti_pick(candidates, anchor, [], prefer_drift=False)
-        if chosen is None:
-            break
+        all_steg.append({
+            "rimsuffiks": cur_suffix,
+            "ord": step_words,
+            "aktiv": _step_i == 0,
+        })
 
-        word = chosen["ord"]
-        word_info = _get_word_info(word, db_path=db_path, dialekt=dialekt)
-        word_suffix = word_info.get("rimsuffiks", "") if word_info else ""
-        anchor_syl_cur = (word_info.get("stavelser", 1) or 1) if word_info else 1
-
-        chain.append((word, word_suffix))
-        used_words.add(word)
-        anchor = word
-
-    # --- Split chain into fixed-size steps ---
-    # Each step has ord_per_steg words. The suffix of the last word
-    # represents where the step "landed".
-    all_steg: list[dict] = []
-    words_only = [w for w, _s in chain]
-
-    for i in range(0, len(words_only), ord_per_steg):
-        chunk = words_only[i:i + ord_per_steg]
-        if not chunk:
-            break
         if len(all_steg) >= maks_steg:
             break
-        # Get suffix of last word in chunk
-        last_word = chunk[-1]
-        last_info = _get_word_info(last_word, db_path=db_path, dialekt=dialekt)
-        chunk_suffix = last_info.get("rimsuffiks", "") if last_info else ""
-        all_steg.append({
-            "rimsuffiks": chunk_suffix,
-            "ord": chunk,
-            "aktiv": i == 0,
-        })
+
+        # Bridge: use last word as anchor, find nearest vowel-neighbor
+        bridge_anchor = step_words[-1]
+        bro_candidates = _rimsti_candidates(
+            bridge_anchor, used_words, mode="bro",
+            db_path=db_path, dialekt=dialekt,
+        )
+        if not bro_candidates:
+            break
+
+        # Pick best bridge word (highest score = closest vowel)
+        bro_candidates.sort(key=lambda c: -(c.get("score", 0)))
+        chosen = bro_candidates[0]
+        anchor = chosen["ord"]
+        used_words.add(anchor)
+        anchor_info = _get_word_info(anchor, db_path=db_path, dialekt=dialekt)
+        cur_suffix = anchor_info.get("rimsuffiks", "") if anchor_info else ""
 
     return {
         "ord": ord,
@@ -1110,19 +1092,43 @@ def _rimsti_candidates(
                 neighbor_rows = conn.execute(
                     "SELECT rimsuffiks FROM rimsti_indeks "
                     "WHERE konsonantskjelett = ? AND rimsuffiks != ? AND familiestr >= ?",
-                    (skel, cur_suffix, min_familiestr if 'min_familiestr' in dir() else 3),
+                    (skel, cur_suffix, 3),
                 ).fetchall()
+                # Score neighbors by vowel distance — closer = better
+                cur_vowels = [p for p in _parse_suffix_phonemes(cur_suffix)
+                              if _is_vowel_phoneme(p)]
+                cur_dots = cur_suffix.count(".")
+                scored_neighbors = []
                 for nr in neighbor_rows:
                     nsuffix = nr["rimsuffiks"]
-                    from rimordbok.db import hent_rim_for_suffiks
+                    # Only consider suffixes with same syllable structure
+                    if nsuffix.count(".") != cur_dots:
+                        continue
+                    n_vowels = [p for p in _parse_suffix_phonemes(nsuffix)
+                                if _is_vowel_phoneme(p)]
+                    if cur_vowels and n_vowels:
+                        dist = _vowel_distance(
+                            cur_vowels[0].replace("ː", ""),
+                            n_vowels[0].replace("ː", ""),
+                        )
+                    else:
+                        dist = 1.0
+                    scored_neighbors.append((nsuffix, dist))
+                # Only use the closest neighbors (gradual drift)
+                scored_neighbors.sort(key=lambda x: x[1])
+                from rimordbok.db import hent_rim_for_suffiks
+                for nsuffix, dist in scored_neighbors[:5]:
+                    if dist > 0.7:
+                        break  # too far — stop
+                    proximity = max(0.0, 1.0 - dist)
                     results = hent_rim_for_suffiks(
                         suffiks=nsuffix, ord_lower=anchor_lower,
-                        db_path=db_path, maks=20, ekskluder_propn=True,
+                        db_path=db_path, maks=15, ekskluder_propn=True,
                     )
                     for r in results:
                         w = r["ord"]
                         if w not in used_words and w not in seen:
-                            r["score"] = 0.8
+                            r["score"] = proximity
                             seen.add(w)
                             candidates.append(r)
 
