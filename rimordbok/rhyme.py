@@ -983,6 +983,11 @@ def finn_halvrim(
 
         # Raise threshold at deeper depths: more syllables compared
         # means more chance of spurious partial matches.
+        # For multi-syllable search words, skip depth 1 entirely —
+        # matching only the last syllable gives too many false positives
+        # (e.g. "ånder" with suffix "ər" matches "det", "en", "med").
+        if d == 1 and maks_dybde >= 2:
+            continue
         depth_terskel = terskel + 0.05 * (d - 1)
 
         # Build suffix list for DB fetch.
