@@ -350,6 +350,19 @@ body {
   color: #555555;
   margin-left: 0.15rem;
 }
+.show-more-btn {
+  display: inline-block;
+  margin-top: 0.4rem;
+  padding: 0.25rem 0.7rem;
+  background: transparent;
+  border: 1px solid #444;
+  border-radius: 4px;
+  color: #999;
+  font-size: 0.82rem;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+.show-more-btn:hover { border-color: #e8920d; color: #e8920d; }
 .info-card {
   background: #1a1a1a;
   border: 1px solid #2a2a2a;
@@ -1488,6 +1501,28 @@ function renderInfo(data) {
   resultsEl.appendChild(card);
 }
 
+const INITIAL_SHOW = 20;
+
+function _renderGroup(g, allItems) {
+  const list = document.createElement('div');
+  list.className = 'word-list';
+  const visible = allItems.slice(0, INITIAL_SHOW);
+  const hidden = allItems.slice(INITIAL_SHOW);
+  for (const item of visible) list.appendChild(makeWordEl(item));
+  g.appendChild(list);
+
+  if (hidden.length > 0) {
+    const btn = document.createElement('button');
+    btn.className = 'show-more-btn';
+    btn.textContent = `Vis ${hidden.length} til`;
+    btn.addEventListener('click', () => {
+      for (const item of hidden) list.appendChild(makeWordEl(item));
+      btn.remove();
+    });
+    g.appendChild(btn);
+  }
+}
+
 function renderGrouped(items) {
   // Check if items are pre-grouped from API
   if (items.length > 0 && items[0].ord != null && Array.isArray(items[0].ord)) {
@@ -1500,12 +1535,7 @@ function renderGrouped(items) {
         const sfxHtml = sfx ? ` <span class="syl-suffix">/${sfx}/</span>` : '';
         g.innerHTML = `<h3>${syl} stavelse${syl === 1 ? '' : 'r'}${sfxHtml} <span class="syl-count">${group.ord.length} ord</span></h3>`;
       }
-      const list = document.createElement('div');
-      list.className = 'word-list';
-      for (const item of group.ord) {
-        list.appendChild(makeWordEl(item));
-      }
-      g.appendChild(list);
+      _renderGroup(g, group.ord);
       resultsEl.appendChild(g);
     }
     return;
@@ -1524,12 +1554,7 @@ function renderGrouped(items) {
     const g = document.createElement('div');
     g.className = 'syl-group';
     g.innerHTML = `<h3>${syl} stavelse${syl === '1' ? '' : 'r'}</h3>`;
-    const list = document.createElement('div');
-    list.className = 'word-list';
-    for (const item of groups[syl]) {
-      list.appendChild(makeWordEl(item));
-    }
-    g.appendChild(list);
+    _renderGroup(g, groups[syl]);
     resultsEl.appendChild(g);
   }
 }
