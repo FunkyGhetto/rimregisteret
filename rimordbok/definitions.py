@@ -194,6 +194,65 @@ def _hent_synonymordboka(word: str) -> tuple[list[str], list[str]]:
         return [], []
 
 
+# Mapping from NB Uttale POS codes to Bokmålsordboka wordClass strings
+_POS_TIL_WORDCLASS = {
+    "NN": "Substantiv",
+    "JJ": "Adjektiv",
+    "VB": "Verb",
+    "RB": "Adverb",
+    "IN": "Preposisjon",
+    "DT": "Determinativ",
+    "PP": "Pronomen",
+    "CC": "Konjunksjon",
+    "UH": "Interjeksjon",
+}
+
+_WORDCLASS_TIL_POS = {v: k for k, v in _POS_TIL_WORDCLASS.items()}
+
+
+def hent_alle_definisjoner(ord: str) -> list[dict]:
+    """Hent ALLE definisjoner for et ord, gruppert per artikkel/ordklasse.
+
+    Returns list of dicts: {ordklasse, pos, definisjoner: [str]}.
+    Each article from Bokmålsordboka becomes one entry.
+    Used for disambiguating homographs.
+    Never raises — returns empty on failure.
+    """
+    if not _HAS_HTTPX:
+        return []
+
+    try:
+        r = _HTTP_CLIENT.post(
+            GRAPHQL_URL,
+            json={"query": QUERY, "variables": {"word": ord.lower()}},
+        )
+        r.raise_for_status()
+        data = r.json()
+
+        word_data = data.get("data", {}).get("word")
+        if not word_data:
+            return []
+
+        result = []
+        for art in word_data.get("articles", []):
+            wc = art.get("wordClass", "")
+            pos = _WORDCLASS_TIL_POS.get(wc, "")
+            defs = []
+            for d in art.get("definitions", []):
+                for c in d.get("content", []):
+                    text = c.get("textContent", "").strip()
+                    if text and len(text) > 3:
+                        defs.append(text)
+            result.append({
+                "ordklasse": wc,
+                "pos": pos,
+                "definisjoner": defs,
+            })
+        return result
+    except Exception:
+        return []
+
+
 def hent_definisjon(
     ord: str, cache_db: Optional[Path] = None
 ) -> dict:

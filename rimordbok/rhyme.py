@@ -264,6 +264,62 @@ def _score_near_rhyme(suffix_a: str, suffix_b: str) -> float:
     return score / max_score
 
 
+def _berik_varianter_med_definisjoner(ord: str, varianter: list[dict]) -> list[dict]:
+    """Enrich pronunciation variants with definitions from Bokmålsordboka.
+
+    Matches GraphQL articles (by wordClass) to DB variants (by POS code).
+    Each variant gets a 'definisjon' field with the first definition text,
+    and an 'ordklasse_tekst' field with the human-readable word class.
+    """
+    if len(varianter) <= 1:
+        return varianter  # No disambiguation needed
+
+    from rimordbok.definitions import hent_alle_definisjoner, _POS_TIL_WORDCLASS
+
+    artikler = hent_alle_definisjoner(ord)
+    if not artikler:
+        return varianter
+
+    # Build lookup: pos_code → first definition
+    pos_til_def: dict[str, tuple[str, str]] = {}  # pos → (definisjon, ordklasse_tekst)
+    for art in artikler:
+        pos = art.get("pos", "")
+        wc = art.get("ordklasse", "")
+        defs = art.get("definisjoner", [])
+        first_def = defs[0] if defs else None
+        if pos and pos not in pos_til_def:
+            pos_til_def[pos] = (first_def, wc)
+
+    # Enrich variants
+    enriched = []
+    for v in varianter:
+        v = dict(v)  # Copy
+        # Extract base POS (e.g. "VB" from "VB|part")
+        raw_pos = v.get("pos", "")
+        base_pos = raw_pos.split("|")[0] if raw_pos else ""
+
+        if base_pos in pos_til_def:
+            defn, wc_tekst = pos_til_def[base_pos]
+            v["definisjon"] = defn
+            v["ordklasse_tekst"] = wc_tekst
+        else:
+            # Fallback: try to find by wordClass mapping
+            expected_wc = _POS_TIL_WORDCLASS.get(base_pos, "")
+            for art in artikler:
+                if art.get("ordklasse") == expected_wc:
+                    defs = art.get("definisjoner", [])
+                    v["definisjon"] = defs[0] if defs else None
+                    v["ordklasse_tekst"] = expected_wc
+                    break
+            else:
+                v["definisjon"] = None
+                v["ordklasse_tekst"] = _POS_TIL_WORDCLASS.get(base_pos, base_pos)
+
+        enriched.append(v)
+
+    return enriched
+
+
 def _get_word_info(
     ord: str,
     db_path: Optional[Path] = None,
@@ -372,10 +428,16 @@ def finn_perfekte_rim(
         results.sort(key=lambda r: -r.get("frekvens", 0))
         results = results[:maks]
 
+    # Enrich variants with definitions for disambiguation
+    berikede_varianter = (
+        _berik_varianter_med_definisjoner(ord, varianter)
+        if len(varianter) > 1 else []
+    )
+
     response = {
         "ord": ord,
         "rimsuffiks": suffix,
-        "varianter": varianter if len(varianter) > 1 else [],
+        "varianter": berikede_varianter,
     }
 
     if grupper:

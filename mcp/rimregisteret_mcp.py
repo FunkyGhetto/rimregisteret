@@ -98,18 +98,19 @@ async def finn_rim(
 
         lines = []
 
-        # Show variants if ambiguous
+        # Show variants if ambiguous — with definitions
         varianter = data.get("varianter", [])
         if varianter:
             lines.append(f"⚠ «{ord}» har {len(varianter)} uttaler:")
             for i, v in enumerate(varianter):
                 suffix = v.get("rimsuffiks", "?")
-                pos = v.get("pos", "?")
-                freq = v.get("frekvens", 0)
+                wc = v.get("ordklasse_tekst") or v.get("pos", "?")
+                defn = v.get("definisjon")
                 marker = " ← valgt" if variant and variant == suffix else ""
-                lines.append(f"  {i+1}. /{suffix}/ ({pos}, frekvens {freq:.1f}){marker}")
+                desc = f" — {defn[:70]}" if defn else ""
+                lines.append(f"  {i+1}. /{suffix}/ ({wc}){desc}{marker}")
             if not variant:
-                lines.append(f"  Bruker vanligste uttale. Spesifiser variant for å endre.")
+                lines.append(f"  Bruker vanligste uttale. Bruk variant=\"<suffiks>\" for å velge.")
             lines.append("")
 
         suffix = data.get("rimsuffiks", "?")

@@ -21,6 +21,7 @@ from fastapi.staticfiles import StaticFiles
 
 from rimordbok.db import hent_fonetikk, hent_varianter, sok_ord, GYLDIGE_DIALEKTER
 from rimordbok.phonetics import slaa_opp
+from rimordbok.rhyme import _berik_varianter_med_definisjoner
 from rimordbok.rhyme import (
     finn_perfekte_rim,
     finn_nesten_rim,
@@ -165,15 +166,8 @@ def api_varianter(ord: str):
     start = time.perf_counter()
     varianter = hent_varianter(ord)
 
-    # Enrich with definitions
-    defn = hent_definisjon(ord)
-    enriched = []
-    for v in varianter:
-        enriched.append({
-            **v,
-            "definisjon": defn.get("definisjon"),
-            "ordklasse": defn.get("ordklasse") or v.get("pos"),
-        })
+    # Enrich with per-variant definitions from Bokmålsordboka
+    enriched = _berik_varianter_med_definisjoner(ord, varianter)
 
     elapsed = (time.perf_counter() - start) * 1000
     return {
