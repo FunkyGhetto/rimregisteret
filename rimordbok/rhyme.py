@@ -16,6 +16,67 @@ from typing import Optional
 from rimordbok.db import _connect, hent_fonetikk, hent_rim_dialekt, GYLDIGE_DIALEKTER
 from rimordbok.phonetics import slaa_opp
 
+# --- IPA vowel space coordinates (height, backness, rounding) ---
+# Used for computing phonetic distance between rhyme suffixes.
+# Values are approximate positions in the IPA vowel trapezoid, 0.0-1.0.
+# height: 0=open, 1=close. backness: 0=front, 1=back. rounding: 0/1.
+_VOWEL_COORDS = {
+    # Close
+    "i": (1.0, 0.0, 0), "iː": (1.0, 0.0, 0),
+    "y": (1.0, 0.0, 1), "yː": (1.0, 0.0, 1),
+    "ʉ": (1.0, 0.5, 1), "ʉː": (1.0, 0.5, 1),
+    "u": (1.0, 1.0, 1), "uː": (1.0, 1.0, 1),
+    # Near-close
+    "ɪ": (0.85, 0.15, 0),
+    "ʏ": (0.85, 0.15, 1),
+    "ʊ": (0.85, 0.85, 1),
+    # Close-mid
+    "e": (0.7, 0.0, 0), "eː": (0.7, 0.0, 0),
+    "ø": (0.7, 0.0, 1), "øː": (0.7, 0.0, 1),
+    "o": (0.7, 1.0, 1), "oː": (0.7, 1.0, 1),
+    # Open-mid
+    "ɛ": (0.4, 0.15, 0),
+    "œ": (0.4, 0.15, 1),
+    "ɔ": (0.4, 0.85, 1),
+    # Near-open / open
+    "æ": (0.25, 0.15, 0), "æː": (0.25, 0.15, 0),
+    "ɑ": (0.0, 0.8, 0), "ɑː": (0.0, 0.8, 0),
+    "a": (0.0, 0.5, 0),
+    # Schwa (mid central)
+    "ə": (0.5, 0.5, 0),
+}
+
+
+def _vowel_distance(v1: str, v2: str) -> float:
+    """Euclidean distance between two vowels in IPA space (0.0-~1.7)."""
+    c1 = _VOWEL_COORDS.get(v1.replace("ː", ""), _VOWEL_COORDS.get(v1))
+    c2 = _VOWEL_COORDS.get(v2.replace("ː", ""), _VOWEL_COORDS.get(v2))
+    if c1 is None or c2 is None:
+        return 1.0  # unknown vowels = far
+    dh = c1[0] - c2[0]
+    db = c1[1] - c2[1]
+    dr = 0.3 * abs(c1[2] - c2[2])  # rounding difference weighted less
+    return (dh * dh + db * db + dr * dr) ** 0.5
+
+
+def _suffix_vowel_distance(sfx_a: str, sfx_b: str) -> float:
+    """Average vowel distance between two rhyme suffixes."""
+    phs_a = _parse_suffix_phonemes(sfx_a)
+    phs_b = _parse_suffix_phonemes(sfx_b)
+    vowels_a = [ph for ph in phs_a if _is_vowel_phoneme(ph)]
+    vowels_b = [ph for ph in phs_b if _is_vowel_phoneme(ph)]
+    if not vowels_a or not vowels_b:
+        return 1.0
+    # Compare corresponding vowels, pad shorter with last vowel
+    total = 0.0
+    n = max(len(vowels_a), len(vowels_b))
+    for i in range(n):
+        va = vowels_a[min(i, len(vowels_a) - 1)]
+        vb = vowels_b[min(i, len(vowels_b) - 1)]
+        total += _vowel_distance(va, vb)
+    return total / n
+
+
 # --- Phoneme equivalence classes for Norwegian near-rhyme ---
 
 # Vowel nucleus equivalence: vowels that sound similar enough for near-rhyme
@@ -538,10 +599,11 @@ def finn_rimsti(
     min_frekvens: float = 1.0,
     dialekt: str = "øst",
 ) -> dict:
-    """Find the rhyme path — all rhyme families sharing the consonant skeleton.
+    """Find the rhyme path — nearby rhyme families sorted by vowel distance.
 
-    A rhyme path shows how to glide between rhyme families by changing
-    vowels while keeping the consonant structure.
+    Returns families sharing the consonant skeleton, sorted by how close
+    their vowels are to the input word's suffix. Nearest families first —
+    these are the easiest transitions for a freestyler.
 
     Returns dict with ord, rimsuffiks, konsonantskjelett, steg[], antall_steg.
     """
@@ -559,9 +621,12 @@ def finn_rimsti(
     if not suffix:
         return {"ord": ord, "rimsuffiks": None, "konsonantskjelett": None, "steg": [], "antall_steg": 0}
 
+    skeleton = _consonant_skeleton(suffix)
+    skeleton_str = ".".join(skeleton) if skeleton else "(tom)"
+
     conn = _connect(db_path)
     try:
-        # Try prebuilt index first
+        # Try prebuilt index
         use_index = False
         try:
             conn.execute("SELECT 1 FROM rimsti_indeks LIMIT 1")
@@ -570,42 +635,36 @@ def finn_rimsti(
             pass
 
         if use_index:
-            # Fast path: use prebuilt rimsti_indeks
             row = conn.execute(
                 "SELECT konsonantskjelett FROM rimsti_indeks WHERE rimsuffiks = ?",
                 (suffix,),
             ).fetchone()
-            if not row:
-                # Suffix not in index, compute live
-                skeleton = _consonant_skeleton(suffix)
-                skeleton_str = ".".join(skeleton) if skeleton else "(tom)"
-            else:
+            if row:
                 skeleton_str = row["konsonantskjelett"]
 
+            # Fetch MORE than maks_steg so we can sort by distance and then trim
             cur = conn.execute(
                 "SELECT rimsuffiks, familiestr, eksempler FROM rimsti_indeks "
-                "WHERE konsonantskjelett = ? AND familiestr >= ? "
-                "ORDER BY familiestr DESC LIMIT ?",
-                (skeleton_str, min_familiestr, maks_steg),
+                "WHERE konsonantskjelett = ? AND familiestr >= ?",
+                (skeleton_str, min_familiestr),
             )
-            steg = []
+            candidates = []
             for r in cur:
                 eks = r["eksempler"].split(",") if r["eksempler"] else []
-                steg.append({
+                dist = _suffix_vowel_distance(suffix, r["rimsuffiks"])
+                candidates.append({
                     "rimsuffiks": r["rimsuffiks"],
                     "eksempler": eks,
                     "familiestr": r["familiestr"],
                     "aktiv": r["rimsuffiks"] == suffix,
+                    "avstand": round(dist, 2),
                 })
         else:
-            # Fallback: compute live (slow)
-            skeleton = _consonant_skeleton(suffix)
-            skeleton_str = ".".join(skeleton) if skeleton else "(tom)"
-
+            # Fallback: compute live
             cur = conn.execute("SELECT DISTINCT rimsuffiks FROM ord")
             matching = [r["rimsuffiks"] for r in cur if _consonant_skeleton(r["rimsuffiks"]) == skeleton]
 
-            steg = []
+            candidates = []
             for sfx in matching:
                 row2 = conn.execute(
                     "SELECT COUNT(*) as n FROM ("
@@ -625,14 +684,18 @@ def finn_rimsti(
                     "GROUP BY LOWER(ord) ORDER BY MAX(frekvens) DESC LIMIT 5",
                     (sfx, min_frekvens),
                 )
-                steg.append({
+                dist = _suffix_vowel_distance(suffix, sfx)
+                candidates.append({
                     "rimsuffiks": sfx,
                     "eksempler": [r["ord"] for r in cur3],
                     "familiestr": count,
                     "aktiv": sfx == suffix,
+                    "avstand": round(dist, 2),
                 })
-            steg.sort(key=lambda s: -s["familiestr"])
-            steg = steg[:maks_steg]
+
+        # Sort by vowel distance (nearest first), then trim
+        candidates.sort(key=lambda s: s["avstand"])
+        steg = candidates[:maks_steg]
 
         return {
             "ord": ord,

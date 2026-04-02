@@ -127,11 +127,18 @@ class TestFinnRimsti:
         result = finn_rimsti("xyznonexistent")
         assert result["antall_steg"] == 0
 
-    def test_sorted_by_family_size(self):
-        """Steg are sorted by familiestr descending."""
+    def test_sorted_by_vowel_distance(self):
+        """Steg are sorted by avstand (vowel distance) ascending."""
         result = finn_rimsti("sang", min_familiestr=3)
-        sizes = [s["familiestr"] for s in result["steg"]]
-        assert sizes == sorted(sizes, reverse=True)
+        distances = [s["avstand"] for s in result["steg"]]
+        assert distances == sorted(distances)
+
+    def test_active_step_has_zero_distance(self):
+        """The active step should have avstand 0.0."""
+        result = finn_rimsti("sang", min_familiestr=3)
+        active = [s for s in result["steg"] if s["aktiv"]]
+        assert len(active) == 1
+        assert active[0]["avstand"] == 0.0
 
 
 # ===================================================================

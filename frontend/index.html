@@ -975,10 +975,10 @@ tabsEl.addEventListener('click', e => {
   tab.classList.add('active');
   currentTab = tab.dataset.tab;
   updateTabUI();
-  if (currentTab === 'rimklynger' || currentTab === 'laer') {
-    statusEl.textContent = '';
-    resultsEl.innerHTML = '';
-  } else {
+  // Always clear old results when switching tabs
+  statusEl.textContent = '';
+  resultsEl.innerHTML = '';
+  if (currentTab !== 'rimklynger' && currentTab !== 'laer') {
     const word = searchEl.value.trim();
     if (word) doSearch(word);
   }
