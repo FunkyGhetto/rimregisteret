@@ -188,7 +188,7 @@ def api_rim(
     samme_tonelag: bool = Query(False, description="Kun rim med samme tonelag"),
     dialekt: str = Query("øst", description="Dialektregion: øst, nord, midt, vest, sørvest"),
     variant: Optional[str] = Query(None, description="Rimsuffiks for disambiguering (fra /varianter/)"),
-    grupper: bool = Query(True, description="Grupper resultater etter stavelser"),
+    grupper: bool = Query(False, description="Grupper resultater etter stavelser"),
     ekskluder_propn: bool = Query(True, description="Ekskluder proprium (egennavn)"),
 ):
     if dialekt not in GYLDIGE_DIALEKTER:

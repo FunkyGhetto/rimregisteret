@@ -363,6 +363,54 @@ body {
   color: #888888;
 }
 .meta-row span b { color: #e5e5e5; }
+.variant-bar {
+  background: #1a1a1a;
+  border: 1px solid #333;
+  border-radius: 8px;
+  padding: 0.7rem 1rem;
+  margin-top: 0.8rem;
+}
+.variant-bar .vb-label {
+  font-size: 0.8rem;
+  color: #888;
+  margin-bottom: 0.4rem;
+}
+.variant-bar .vb-options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+.variant-bar .vb-opt {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  padding: 0.4rem 0.6rem;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s;
+  border: 1px solid transparent;
+}
+.variant-bar .vb-opt:hover { background: #222; }
+.variant-bar .vb-opt.active {
+  background: rgba(232,146,13,0.08);
+  border-color: #e8920d;
+}
+.variant-bar .vb-suffix {
+  font-family: "Lucida Sans Unicode", "DejaVu Sans", sans-serif;
+  font-size: 0.9rem;
+  color: #e8920d;
+  min-width: 3rem;
+}
+.variant-bar .vb-wclass {
+  font-size: 0.8rem;
+  color: #aaa;
+  min-width: 5rem;
+}
+.variant-bar .vb-def {
+  font-size: 0.8rem;
+  color: #777;
+  flex: 1;
+}
 .footer {
   text-align: center;
   padding: 2rem 1rem;
@@ -1259,8 +1307,11 @@ function renderClusters(klynger) {
   }
 }
 
+// --- Variant state for disambiguation ---
+let currentVariant = null; // rimsuffiks string or null
+
 // --- Standard search ---
-async function doSearch(word) {
+async function doSearch(word, variant) {
   clearTimeout(debounceTimer);
   hideAC();
   landingEl.style.display = 'none';
@@ -1268,7 +1319,12 @@ async function doSearch(word) {
   statusEl.textContent = 'Laster...';
   resultsEl.innerHTML = '';
 
+  // Reset variant state unless explicitly passed
+  if (variant === undefined) currentVariant = null;
+  else currentVariant = variant;
+
   const dParam = `&dialekt=${encodeURIComponent(currentDialekt)}`;
+  const vParam = currentVariant ? `&variant=${encodeURIComponent(currentVariant)}` : '';
 
   // Rimstier has its own endpoint and rendering
   if (currentTab === 'rimstier') {
@@ -1297,7 +1353,7 @@ async function doSearch(word) {
 
   try {
     const [resData, infoData] = await Promise.all([
-      fetch(`${API}/api/v1/${endpoint}/${encodeURIComponent(word)}?maks=1000${dParam}`).then(r => r.json()),
+      fetch(`${API}/api/v1/${endpoint}/${encodeURIComponent(word)}?maks=1000${dParam}${vParam}`).then(r => r.json()),
       fetch(`${API}/api/v1/info/${encodeURIComponent(word)}?x=1${dParam}`).then(r => r.json()),
     ]);
 
@@ -1305,7 +1361,7 @@ async function doSearch(word) {
 
     // Fallback: if no perfect rhymes found, fetch near-rhymes with score >= 1.0
     if (items.length === 0 && currentTab === 'rim') {
-      const nearData = await fetch(`${API}/api/v1/nestenrim/${encodeURIComponent(word)}?maks=1000&terskel=0.9${dParam}`).then(r => r.json());
+      const nearData = await fetch(`${API}/api/v1/nestenrim/${encodeURIComponent(word)}?maks=1000&terskel=0.9${dParam}${vParam}`).then(r => r.json());
       const nearItems = (nearData.resultater || []).filter(r => r.score >= 1.0);
       if (nearItems.length > 0) {
         items = nearItems;
@@ -1325,6 +1381,12 @@ async function doSearch(word) {
     statusEl.textContent = `${items.length} ${tabLabel()} for "${word}"`;
     updateSEO(word, items.length, items);
     renderInfo(infoData);
+
+    // Show variant disambiguation bar if word has multiple pronunciations
+    const varianter = resData.varianter || [];
+    if (varianter.length > 1 && (currentTab === 'rim' || currentTab === 'nestenrim')) {
+      renderVariantBar(word, varianter, resData.rimsuffiks);
+    }
 
     if (currentTab === 'synonymer') {
       renderFlat(items);
@@ -1484,8 +1546,55 @@ function makeWordEl(item) {
 function searchWord(word) {
   searchEl.value = word;
   hideAC();
+  currentVariant = null;
   doSearch(word);
   window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function renderVariantBar(word, varianter, activeSuffix) {
+  const bar = document.createElement('div');
+  bar.className = 'variant-bar';
+
+  const label = document.createElement('div');
+  label.className = 'vb-label';
+  label.textContent = `«${word}» har ${varianter.length} uttaler — velg betydning:`;
+  bar.appendChild(label);
+
+  const opts = document.createElement('div');
+  opts.className = 'vb-options';
+
+  for (const v of varianter) {
+    const opt = document.createElement('div');
+    opt.className = 'vb-opt' + (v.rimsuffiks === activeSuffix ? ' active' : '');
+
+    const suffix = document.createElement('span');
+    suffix.className = 'vb-suffix';
+    suffix.textContent = '/' + v.rimsuffiks + '/';
+    opt.appendChild(suffix);
+
+    const wclass = document.createElement('span');
+    wclass.className = 'vb-wclass';
+    wclass.textContent = v.ordklasse_tekst || v.pos || '';
+    opt.appendChild(wclass);
+
+    if (v.definisjon) {
+      const def = document.createElement('span');
+      def.className = 'vb-def';
+      def.textContent = v.definisjon.length > 80
+        ? v.definisjon.slice(0, 77) + '...'
+        : v.definisjon;
+      opt.appendChild(def);
+    }
+
+    opt.addEventListener('click', () => {
+      doSearch(word, v.rimsuffiks);
+    });
+
+    opts.appendChild(opt);
+  }
+
+  bar.appendChild(opts);
+  resultsEl.appendChild(bar);
 }
 
 function toneIcon(t) {
