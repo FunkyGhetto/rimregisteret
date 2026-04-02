@@ -212,68 +212,63 @@ def _klynger_par_bred(
     cluster_size = _CLUSTER_SIZE[modus]
     klynger = []
 
-    # Always use random rhyme families — each cluster gets its own.
-    # The 'ord' parameter is ignored for par/bred (it's only meaningful
-    # for dyp mode where you drill one word's rhyme family).
-    if True:
-        # Rask SQL-basert generering: velg tilfeldige rimsuffikser
-        # med nok ord, og hent ordene direkte fra indeksen.
-        conn = _connect(db_path)
-        where = [
-            "frekvens >= ?",
-            "length(ord) BETWEEN 3 AND 10",
-            "pos NOT LIKE 'PM%'",
-            "ord NOT LIKE '%-%'",
-        ]
-        params: list = [max(min_frekvens, 5.0)]
+    # Rask SQL-basert generering: velg tilfeldige rimsuffikser
+    # med nok ord, og hent ordene direkte fra indeksen.
+    conn = _connect(db_path)
+    where = [
+        "frekvens >= ?",
+        "length(ord) BETWEEN 3 AND 10",
+        "pos NOT LIKE 'PM%'",
+        "ord NOT LIKE '%-%'",
+    ]
+    params: list = [max(min_frekvens, 5.0)]
 
-        if stavelser is not None:
-            where.append("stavelser = ?")
-            params.append(stavelser)
+    if stavelser is not None:
+        where.append("stavelser = ?")
+        params.append(stavelser)
 
-        where_sql = " AND ".join(where)
+    where_sql = " AND ".join(where)
 
-        # Hent tilfeldige rimsuffikser med nok vanlige ord
-        suffixes = conn.execute(
-            f"SELECT rimsuffiks, COUNT(DISTINCT LOWER(ord)) as cnt "
-            f"FROM ord WHERE {where_sql} "
-            f"GROUP BY rimsuffiks HAVING cnt >= ? "
+    suffixes = conn.execute(
+        f"SELECT rimsuffiks, COUNT(DISTINCT LOWER(ord)) as cnt "
+        f"FROM ord WHERE {where_sql} "
+        f"GROUP BY rimsuffiks HAVING cnt >= ? "
+        f"ORDER BY RANDOM() LIMIT ?",
+        params + [cluster_size, antall * 2],
+    ).fetchall()
+
+    for row in suffixes:
+        if len(klynger) >= antall:
+            break
+        suffix = row["rimsuffiks"]
+        words = conn.execute(
+            f"SELECT DISTINCT LOWER(ord) as ord FROM ord "
+            f"WHERE rimsuffiks = ? AND {where_sql} "
             f"ORDER BY RANDOM() LIMIT ?",
-            params + [cluster_size, antall * 2],
+            [suffix] + params + [cluster_size * 3],
         ).fetchall()
-
-        for row in suffixes:
-            if len(klynger) >= antall:
-                break
-            suffix = row["rimsuffiks"]
-            words = conn.execute(
-                f"SELECT DISTINCT LOWER(ord) as ord FROM ord "
-                f"WHERE rimsuffiks = ? AND {where_sql} "
-                f"ORDER BY RANDOM() LIMIT ?",
-                [suffix] + params + [cluster_size * 3],
-            ).fetchall()
-            # Filter morphological duplicates (varsle/varslet, bruk/bruker)
-            filtered = []
-            for w in words:
-                word = w["ord"]
-                is_dup = False
-                for existing in filtered:
-                    if (len(existing) >= 3 and len(word) >= 3
-                            and (existing in word or word in existing)):
-                        is_dup = True
-                        break
-                if not is_dup:
-                    filtered.append(word)
-                if len(filtered) >= cluster_size:
+        # Filter morphological duplicates (varsle/varslet, bruk/bruker)
+        filtered = []
+        for w in words:
+            word = w["ord"]
+            is_dup = False
+            for existing in filtered:
+                if (len(existing) >= 3 and len(word) >= 3
+                        and (existing in word or word in existing)):
+                    is_dup = True
                     break
-            if len(filtered) < cluster_size:
-                continue
-            klynger.append({
-                "startord": filtered[0],
-                "rimsuffiks": suffix,
-                "rimtype": "helrim",
-                "ord": filtered[:cluster_size],
-            })
+            if not is_dup:
+                filtered.append(word)
+            if len(filtered) >= cluster_size:
+                break
+        if len(filtered) < cluster_size:
+            continue
+        klynger.append({
+            "startord": filtered[0],
+            "rimsuffiks": suffix,
+            "rimtype": "helrim",
+            "ord": filtered[:cluster_size],
+        })
 
     return klynger
 

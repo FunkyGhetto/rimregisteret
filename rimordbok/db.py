@@ -10,7 +10,6 @@ for words that differ from østnorsk, falling back to `ord` for the rest.
 
 import sqlite3
 import threading
-from functools import lru_cache
 from pathlib import Path
 from typing import Optional
 

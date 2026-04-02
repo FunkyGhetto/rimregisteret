@@ -45,8 +45,6 @@ def _slaa_opp_med_suffiks(
     dialekt: str,
 ) -> dict:
     """Look up phonetic info, selecting the variant with the given rimsuffiks."""
-    from rimordbok.db import hent_fonetikk
-
     results = hent_fonetikk(ord, db_path=db_path)
     if not results and ord != ord.lower():
         results = hent_fonetikk(ord.lower(), db_path=db_path)

@@ -2,14 +2,12 @@ from __future__ import annotations
 
 """Rim-motor — finner rimord basert på fonetikk.
 
-Provides four rhyme-finding functions:
+Provides three rhyme-finding functions:
 - finn_perfekte_rim: exact rhyme suffix match
 - finn_halvrim: halvrim (near-rhyme) using phoneme equivalence classes
-- finn_homofoner: identical phoneme sequence, different spelling
 - match_konsonanter: consonant skeleton matching
 """
 
-import sqlite3
 from functools import lru_cache
 from pathlib import Path
 from typing import Optional
@@ -72,24 +70,6 @@ def _vowel_distance(v1: str, v2: str) -> float:
     dh = c1[0] - c2[0]
     db = c1[1] - c2[1]
     return (dh * dh + db * db) ** 0.5
-
-
-def _suffix_vowel_distance(sfx_a: str, sfx_b: str) -> float:
-    """Average vowel distance between two rhyme suffixes."""
-    phs_a = _parse_suffix_phonemes(sfx_a)
-    phs_b = _parse_suffix_phonemes(sfx_b)
-    vowels_a = [ph for ph in phs_a if _is_vowel_phoneme(ph)]
-    vowels_b = [ph for ph in phs_b if _is_vowel_phoneme(ph)]
-    if not vowels_a or not vowels_b:
-        return 1.0
-    # Compare corresponding vowels, pad shorter with last vowel
-    total = 0.0
-    n = max(len(vowels_a), len(vowels_b))
-    for i in range(n):
-        va = vowels_a[min(i, len(vowels_a) - 1)]
-        vb = vowels_b[min(i, len(vowels_b) - 1)]
-        total += _vowel_distance(va, vb)
-    return total / n
 
 
 # --- Phoneme equivalence classes for Norwegian near-rhyme ---
@@ -204,97 +184,7 @@ def _cons_equiv_class(ph: str) -> str:
     return CONS_EQUIV.get(ph, ph)
 
 
-def _consonant_skeleton(suffix: str) -> tuple:
-    """Extract the rhythmic skeleton from a rhyme suffix.
-
-    Replaces vowels with "V" (collapsing consecutive vowels/diphthongs)
-    and keeps consonants. Preserves syllable structure so that
-    monosyllabic and polysyllabic suffixes never match.
-
-    Examples:
-        "ʉːs" (hus)    → ("V", "s")
-        "ɛs" (press)    → ("V", "s")
-        "øː.sə" (løse)  → ("V", "s", "V")
-        "ɛŋ.ər" (penger) → ("V", "ŋ", "V", "r")
-    """
-    phonemes = _parse_suffix_phonemes(suffix)
-    result = []
-    last_was_vowel = False
-    for ph in phonemes:
-        if _is_vowel_phoneme(ph):
-            if not last_was_vowel:
-                result.append("V")
-            last_was_vowel = True
-        else:
-            result.append(ph)
-            last_was_vowel = False
-    return tuple(result)
-
-
-def _score_near_rhyme(suffix_a: str, suffix_b: str) -> float:
-    """Score the similarity between two rhyme suffixes (legacy, used by rimsti).
-
-    Scoring:
-    - Vowel nucleus match (via equivalence class): +0.6 per vowel
-    - Coda consonant match (via equivalence class): +0.3 per consonant
-    - Normalize by total number of phonemes in the longer suffix.
-    """
-    phs_a = _parse_suffix_phonemes(suffix_a)
-    phs_b = _parse_suffix_phonemes(suffix_b)
-
-    # Separate into vowels and consonants while preserving order
-    def split_vc(phs):
-        vowels = [ph for ph in phs if _is_vowel_phoneme(ph)]
-        consonants = [ph for ph in phs if not _is_vowel_phoneme(ph)]
-        return vowels, consonants
-
-    va, ca = split_vc(phs_a)
-    vb, cb = split_vc(phs_b)
-
-    score = 0.0
-    max_score = 0.0
-
-    # Score vowels
-    max_vowels = max(len(va), len(vb))
-    for i in range(max_vowels):
-        max_score += 0.6
-        if i < len(va) and i < len(vb):
-            if _vowel_equiv_class(va[i]) == _vowel_equiv_class(vb[i]):
-                score += 0.6
-
-    # Score consonants
-    max_cons = max(len(ca), len(cb))
-    for i in range(max_cons):
-        max_score += 0.3
-        if i < len(ca) and i < len(cb):
-            if _cons_equiv_class(ca[i]) == _cons_equiv_class(cb[i]):
-                score += 0.3
-
-    if max_score == 0:
-        return 0.0
-
-    return score / max_score
-
-
 # --- Halvrim scoring (assonance + consonance) ---
-
-
-def _lcs_length(a: list, b: list) -> int:
-    """Longest common subsequence length (DP, O(n*m))."""
-    n, m = len(a), len(b)
-    if n == 0 or m == 0:
-        return 0
-    # Optimised 1D DP
-    prev = [0] * (m + 1)
-    for i in range(1, n + 1):
-        cur = [0] * (m + 1)
-        for j in range(1, m + 1):
-            if a[i - 1] == b[j - 1]:
-                cur[j] = prev[j - 1] + 1
-            else:
-                cur[j] = max(prev[j], cur[j - 1])
-        prev = cur
-    return prev[m]
 
 
 def _weighted_lcs(phonemes_a: list[str], phonemes_b: list[str],
@@ -375,25 +265,6 @@ def _vowel_sequence_similarity(va: list[str], vb: list[str]) -> float:
     return total / n
 
 
-def _consonant_sequence_similarity(ca: list[str], cb: list[str]) -> float:
-    """Score consonant similarity using weighted LCS.
-
-    Uses longest common subsequence to handle insertions/deletions.
-    Exact phoneme match scores 1.0, equivalence class match (same manner
-    of articulation + voicing, e.g. k≈t) scores 0.6.
-
-    Returns 0.0-1.0.
-    """
-    if not ca and not cb:
-        return 1.0
-    if not ca or not cb:
-        return 0.0
-
-    weighted = _weighted_lcs(ca, cb, exact_weight=1.0, class_weight=0.6)
-    denom = max(len(ca), len(cb))
-    return weighted / denom if denom > 0 else 0.0
-
-
 def _score_halvrim(target_sfx: str, cand_sfx: str) -> float:
     """Score halvrim (near-rhyme) similarity between two suffixes.
 
@@ -432,34 +303,6 @@ def _score_halvrim(target_sfx: str, cand_sfx: str) -> float:
         return 0.0
 
     return 0.60 * v_sim + 0.40 * c_sim
-
-
-def _fullword_consonant_similarity(ipa_a: str, ipa_b: str) -> float:
-    """Consonant skeleton similarity across the full word (not just suffix).
-
-    Extracts all consonants from both IPAs in order, then computes
-    weighted LCS (exact = 1.0, equivalence class = 0.6).
-    Normalises by the TARGET's (ipa_a) consonant count so that extra
-    consonants in the candidate don't penalise.
-
-    E.g. politikk [p,l,t,k] vs plikt [p,l,k,t] → high similarity
-         politikk [p,l,t,k] vs hit [h,t]        → low similarity
-    """
-    # Parse full IPA into phonemes (dots separate syllables)
-    phs_a = _parse_suffix_phonemes(ipa_a)
-    phs_b = _parse_suffix_phonemes(ipa_b)
-    ca = [ph for ph in phs_a if not _is_vowel_phoneme(ph)]
-    cb = [ph for ph in phs_b if not _is_vowel_phoneme(ph)]
-    if not ca and not cb:
-        return 1.0
-    if not ca or not cb:
-        return 0.0
-    weighted = _weighted_lcs(ca, cb, exact_weight=1.0, class_weight=0.6)
-    recall = weighted / len(ca)       # coverage of target
-    precision = weighted / len(cb)    # how much of candidate is relevant
-    if recall + precision == 0:
-        return 0.0
-    return 2.0 * recall * precision / (recall + precision)  # F1
 
 
 def _berik_varianter_med_definisjoner(ord: str, varianter: list[dict]) -> list[dict]:
@@ -598,68 +441,6 @@ def _stavelsessuffiks(ipa_ren: str, dybde: int) -> str:
     if len(target_syls) > 1:
         return trimmed_first + "." + ".".join(target_syls[1:])
     return trimmed_first
-
-
-def _grupper_etter_dybde(
-    sokeord_ipa: str,
-    results_med_ipa: list[dict],
-    sokeord_lower: str = "",
-) -> list[dict]:
-    """Group rhyme results by syllable-depth match.
-
-    For a search word with N syllables, creates groups at depths 1..N.
-    Each result word is placed in the group matching its own syllable count:
-    - A 1-syllable word goes in depth 1 if its suffix matches depth-1 suffix.
-    - A 2-syllable word goes in depth 2 if its full suffix matches depth-2 suffix.
-    - Words with >= N syllables go in the depth-N group (max depth).
-
-    Returns list of groups: {dybde: int, suffiks: str, ord: [result dicts]}.
-    Empty groups are omitted.
-    """
-    sokeord_syls = sokeord_ipa.split(".")
-    maks_dybde = len(sokeord_syls)
-
-    # Pre-compute target suffix for each depth
-    dybde_suffikser = {}
-    for d in range(1, maks_dybde + 1):
-        dybde_suffikser[d] = _stavelsessuffiks(sokeord_ipa, d)
-
-    grupper: dict[int, list[dict]] = {d: [] for d in range(1, maks_dybde + 1)}
-
-    for r in results_med_ipa:
-        word_syl = r.get("stavelser", 1) or 1
-        word_ipa = r.get("ipa_ren", "")
-        if not word_ipa:
-            continue
-
-        # Exclude morphological variants containing the search word
-        w_lower = r.get("ord", "").lower()
-        if sokeord_lower and len(sokeord_lower) >= 3:
-            if sokeord_lower in w_lower or w_lower in sokeord_lower:
-                continue
-
-        # Determine which depth group this word belongs to
-        if word_syl >= maks_dybde:
-            d = maks_dybde
-        else:
-            d = word_syl
-
-        # Compute this word's suffix at the required depth
-        word_suffix = _stavelsessuffiks(word_ipa, d)
-        target_suffix = dybde_suffikser[d]
-
-        if word_suffix == target_suffix:
-            grupper[d].append(r)
-
-    # Sort within each group by frequency descending
-    for d in grupper:
-        grupper[d].sort(key=lambda r: -r.get("frekvens", 0))
-
-    return [
-        {"stavelser": d, "suffiks": dybde_suffikser[d], "ord": grupper[d]}
-        for d in sorted(grupper.keys())
-        if grupper[d]  # skip empty groups
-    ]
 
 
 def _grupper_etter_stavelser(results: list[dict]) -> list[dict]:
@@ -1102,65 +883,6 @@ def finn_halvrim(
         "varianter": berikede_varianter,
         "resultater": result_groups,
     }
-
-
-def finn_homofoner(
-    ord: str,
-    db_path: Optional[Path] = None,
-) -> list[dict]:
-    """Find homophones — words with identical phoneme sequence but different spelling.
-
-    Uses prebuilt homofoner table (fast O(1) lookup) with fallback to live query.
-    Returns list of dicts: ord, rimsuffiks, tonelag, stavelser, fonemer.
-    """
-    info = _get_word_info(ord, db_path=db_path)
-    if info is None:
-        return []
-
-    ipa = info.get("ipa_ren")
-    if not ipa:
-        return []
-
-    # Try prebuilt homofoner table first (in semantics.db)
-    sem_db = Path(__file__).resolve().parent.parent / "data/db/semantics.db"
-    if sem_db.exists():
-        try:
-            sconn = _connect(sem_db)
-            cur = sconn.execute(
-                "SELECT ord FROM homofoner WHERE ipa = ? AND ord != ?",
-                (ipa, ord.lower()),
-            )
-            hom_words = [r["ord"] for r in cur]
-            if hom_words:
-                # Enrich with phonetic data from rimindeks
-                conn = _connect(db_path)
-                try:
-                    placeholders = ",".join("?" for _ in hom_words)
-                    cur2 = conn.execute(
-                        f"SELECT LOWER(ord) as ord, rimsuffiks, tonelag, "
-                        f"MAX(stavelser) as stavelser, fonemer "
-                        f"FROM ord WHERE LOWER(ord) IN ({placeholders}) "
-                        f"GROUP BY LOWER(ord)",
-                        hom_words,
-                    )
-                    return [dict(r) for r in cur2]
-                finally:
-                    pass
-        except Exception:
-            pass  # Fall through to live query
-
-    conn = _connect(db_path)
-    try:
-        cur = conn.execute(
-            "SELECT LOWER(ord) as ord, rimsuffiks, tonelag, "
-            "MAX(stavelser) as stavelser, fonemer "
-            "FROM ord WHERE ipa_ren = ? AND LOWER(ord) != ? "
-            "GROUP BY LOWER(ord)",
-            (ipa, ord.lower()),
-        )
-        return [dict(r) for r in cur]
-    finally:
-        pass
 
 
 def match_konsonanter(
