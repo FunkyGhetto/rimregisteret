@@ -401,14 +401,13 @@ def _score_halvrim(target_sfx: str, cand_sfx: str) -> float:
     cand_sfx: the candidate word's suffix.
 
     Combines:
-    - Vowel similarity (continuous distance, 75% weight)
-    - Consonant similarity (recall against target, 25% weight)
+    - Vowel similarity (continuous distance, 60% weight)
+    - Consonant similarity (recall against target, 40% weight)
 
-    Vowels dominate because halvrim IS assonance — matching vowels
-    is the primary signal.  Consonant recall measures how much of the
-    target's consonant structure the candidate covers — extra consonants
-    in the candidate are not penalised (plikt covers politikk's [k]
-    fully, while hit only class-matches it).
+    Both must individually exceed a minimum (0.3) to avoid false
+    positives where only vowels or only consonants match. This prevents
+    words like "klokken" (same vowels but unrelated consonants) from
+    appearing as halvrim of "ånder".
     """
     va, ca = _split_vc(target_sfx)
     vb, cb = _split_vc(cand_sfx)
@@ -426,7 +425,13 @@ def _score_halvrim(target_sfx: str, cand_sfx: str) -> float:
         weighted = _weighted_lcs(ca, cb, exact_weight=1.0, class_weight=0.6)
         c_sim = min(1.0, weighted / len(ca))
 
-    return 0.75 * v_sim + 0.25 * c_sim
+    # Require meaningful consonant overlap — just sharing one common
+    # consonant (c_sim ≤ 0.5) while vowels match is not enough.
+    # This filters out "klokken" (k,n vs n,r → c_sim=0.5) for "ånder".
+    if v_sim < 0.3 or c_sim < 0.55:
+        return 0.0
+
+    return 0.60 * v_sim + 0.40 * c_sim
 
 
 def _fullword_consonant_similarity(ipa_a: str, ipa_b: str) -> float:
@@ -1008,11 +1013,6 @@ def finn_halvrim(
         # (e.g. trilobitt has rimsuffiks "ɪt" but 3 syllables).
         sfx_set = {s for s, _ in dybde_kandidater[d]}
         sfx_set.add(target_suffix)
-        if d > 1:
-            # Add top depth-1 candidates (limited to keep the pool small)
-            for s, _ in dybde_kandidater[1][:100]:
-                sfx_set.add(s)
-            sfx_set.add(suffix)  # exact depth-1 suffix
         alle_sfx = list(sfx_set)
 
         if not alle_sfx:

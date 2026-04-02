@@ -1414,7 +1414,7 @@ async function doSearch(word, variant) {
   const endpoint = {
     rim: 'rim', halvrim: 'halvrim', synonymer: 'synonymer'
   }[currentTab] || 'rim';
-  const maksParam = (currentTab === 'rim' || currentTab === 'halvrim') ? 10000 : 1000;
+  const maksParam = currentTab === 'rim' ? 2000 : currentTab === 'halvrim' ? 500 : 1000;
 
   try {
     const [resData, infoData] = await Promise.all([
