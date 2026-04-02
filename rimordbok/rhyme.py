@@ -13,7 +13,10 @@ import sqlite3
 from pathlib import Path
 from typing import Optional
 
-from rimordbok.db import _connect, hent_fonetikk, hent_rim_dialekt, GYLDIGE_DIALEKTER
+from rimordbok.db import (
+    _connect, hent_fonetikk, hent_rim_dialekt, hent_varianter,
+    hent_rim_for_suffiks, GYLDIGE_DIALEKTER,
+)
 from rimordbok.phonetics import slaa_opp
 
 # --- IPA vowel perceptual distance ---
@@ -262,66 +265,125 @@ def _score_near_rhyme(suffix_a: str, suffix_b: str) -> float:
 
 
 def _get_word_info(
-    ord: str, db_path: Optional[Path] = None, dialekt: str = "øst",
+    ord: str,
+    db_path: Optional[Path] = None,
+    dialekt: str = "øst",
+    rimsuffiks: Optional[str] = None,
 ) -> Optional[dict]:
-    """Get word info from DB or G2P fallback."""
-    info = slaa_opp(ord, db_path=db_path, dialekt=dialekt)
+    """Get word info from DB or G2P fallback.
+
+    If rimsuffiks is given, selects the variant with that suffix (disambiguation).
+    """
+    info = slaa_opp(ord, db_path=db_path, dialekt=dialekt, rimsuffiks_override=rimsuffiks)
     if info is None:
         return None
     return info
 
 
+def _grupper_etter_stavelser(results: list[dict]) -> list[dict]:
+    """Group rhyme results by syllable count, sorted by frequency within each group.
+
+    Returns list of groups: {stavelser: int, ord: [list of result dicts]}.
+    Groups are sorted by syllable count ascending.
+    """
+    grupper: dict[int, list[dict]] = {}
+    for r in results:
+        syl = r.get("stavelser", 1) or 1
+        if syl not in grupper:
+            grupper[syl] = []
+        grupper[syl].append(r)
+
+    # Sort within each group by frequency descending
+    for syl in grupper:
+        grupper[syl].sort(key=lambda r: -r.get("frekvens", 0))
+
+    # Return sorted by syllable count
+    return [
+        {"stavelser": syl, "ord": grupper[syl]}
+        for syl in sorted(grupper.keys())
+    ]
+
+
 def finn_perfekte_rim(
     ord: str,
     db_path: Optional[Path] = None,
-    maks: int = 100,
+    maks: int = 200,
     samme_tonelag: bool = False,
     dialekt: str = "øst",
-) -> list[dict]:
+    rimsuffiks: Optional[str] = None,
+    ekskluder_propn: bool = True,
+    grupper: bool = False,
+) -> dict:
     """Find perfect rhymes — words with identical rhyme suffix.
 
     Args:
         dialekt: Dialect region ('øst', 'nord', 'midt', 'vest', 'sørvest').
-            Default 'øst' uses the main ord table. Other dialects check
-            dialect-specific pronunciations.
+        rimsuffiks: If given, use this suffix directly (for disambiguation).
+        ekskluder_propn: Exclude proper nouns (PM) from results.
+        grupper: If True, group results by syllable count.
 
-    Returns list of dicts: ord, rimsuffiks, tonelag, stavelser, score (always 1.0).
-    Sorted by frequency descending.
+    Returns dict with keys:
+        ord, rimsuffiks, varianter (if ambiguous), resultater (flat or grouped).
     """
-    info = _get_word_info(ord, db_path=db_path, dialekt=dialekt)
-    if info is None:
-        return []
+    # Check for homograph variants
+    varianter = hent_varianter(ord, db_path=db_path)
 
-    suffix = info.get("rimsuffiks")
+    info = _get_word_info(ord, db_path=db_path, dialekt=dialekt, rimsuffiks=rimsuffiks)
+    if info is None:
+        return {"ord": ord, "rimsuffiks": None, "varianter": [], "resultater": []}
+
+    suffix = rimsuffiks or info.get("rimsuffiks")
     if not suffix:
-        # G2P fallback: compute suffix from phonemes
         from scripts.build_rhyme_index import compute_rhyme_suffix
         fonemer = info.get("fonemer")
         stress = info.get("stress")
         if fonemer and stress:
             suffix = compute_rhyme_suffix(fonemer, stress)
     if not suffix:
-        return []
+        return {"ord": ord, "rimsuffiks": None, "varianter": varianter, "resultater": []}
 
     ord_lower = ord.lower()
-    fetch_limit = maks * 10
 
-    results = hent_rim_dialekt(
-        suffix=suffix,
-        dialekt=dialekt,
-        ord_lower=ord_lower,
-        db_path=db_path,
-        maks=fetch_limit,
-        samme_tonelag=samme_tonelag,
-        tonelag_val=info.get("tonelag"),
-    )
+    if ekskluder_propn:
+        results = hent_rim_for_suffiks(
+            suffiks=suffix,
+            ord_lower=ord_lower,
+            db_path=db_path,
+            maks=maks,
+            samme_tonelag=samme_tonelag,
+            tonelag_val=info.get("tonelag"),
+            ekskluder_propn=True,
+        )
+        for r in results:
+            r["score"] = 1.0
+    else:
+        fetch_limit = maks * 10
+        results = hent_rim_dialekt(
+            suffix=suffix,
+            dialekt=dialekt,
+            ord_lower=ord_lower,
+            db_path=db_path,
+            maks=fetch_limit,
+            samme_tonelag=samme_tonelag,
+            tonelag_val=info.get("tonelag"),
+        )
+        for r in results:
+            r["score"] = 1.0
+        results.sort(key=lambda r: -r.get("frekvens", 0))
+        results = results[:maks]
 
-    for r in results:
-        r["score"] = 1.0
+    response = {
+        "ord": ord,
+        "rimsuffiks": suffix,
+        "varianter": varianter if len(varianter) > 1 else [],
+    }
 
-    # Sort by frequency descending (common words first)
-    results.sort(key=lambda r: -r["frekvens"])
-    return results[:maks]
+    if grupper:
+        response["resultater"] = _grupper_etter_stavelser(results)
+    else:
+        response["resultater"] = results
+
+    return response
 
 
 def finn_rim_alle_dialekter(
@@ -390,16 +452,22 @@ def finn_nesten_rim(
     maks: int = 100,
     terskel: float = 0.5,
     dialekt: str = "øst",
+    rimsuffiks: Optional[str] = None,
+    grupper: bool = False,
 ) -> list[dict]:
     """Find near-rhymes using phoneme equivalence classes.
 
     Looks at suffixes that share the same vowel equivalence class in the
     stressed nucleus, then scores by consonant similarity.
 
+    Args:
+        rimsuffiks: If given, use this suffix directly (for disambiguation).
+        grupper: If True, group results by syllable count.
+
     Returns list of dicts: ord, rimsuffiks, tonelag, stavelser, score.
     Sorted by score descending.
     """
-    info = _get_word_info(ord, db_path=db_path, dialekt=dialekt)
+    info = _get_word_info(ord, db_path=db_path, dialekt=dialekt, rimsuffiks=rimsuffiks)
     if info is None:
         return []
 
@@ -478,7 +546,11 @@ def finn_nesten_rim(
 
         # Sort by score descending, then alphabetical
         results.sort(key=lambda r: (-r["score"], r["ord"]))
-        return results[:maks]
+        results = results[:maks]
+
+        if grupper:
+            return _grupper_etter_stavelser(results)
+        return results
     finally:
         pass
 
@@ -603,13 +675,19 @@ def finn_rimsti(
     min_frekvens: float = 1.0,
     dialekt: str = "øst",
 ) -> dict:
-    """Find the rhyme path — a word-by-word chain of incremental vowel shifts.
+    """Find the rhyme path — rimfamilier sorted by incremental vowel distance.
 
-    Each step is ONE word that near-rhymes with the previous word.
-    The chain walks through vowel space one small step at a time:
-    hus → brus → buss → fuss → foss → moss → koss → ...
+    Each step is a RHYME FAMILY (group of words sharing a suffix).
+    Families are sorted by greedy nearest-neighbor walk through vowel space,
+    starting from the input word's family. Each step is one small vowel shift.
 
-    Returns dict with ord, rimsuffiks, steg[] where each steg is one word.
+    Example for "hus" (/ʉːs/):
+      1. hus, brus, rus, sus  (/ʉːs/) — start
+      2. lys, nordlys  (/yːs/) — small vowel shift
+      3. pris, is, vis  (/ɪːs/) — next step
+      ...
+
+    Returns dict with steg[] where each steg has rimsuffiks, ord[] (examples), aktiv.
     """
     empty = {"ord": ord, "rimsuffiks": None, "konsonantskjelett": None, "steg": [], "antall_steg": 0}
 
@@ -643,100 +721,102 @@ def finn_rimsti(
             if row:
                 skeleton_str = row["konsonantskjelett"]
             cur = conn.execute(
-                "SELECT rimsuffiks FROM rimsti_indeks "
+                "SELECT rimsuffiks, familiestr FROM rimsti_indeks "
                 "WHERE konsonantskjelett = ? AND familiestr >= ?",
                 (skeleton_str, min_familiestr),
             )
         except Exception:
-            cur = conn.execute("SELECT DISTINCT rimsuffiks FROM ord")
+            cur = conn.execute(
+                "SELECT DISTINCT rimsuffiks, 0 as familiestr FROM ord"
+            )
 
-        # Collect all valid suffixes (same syllable structure)
-        valid_suffixes = set()
+        # Build family pool: suffix → familiestr (same syllable structure only)
+        families = {}
         for r in cur:
             sfx = r["rimsuffiks"]
             if sfx.count(".") == syl_count:
-                valid_suffixes.add(sfx)
+                families[sfx] = r["familiestr"]
 
-        if not valid_suffixes:
+        if not families:
             return empty
 
-        # Build word pool: for each valid suffix, get common words
-        # {word: (suffix, frequency)}
-        word_pool = {}
-        for sfx in valid_suffixes:
-            cur2 = conn.execute(
-                "SELECT LOWER(o.ord) as ord, MAX(o.frekvens) as f, o.rimsuffiks "
-                "FROM ord o "
-                "WHERE o.rimsuffiks = ? AND o.frekvens >= 5.0 "
-                "AND length(o.ord) BETWEEN 3 AND 8 "
-                "AND o.ord NOT LIKE '%-%' "
-                "AND o.pos NOT LIKE 'PM%%' "
-                "GROUP BY LOWER(o.ord) ORDER BY f DESC LIMIT 8",
-                (sfx,),
-            )
-            for row2 in cur2:
-                w = row2["ord"]
-                word_pool[w] = (sfx, row2["f"])
+        # Merge length variants (ɑːs and ɑs are effectively the same family)
+        merged = {}
+        for sfx, size in families.items():
+            key = sfx.replace("ː", "")
+            if key not in merged or size > merged[key][1]:
+                merged[key] = (sfx, size)
+        # Map: canonical suffix → (display suffix, size)
 
-        if not word_pool:
-            return empty
-
-        # --- Word-level chain walk ---
-        # Start with the input word. At each step, find the nearest
-        # unvisited word (by suffix vowel distance) that has a DIFFERENT
-        # suffix from the current word (so we actually move).
+        # --- Greedy nearest-neighbor walk through families ---
+        visited_keys = set()
         steg = []
-        used_words = set()
-        visited_suffixes = set()
-        current_word = ord.lower()
-        current_suffix = suffix
+        current_sfx = suffix
+        current_key = suffix.replace("ː", "")
+        ord_lower = ord.lower()
 
-        # Add starting word
-        steg.append({
-            "ord": current_word,
-            "rimsuffiks": current_suffix,
-            "aktiv": True,
-        })
-        used_words.add(current_word)
-        visited_suffixes.add(current_suffix)
-        # Also mark length-variant suffixes as visited
-        visited_suffixes.add(current_suffix.replace("ː", ""))
+        for _ in range(maks_steg):
+            # Find the display suffix for current key
+            display_sfx = current_sfx
+            for sfx in families:
+                if sfx.replace("ː", "") == current_key:
+                    if families[sfx] >= families.get(display_sfx, 0):
+                        display_sfx = sfx
 
-        for _ in range(maks_steg - 1):
-            # Find nearest word whose suffix we haven't visited yet
-            best_word = None
+            visited_keys.add(current_key)
+
+            # Fetch example words for ALL suffixes in this family (long + short)
+            example_suffixes = [s for s in families if s.replace("ː", "") == current_key]
+            eks = []
+            for esfx in example_suffixes:
+                cur2 = conn.execute(
+                    "SELECT LOWER(o.ord) as ord, MAX(o.frekvens) as f FROM ord o "
+                    "WHERE o.rimsuffiks = ? AND o.frekvens >= 5.0 "
+                    "AND length(o.ord) BETWEEN 3 AND 8 "
+                    "AND o.ord NOT LIKE '%-%' "
+                    "AND o.pos NOT LIKE 'PM%%' "
+                    "GROUP BY LOWER(o.ord) ORDER BY f DESC LIMIT 10",
+                    (esfx,),
+                )
+                for row2 in cur2:
+                    w = row2["ord"]
+                    # Skip compounds of search word
+                    if len(w) > len(ord_lower) + 2 and ord_lower in w:
+                        continue
+                    if w not in eks:
+                        eks.append(w)
+
+            # Sort by frequency (already mostly sorted from SQL)
+            eks = eks[:5]
+
+            if len(eks) < 2 and current_key != suffix.replace("ː", ""):
+                # Skip empty families, but find next neighbor from here
+                pass
+            else:
+                steg.append({
+                    "rimsuffiks": display_sfx,
+                    "ord": eks,
+                    "aktiv": current_key == suffix.replace("ː", ""),
+                })
+
+            # Find nearest unvisited family
+            best_key = None
             best_dist = float("inf")
             best_sfx = None
-
-            for candidate_word, (cand_sfx, cand_freq) in word_pool.items():
-                if candidate_word in used_words:
+            for sfx in families:
+                key = sfx.replace("ː", "")
+                if key in visited_keys:
                     continue
-                # Suffix must be truly new (not visited, not length-variant of visited)
-                if cand_sfx in visited_suffixes:
-                    continue
-                if cand_sfx.replace("ː", "") in visited_suffixes:
-                    continue
-                d = _suffix_vowel_distance(current_suffix, cand_sfx)
-                # Prefer common words (slight frequency bonus)
-                d -= min(cand_freq / 1000.0, 0.05)
+                d = _suffix_vowel_distance(current_sfx, sfx)
                 if d < best_dist:
                     best_dist = d
-                    best_word = candidate_word
-                    best_sfx = cand_sfx
+                    best_key = key
+                    best_sfx = sfx
 
-            if best_word is None:
+            if best_key is None:
                 break
-
-            steg.append({
-                "ord": best_word,
-                "rimsuffiks": best_sfx,
-                "aktiv": False,
-            })
-            used_words.add(best_word)
-            visited_suffixes.add(best_sfx)
-            visited_suffixes.add(best_sfx.replace("ː", ""))
-            current_word = best_word
-            current_suffix = best_sfx
+            current_key = best_key
+            current_sfx = best_sfx
 
         return {
             "ord": ord,

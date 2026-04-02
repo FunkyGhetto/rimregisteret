@@ -1418,33 +1418,49 @@ function renderFlat(items) {
 function renderRimstier(data) {
   const steg = data.steg || [];
 
-  // Render as a flowing word chain
-  const chain = document.createElement('div');
-  chain.style.cssText = 'display:flex;flex-wrap:wrap;gap:0.3rem 0.15rem;align-items:center;margin-top:0.8rem;line-height:2';
-
   for (let i = 0; i < steg.length; i++) {
     const s = steg[i];
+    const words = s.ord || s.eksempler || [];
+    if (!words.length) continue;
 
-    // Arrow between words (except before the first)
-    if (i > 0) {
-      const arrow = document.createElement('span');
-      arrow.style.cssText = 'color:#555;font-size:0.8rem;margin:0 0.1rem';
-      arrow.textContent = '\u2192';
-      chain.appendChild(arrow);
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;align-items:baseline;gap:0.5rem;padding:0.4rem 0.6rem;border-radius:6px;margin-bottom:0.2rem';
+    if (s.aktiv) {
+      row.style.background = 'rgba(232,146,13,0.08)';
+      row.style.borderLeft = '3px solid #e8920d';
     }
 
-    const el = document.createElement('a');
-    el.style.cssText = s.aktiv
-      ? 'color:#e8920d;font-size:1.05rem;font-weight:600;cursor:pointer;text-decoration:none;padding:0.15rem 0.3rem;border-radius:4px;background:rgba(232,146,13,0.1)'
-      : 'color:#e8920d;font-size:1.05rem;cursor:pointer;text-decoration:none;padding:0.15rem 0.3rem;border-radius:4px';
-    el.textContent = s.ord;
-    el.addEventListener('mouseenter', () => { el.style.background = '#2a2a2a'; });
-    el.addEventListener('mouseleave', () => { el.style.background = s.aktiv ? 'rgba(232,146,13,0.1)' : ''; });
-    el.addEventListener('click', e => { e.preventDefault(); searchWord(s.ord); });
-    chain.appendChild(el);
-  }
+    // Step number
+    if (i > 0) {
+      const num = document.createElement('span');
+      num.style.cssText = 'color:#555;font-size:0.7rem;min-width:16px';
+      num.textContent = i + '.';
+      row.appendChild(num);
+    }
 
-  resultsEl.appendChild(chain);
+    // Words
+    const wordsEl = document.createElement('span');
+    wordsEl.style.cssText = 'font-size:0.95rem;flex:1';
+    for (let j = 0; j < words.length; j++) {
+      if (j > 0) wordsEl.appendChild(document.createTextNode(', '));
+      const a = document.createElement('a');
+      a.textContent = words[j];
+      a.style.cssText = 'color:#e8920d;cursor:pointer;text-decoration:none';
+      a.addEventListener('mouseenter', () => { a.style.color = '#f5a623'; });
+      a.addEventListener('mouseleave', () => { a.style.color = '#e8920d'; });
+      a.addEventListener('click', e => { e.preventDefault(); searchWord(words[j]); });
+      wordsEl.appendChild(a);
+    }
+    row.appendChild(wordsEl);
+
+    // Suffix
+    const sfxEl = document.createElement('span');
+    sfxEl.style.cssText = 'font-size:0.75rem;color:#555;font-family:"Lucida Sans Unicode",sans-serif;white-space:nowrap';
+    sfxEl.textContent = '/' + s.rimsuffiks + '/';
+    row.appendChild(sfxEl);
+
+    resultsEl.appendChild(row);
+  }
 }
 
 function makeWordEl(item) {

@@ -209,6 +209,69 @@ def hent_rim_dialekt(
         pass  # Connection reused via thread-local pool
 
 
+def hent_varianter(ord: str, db_path: Optional[Path] = None) -> list[dict]:
+    """Find all distinct pronunciation variants for a word (homograph detection).
+
+    Groups by (rimsuffiks, ipa_ren) to detect words with multiple pronunciations.
+    Returns list of dicts: rimsuffiks, ipa_ren, pos, tonelag, stavelser, frekvens.
+    Sorted by frequency descending (most common variant first).
+
+    If only one variant exists, the word is unambiguous.
+    If multiple variants exist, the caller should offer disambiguation.
+    """
+    conn = _connect(db_path)
+    try:
+        cur = conn.execute(
+            "SELECT rimsuffiks, ipa_ren, pos, tonelag, stavelser, "
+            "MAX(frekvens) as frekvens "
+            "FROM ord WHERE LOWER(ord) = ? "
+            "GROUP BY rimsuffiks, ipa_ren "
+            "ORDER BY frekvens DESC",
+            (ord.lower(),),
+        )
+        return [dict(r) for r in cur]
+    finally:
+        pass
+
+
+def hent_rim_for_suffiks(
+    suffiks: str,
+    ord_lower: str,
+    db_path: Optional[Path] = None,
+    maks: int = 200,
+    samme_tonelag: bool = False,
+    tonelag_val: Optional[int] = None,
+    ekskluder_propn: bool = True,
+) -> list[dict]:
+    """Find rhyming words for a specific suffix (used after disambiguation).
+
+    Returns list of dicts: ord, rimsuffiks, tonelag, stavelser, frekvens, pos.
+    Sorted by frequency descending.
+    If ekskluder_propn=True, filters out proper nouns (PM).
+    """
+    conn = _connect(db_path)
+    try:
+        propn_clause = "AND pos NOT LIKE 'PM%'" if ekskluder_propn else ""
+        tonelag_clause = "AND tonelag = ?" if (samme_tonelag and tonelag_val is not None) else ""
+
+        params: list = [suffiks, ord_lower]
+        if tonelag_clause:
+            params.append(tonelag_val)
+        params.append(maks)
+
+        cur = conn.execute(
+            f"SELECT LOWER(ord) as ord, rimsuffiks, tonelag, "
+            f"MAX(stavelser) as stavelser, MAX(frekvens) as frekvens, pos "
+            f"FROM ord WHERE rimsuffiks = ? AND LOWER(ord) != ? "
+            f"{propn_clause} {tonelag_clause} "
+            f"GROUP BY LOWER(ord) ORDER BY frekvens DESC LIMIT ?",
+            params,
+        )
+        return [dict(r) for r in cur]
+    finally:
+        pass
+
+
 def sok_ord(
     prefiks: str, db_path: Optional[Path] = None, maks: int = 20
 ) -> list[str]:

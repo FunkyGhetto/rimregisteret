@@ -72,30 +72,65 @@ def _format_words(words: list[dict], key: str = "ord", show_score: bool = False)
 
 
 @mcp.tool()
-async def finn_rim(ord: str, maks: int = 20, dialekt: str = "øst") -> str:
+async def finn_rim(
+    ord: str, maks: int = 40, dialekt: str = "øst", variant: str | None = None,
+) -> str:
     """Finn perfekte rim for et norsk ord.
 
     Returnerer ord som rimer perfekt (identisk rimsuffiks),
-    sortert etter bruksfrekvens (vanligste først).
+    gruppert etter stavelser og sortert etter bruksfrekvens.
+
+    Hvis ordet har flere uttaler (homograf), vises varianter med
+    rimsuffiks slik at brukeren kan velge. Bruk variant-parameteret
+    for å velge en spesifikk uttale.
 
     Args:
         ord: Ordet å finne rim for (f.eks. "sol", "natt", "hjerte")
-        maks: Maks antall resultater (default 20)
+        maks: Maks antall resultater (default 40)
         dialekt: Dialektregion - øst, nord, midt, vest, sørvest (default øst)
+        variant: Rimsuffiks for disambiguering (f.eks. "ɔlt" for stolt-adjektiv)
     """
     try:
-        data = await _get(f"/rim/{ord}", {"maks": maks, "dialekt": dialekt})
-        items = data.get("resultater", [])
-        if not items:
-            # Fallback: near-rhymes with score >= 1.0 (e.g. vowel length difference)
+        params: dict = {"maks": maks, "dialekt": dialekt, "grupper": True}
+        if variant:
+            params["variant"] = variant
+        data = await _get(f"/rim/{ord}", params)
+
+        lines = []
+
+        # Show variants if ambiguous
+        varianter = data.get("varianter", [])
+        if varianter:
+            lines.append(f"⚠ «{ord}» har {len(varianter)} uttaler:")
+            for i, v in enumerate(varianter):
+                suffix = v.get("rimsuffiks", "?")
+                pos = v.get("pos", "?")
+                freq = v.get("frekvens", 0)
+                marker = " ← valgt" if variant and variant == suffix else ""
+                lines.append(f"  {i+1}. /{suffix}/ ({pos}, frekvens {freq:.1f}){marker}")
+            if not variant:
+                lines.append(f"  Bruker vanligste uttale. Spesifiser variant for å endre.")
+            lines.append("")
+
+        suffix = data.get("rimsuffiks", "?")
+        grupper = data.get("resultater", [])
+
+        if not grupper:
             near = await _get(f"/nestenrim/{ord}", {"maks": maks, "terskel": 0.9, "dialekt": dialekt})
             near_items = [r for r in near.get("resultater", []) if r.get("score", 0) >= 1.0]
             if near_items:
                 words = _format_words(near_items)
-                return f"Rim for «{ord}» ({len(near_items)} treff): {words}"
-            return f"Ingen rim funnet for «{ord}»."
-        words = _format_words(items)
-        return f"Rim for «{ord}» ({len(items)} treff): {words}"
+                return "\n".join(lines) + f"Rim for «{ord}» /{suffix}/ ({len(near_items)} treff): {words}"
+            return "\n".join(lines) + f"Ingen rim funnet for «{ord}»."
+
+        lines.append(f"Rim for «{ord}» /{suffix}/:")
+        for g in grupper:
+            syl = g["stavelser"]
+            words = g["ord"]
+            word_strs = [w["ord"] for w in words]
+            lines.append(f"  {syl}-stavelse ({len(words)}): {', '.join(word_strs)}")
+
+        return "\n".join(lines)
     except Exception as e:
         return f"Feil ved oppslag av rim for «{ord}»: {e}"
 
@@ -203,6 +238,13 @@ async def ordinfo(ord: str, dialekt: str = "øst") -> str:
 
         kilde = "G2P (estimert)" if f.get("g2p") else "Leksikon"
         lines.append(f"  Kilde: {kilde}")
+
+        # Show variants if ambiguous
+        varianter = data.get("varianter", [])
+        if varianter:
+            lines.append(f"  ⚠ Flere uttaler ({len(varianter)}):")
+            for i, v in enumerate(varianter):
+                lines.append(f"    {i+1}. /{v.get('rimsuffiks', '?')}/ ({v.get('pos', '?')})")
 
         rim = data.get("rim", [])
         if rim:
@@ -408,8 +450,8 @@ async def rimsti(ord: str, maks_steg: int = 20, min_familiestr: int = 3, dialekt
         lines = [f"Rimsti for «{ord}» (konsonantskjelett: /{skeleton}/), {len(steg)} steg:"]
         for s in steg:
             marker = " ←" if s.get("aktiv") else ""
-            eksempler = ", ".join(s.get("eksempler", []))
-            lines.append(f"  /{s['rimsuffiks']}/ ({s['familiestr']} ord): {eksempler}{marker}")
+            eksempler = ", ".join(s.get("ord", []))
+            lines.append(f"  /{s['rimsuffiks']}/: {eksempler}{marker}")
 
         return "\n".join(lines)
     except Exception as e:
