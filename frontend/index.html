@@ -735,6 +735,7 @@ body {
   <button class="tab" data-tab="halvrim">Halvrim</button>
   <button class="tab" data-tab="synonymer">Synonymer</button>
   <button class="tab" data-tab="rimklynger">Rimklynger</button>
+  <button class="tab" data-tab="akustisk">Akustisk</button>
   <button class="tab" data-tab="laer">Lær</button>
 </div>
 
@@ -1416,6 +1417,33 @@ async function doSearch(word, variant) {
   const dParam = `&dialekt=${encodeURIComponent(currentDialekt)}`;
   const vParam = currentVariant ? `&variant=${encodeURIComponent(currentVariant)}` : '';
 
+  // Acoustic tab — separate API and renderer
+  if (currentTab === 'akustisk') {
+    statusEl.textContent = 'Søker akustiske naboer...';
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 30000);
+      const [akData, infoData] = await Promise.all([
+        fetch(`${API}/api/v1/akustisk/${encodeURIComponent(word)}?antall=50`, { signal: controller.signal }).then(r => r.json()),
+        fetch(`${API}/api/v1/info/${encodeURIComponent(word)}?x=1${dParam}`).then(r => r.json()),
+      ]);
+      clearTimeout(timeout);
+      if (akData.feil) { statusEl.textContent = akData.feil; renderInfo(infoData); return; }
+      const items = akData.resultater || [];
+      statusEl.textContent = items.length > 0
+        ? `${items.length} akustiske naboer for "${word}" (${(akData.soketid_ms / 1000).toFixed(1)}s)`
+        : `Ingen akustiske naboer funnet for "${word}"`;
+      renderInfo(infoData);
+      renderAkustisk(items);
+    } catch (err) {
+      statusEl.textContent = err.name === 'AbortError'
+        ? 'Tidsavbrudd — akustisk søk tok for lang tid.'
+        : 'Feil: Kunne ikke koble til API-et.';
+      console.error(err);
+    }
+    return;
+  }
+
   const endpoint = {
     rim: 'rim', halvrim: 'halvrim', synonymer: 'synonymer'
   }[currentTab] || 'rim';
@@ -1476,7 +1504,7 @@ async function doSearch(word, variant) {
 }
 
 function tabLabel() {
-  return { rim: 'rim', halvrim: 'halvrim', synonymer: 'synonymer' }[currentTab] || 'resultater';
+  return { rim: 'rim', halvrim: 'halvrim', synonymer: 'synonymer', akustisk: 'akustiske naboer' }[currentTab] || 'resultater';
 }
 
 // --- Rendering ---
@@ -1581,6 +1609,30 @@ function renderFlat(items) {
       src.textContent = item.kilde === 'wordnet' ? 'WN' : '';
       el.appendChild(src);
     }
+    el.addEventListener('click', e => { e.preventDefault(); searchWord(item.ord); });
+    el.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); searchWord(item.ord); }});
+    list.appendChild(el);
+  }
+  resultsEl.appendChild(list);
+}
+
+function renderAkustisk(items) {
+  const list = document.createElement('div');
+  list.className = 'word-list';
+  list.style.marginTop = '1rem';
+  for (const item of items) {
+    const el = document.createElement('a');
+    el.className = 'word-item';
+    el.href = '#';
+    el.tabIndex = 0;
+    el.textContent = item.ord;
+    const badge = document.createElement('span');
+    badge.className = 'score';
+    badge.textContent = item.score.toFixed(2);
+    if (item.score >= 0.95) badge.style.color = '#e8920d';
+    else if (item.score >= 0.90) badge.style.color = '#b8860b';
+    else badge.style.color = '#555';
+    el.appendChild(badge);
     el.addEventListener('click', e => { e.preventDefault(); searchWord(item.ord); });
     el.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); searchWord(item.ord); }});
     list.appendChild(el);

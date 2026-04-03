@@ -8,9 +8,16 @@ Start med:
 Swagger-dokumentasjon: http://localhost:8000/docs
 """
 
+import csv
 import logging
+import os
+import sqlite3
+import tempfile
+import threading
 import time
 from collections import defaultdict
+from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import Optional
 
 from fastapi import FastAPI, Query, Request, Body
@@ -41,10 +48,75 @@ DIALEKT_ENUM = list(GYLDIGE_DIALEKTER)
 logger = logging.getLogger("rimordbok.api")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
+# --- Akustisk motor (loaded in background at startup) ---
+_akustisk_lex = None
+_akustisk_ready = False
+_akustisk_csv_tmp = None  # temp file path for cleanup
+
+
+@asynccontextmanager
+async def lifespan(app):
+    global _akustisk_lex, _akustisk_ready, _akustisk_csv_tmp
+
+    csv_path = os.environ.get("AKUSTISK_LEXICON_PATH")
+
+    if not csv_path:
+        db_path = Path(__file__).resolve().parent.parent / "data/db/rimindeks.db"
+        if db_path.exists():
+            logger.info("Generating acoustic lexicon CSV from %s", db_path)
+            conn = sqlite3.connect(str(db_path))
+            cur = conn.execute(
+                "SELECT ord, ipa_ren FROM ord WHERE ipa_ren IS NOT NULL AND ipa_ren != ''"
+            )
+            tmp = tempfile.NamedTemporaryFile(
+                mode="w", suffix=".csv", delete=False, newline=""
+            )
+            csv_path = tmp.name
+            _akustisk_csv_tmp = csv_path
+            writer = csv.writer(tmp)
+            writer.writerow(["word", "", "", "", "", "", "ipa"])
+            count = 0
+            for row in cur:
+                writer.writerow([row[0], "", "", "", "", "", row[1]])
+                count += 1
+            tmp.close()
+            conn.close()
+            logger.info("Wrote %d words to temp CSV %s", count, csv_path)
+
+    def _build_embeddings(path):
+        global _akustisk_lex, _akustisk_ready
+        try:
+            from rimordbok.akustisk import Leksikon
+            logger.info("Loading acoustic lexicon from %s", path)
+            lex = Leksikon(path)
+            logger.info("Building acoustic embeddings (%d words)...", lex.n)
+            lex._ensure_embeddings()
+            _akustisk_lex = lex
+            _akustisk_ready = True
+            logger.info("Acoustic engine ready: %d words", lex.n)
+        except Exception as e:
+            logger.error("Failed to initialize acoustic engine: %s", e)
+
+    if csv_path:
+        t = threading.Thread(target=_build_embeddings, args=(csv_path,), daemon=True)
+        t.start()
+    else:
+        logger.warning("No DB or AKUSTISK_LEXICON_PATH; acoustic engine disabled")
+
+    yield
+
+    if _akustisk_csv_tmp:
+        try:
+            os.unlink(_akustisk_csv_tmp)
+        except OSError:
+            pass
+
+
 app = FastAPI(
     title="Rimregisteret API",
     description="Rimregisteret — norsk rimordbok med fonetikk, semantikk og ordfrekvens.",
     version="0.1.0",
+    lifespan=lifespan,
 )
 
 # GZip compression for large responses
@@ -740,6 +812,73 @@ def api_batch(
         "resultater": resultater,
         "dialekt": dialekt,
         "soketid_ms": round(elapsed, 1),
+    }
+
+
+# --- Akustisk (acoustic similarity) ---
+
+
+@app.get("/api/v1/akustisk/sammenlign/{ord1}/{ord2}", summary="Sammenlign to ord akustisk")
+def api_akustisk_sammenlign(ord1: str, ord2: str):
+    """Beregn akustisk likhet (SSIM) mellom to ord."""
+    if not _akustisk_ready:
+        return JSONResponse(status_code=503, content={
+            "feil": "Akustisk motor laster inn. Prøv igjen om 30 sekunder.",
+        })
+    start = time.perf_counter()
+    try:
+        from rimordbok.akustisk import make_spectrogram, compare
+        wi1 = _akustisk_lex._w2i.get(ord1) or _akustisk_lex._w2i.get(ord1.lower())
+        wi2 = _akustisk_lex._w2i.get(ord2) or _akustisk_lex._w2i.get(ord2.lower())
+        if wi1 is None:
+            return JSONResponse(status_code=404, content={
+                "feil": f"Ordet «{ord1}» finnes ikke i det akustiske leksikonet.",
+            })
+        if wi2 is None:
+            return JSONResponse(status_code=404, content={
+                "feil": f"Ordet «{ord2}» finnes ikke i det akustiske leksikonet.",
+            })
+        spec1 = make_spectrogram(_akustisk_lex.segments[wi1])
+        spec2 = make_spectrogram(_akustisk_lex.segments[wi2])
+        score = compare(spec1, spec2)
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"feil": str(e)})
+    elapsed = (time.perf_counter() - start) * 1000
+    return {
+        "ord1": {"ord": ord1, "ipa": _akustisk_lex.ipa[wi1]},
+        "ord2": {"ord": ord2, "ipa": _akustisk_lex.ipa[wi2]},
+        "score": round(float(score), 4),
+        "soketid_ms": round(elapsed, 1),
+    }
+
+
+@app.get("/api/v1/akustisk/{ord}", summary="Finn akustiske naboer")
+def api_akustisk(
+    ord: str,
+    antall: int = Query(20, ge=1, le=100, description="Antall resultater"),
+    kandidater: int = Query(500, ge=50, le=5000, description="Kandidatpool-størrelse"),
+):
+    """Finn ord som høres akustisk like ut basert på syntetiske spektrogrammer og SSIM."""
+    if not _akustisk_ready:
+        return JSONResponse(status_code=503, content={
+            "feil": "Akustisk motor laster inn. Prøv igjen om 30 sekunder.",
+        })
+    start = time.perf_counter()
+    try:
+        results = _akustisk_lex.finn_like(ord, n=antall, kandidater=kandidater)
+    except KeyError:
+        return JSONResponse(status_code=404, content={
+            "feil": f"Ordet «{ord}» finnes ikke i det akustiske leksikonet.",
+        })
+    elapsed = (time.perf_counter() - start) * 1000
+    wi = _akustisk_lex._w2i.get(ord) or _akustisk_lex._w2i.get(ord.lower())
+    return {
+        "ord": ord,
+        "ipa": _akustisk_lex.ipa[wi] if wi is not None else None,
+        "resultater": [{"ord": w, "score": round(s, 4)} for w, s in results],
+        "antall": len(results),
+        "soketid_ms": round(elapsed, 1),
+        "kandidater": kandidater,
     }
 
 
