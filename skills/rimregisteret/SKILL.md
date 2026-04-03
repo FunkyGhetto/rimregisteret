@@ -24,6 +24,8 @@ Du har tilgang til Rimregisteret via MCP-verktøy som du kan kalle direkte. Bruk
 | `finn_varianter(ord)` | Uttale-varianter (homografer) | "Hvilke uttaler har stolt?" |
 | `finn_rim_dialekter(ord)` | Rim i alle 5 dialekter | "Vis rim for barn i alle dialekter" |
 | `finn_konsonantmatch(ord)` | Ord med likt konsonantskjelett | "Finn konsonantmatch for krone" |
+| `finn_akustisk(ord)` | Akustiske naboer via spektrogram-SSIM | "Hva lyder likt som sang?" |
+| `sammenlign_akustisk(ord1, ord2)` | SSIM-likhet mellom to ord | "Hvor likt lyder sang og fang?" |
 | `tilfeldig_ord()` | Tilfeldig vanlig norsk ord | "Gi meg et tilfeldig ord" |
 | `sok_ord(prefiks)` | Autocomplete | "Finn ord som starter med kj" |
 
@@ -333,6 +335,30 @@ curl -X POST "https://www.rimregisteret.no/api/v1/batch" \
 ```
 
 Respons: `resultater` dict med hvert ord som nøkkel, pluss `_rimpar` med alle par-sammenligninger hvis "rimer" er inkludert.
+
+### Akustisk likhet
+
+```
+GET /api/v1/akustisk/{ord}
+```
+Finn ord som lyder akustisk likt via syntetiske spektrogrammer og SSIM. Ingen lingvistiske regler — bare fysisk lydlikhet.
+
+Parametere: `antall` (int, default 20), `kandidater` (int, default 500)
+
+```bash
+curl "https://www.rimregisteret.no/api/v1/akustisk/sang?antall=10"
+```
+
+### Akustisk sammenligning
+
+```
+GET /api/v1/akustisk/sammenlign/{ord1}/{ord2}
+```
+Beregn akustisk likhet (SSIM 0–1) mellom to ord.
+
+```bash
+curl "https://www.rimregisteret.no/api/v1/akustisk/sammenlign/sang/fang"
+```
 
 ### Autocomplete
 

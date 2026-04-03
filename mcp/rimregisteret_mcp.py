@@ -743,6 +743,62 @@ async def sok_ord(prefiks: str, maks: int = 10) -> str:
         return f"Feil: {e}"
 
 
+@mcp.tool()
+async def finn_akustisk(
+    ord: str,
+    antall: int = 20,
+    kandidater: int = 500,
+) -> str:
+    """Finn ord som lyder akustisk likt via syntetiske spektrogrammer og SSIM.
+
+    Ingen lingvistiske regler — bare fysisk lydlikhet. Finner ord som
+    høres like ut uavhengig av om de rimer i tradisjonell forstand.
+
+    Args:
+        ord: Ordet å finne akustiske naboer for
+        antall: Antall resultater (default 20)
+        kandidater: Kandidatpool-størrelse for prefilter (default 500, høyere = grundigere men tregere)
+    """
+    try:
+        data = await _get(f"/akustisk/{ord}", {
+            "antall": antall, "kandidater": kandidater,
+        })
+        if "feil" in data:
+            return data["feil"]
+        items = data.get("resultater", [])
+        if not items:
+            return f"Ingen akustiske naboer funnet for «{ord}»."
+        ms = data.get("soketid_ms", 0)
+        lines = [f"{r['ord']:20s}  {r['score']:.4f}" for r in items]
+        header = f"Akustiske naboer for «{ord}» ({len(items)} treff, {ms:.0f}ms):"
+        return header + "\n" + "\n".join(lines)
+    except Exception as e:
+        return f"Feil: {e}"
+
+
+@mcp.tool()
+async def sammenlign_akustisk(ord1: str, ord2: str) -> str:
+    """Sammenlign to ord akustisk — beregn SSIM-likhet mellom syntetiske spektrogrammer.
+
+    Returnerer en score 0–1 der 1 = identisk lyd.
+
+    Args:
+        ord1: Første ord
+        ord2: Andre ord
+    """
+    try:
+        data = await _get(f"/akustisk/sammenlign/{ord1}/{ord2}")
+        if "feil" in data:
+            return data["feil"]
+        s = data.get("score", 0)
+        ipa1 = data.get("ord1", {}).get("ipa", "?")
+        ipa2 = data.get("ord2", {}).get("ipa", "?")
+        desc = "nesten identisk" if s >= 0.95 else "svært lik" if s >= 0.90 else "moderat lik" if s >= 0.80 else "ulik"
+        return f"{ord1} [{ipa1}] vs {ord2} [{ipa2}]: SSIM = {s:.4f} ({desc})"
+    except Exception as e:
+        return f"Feil: {e}"
+
+
 def main():
     mcp.run()
 
